@@ -109,6 +109,23 @@ describe("Zeitplan", () => {
     expect(fotos).toHaveLength(3);
   });
 
+  it("mit Teams: Teamwertung, Team-Bonus und Teamsieger", async () => {
+    const { bot, berichte, lauf } = await aufbau();
+    tag("2026-10-08");
+    await bot.handleUpdate(befehl("/team Eisen"));
+    await bot.handleUpdate(befehl("/team Couch", GRUPPE, PETER));
+    tag("2026-10-14");
+    await bot.handleUpdate(befehl("/sport 100 Joggen"));
+    await bot.handleUpdate(befehl("/sport 30 Yoga", GRUPPE, PETER));
+    await lauf("2026-10-18T18:00:30Z");
+    const woche1 = berichte()[0]!;
+    // Kevin hat Startwert und Ziel: Schnitt 10 + 3 Bonus; Peter ohne Startwert zählt nicht in den Schnitt
+    expect(woche1).toContain("👥 Teamwertung:\n1. Eisen: 13 (Schnitt 10 + 3 Bonus)\n2. Couch: 0");
+    expect(woche1).toContain("🎯 Team-Bonus +3: Eisen, alle haben ihr Ziel geschafft");
+    await lauf("2026-11-01T19:00:30Z");
+    expect(berichte().at(-1)).toContain("🏆 Teamsieger: Eisen");
+  });
+
   it("verpasste Berichte werden nachgeholt, wenn der Bot wieder läuft", async () => {
     const { berichte, lauf } = await aufbau();
     await lauf("2026-10-19T07:00:00Z");

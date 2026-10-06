@@ -8,7 +8,7 @@ describe("Datenbank", () => {
     const db = oeffneDb(":memory:");
     expect(migriere(db)).toEqual([]);
     const versionen = db.prepare("SELECT version FROM schema_version").all();
-    expect(versionen).toHaveLength(3);
+    expect(versionen).toHaveLength(4);
   });
 
   it("registriert Nutzer und Gruppen idempotent", () => {

@@ -1,6 +1,7 @@
 import type { Db } from "../db/index.js";
 import { type SeasonZeile, einstellungen, ladeTeilnehmer } from "../db/season-repo.js";
-import { type TeilnehmerStand, kalibrierFenster, seasonStand } from "../scoring/season.js";
+import { teamsDerSeason } from "../db/team-repo.js";
+import { type TeamStand, type TeilnehmerStand, kalibrierFenster, seasonStand, teamStand } from "../scoring/season.js";
 
 export type Stand = TeilnehmerStand & { telegramId: number; beitritt: string; kalibrierMessungen: number };
 
@@ -13,4 +14,10 @@ export function berechneStand(db: Db, s: SeasonZeile, tag: string): Stand[] {
     const kalibrierMessungen = t.messungen.filter((m) => m.datum >= fenster.von && m.datum <= fenster.bis).length;
     return { ...st, telegramId: t.telegramId, beitritt: t.beitritt, kalibrierMessungen };
   });
+}
+
+/** Teamwertung der Season, leer ohne Teams. */
+export function berechneTeams(db: Db, s: SeasonZeile, staende: readonly TeilnehmerStand[]): TeamStand[] {
+  const teams = teamsDerSeason(db, s.id);
+  return teams.length ? teamStand(teams.map((t) => ({ id: String(t.id), name: t.name, mitglieder: t.mitglieder })), staende) : [];
 }

@@ -1,7 +1,7 @@
 import type { Db } from "./db/index.js";
 import { type SeasonZeile, einstellungen, seasonNachId } from "./db/season-repo.js";
 import { gruppeNachId } from "./db/repo.js";
-import { berechneStand } from "./bericht/stand.js";
+import { berechneStand, berechneTeams } from "./bericht/stand.js";
 import { diagrammPng, gruppenDiagramm, punkteverlauf } from "./bericht/punkteverlauf.js";
 import { type Extras, type Vorwoche, finale, wochenbericht } from "./bericht/texte.js";
 import { lokalesDatum, plusTage, tageZwischen, zeitpunktIn } from "./scoring/datum.js";
@@ -102,6 +102,7 @@ async function berichte(db: Db, senden: Sender, t: TerminZeile, zeitzone: string
   }
   const stichtag = plusTage(s.start, woche * 7 + 6);
   const staende = berechneStand(db, s, stichtag);
+  const teams = berechneTeams(db, s, staende);
   const vorwoche = new Map(
     (
       db.prepare("SELECT nutzer, platz, spruch FROM wochenstand WHERE season = ? AND woche = ?").all(s.id, woche - 1) as {
@@ -115,12 +116,12 @@ async function berichte(db: Db, senden: Sender, t: TerminZeile, zeitzone: string
   let text: string;
   const vorlagen = new Map<string, string>();
   if (art === "finale") {
-    const ergebnis = finale(s, staende, extras(db, s));
+    const ergebnis = finale(s, staende, extras(db, s), teams);
     text = ergebnis.text;
     const preis = db.prepare("INSERT OR IGNORE INTO auszeichnung (season, nutzer, art) VALUES (?, ?, ?)");
     for (const p of ergebnis.preise) for (const id of p.gewinner) preis.run(s.id, Number(id), p.art);
   } else {
-    const bericht = wochenbericht({ name: s.name, wochen: s.wochen, wochenzielLast: s.wochenziel_last }, woche, staende, vorwoche);
+    const bericht = wochenbericht({ name: s.name, wochen: s.wochen, wochenzielLast: s.wochenziel_last }, woche, staende, vorwoche, teams);
     text = bericht.text;
     for (const z of bericht.sprueche) vorlagen.set(z.id, z.vorlage);
   }

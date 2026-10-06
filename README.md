@@ -16,13 +16,14 @@ Dieses Grundgerüst enthält:
 - **Season** mit `/season Name` in der Gruppe: startet am nächsten Montag mit 10 Wochen und 50/50, alle Mitglieder sind dabei. Start, Dauer und Gewichtung lassen sich bis zum Start per Knopf ändern (Ersteller und Gruppenadmins). Wer später dazukommt, macht seine eigene Kalibrierwoche.
 - **Stand** mit `/rangliste` (Punkte, Wochenziel ✅, Serie 🔥, „Fleiß der Woche“, Sprüche) und `/stand` (in der Gruppe nur Punkte, privat mit Fett- und Muskelmasse), danach der eigene Punkteverlauf als Diagramm (Gesamt, Fleiß, Fortschritt).
 - **Korrigieren** mit `/verlauf` (privat): letzte Einträge als Knöpfe, Trainingsdauer ändern oder Training/Messung löschen. Nur bis 2 Tage zurück, alles wird protokolliert, der Gruppenpost wird angepasst bzw. gelöscht.
+- **Teams** (optional): vor dem Start mit `/teams` auslosen (Ersteller oder Admins, 2 bis 4 Teams, ausbalanciert nach der letzten Season) oder mit `/team Name` selbst gründen und beitreten; Nachzügler kommen ins kleinste Team. Teampunkte = Schnitt der Mitglieder mit Startwert, +3 pro Woche, in der alle ihr Ziel schaffen. Teamwertung in `/rangliste`, `/teams`, Wochenbericht und Finale.
 - **Wochenbericht** jeden Sonntag um 20 Uhr (Ende jeder Season-Woche) in der Gruppe: Rangliste mit ⬆/⬇ zur Vorwoche, Wochenziel, Serien, Fleiß der Woche, ein Spruch pro Person (nie zweimal hintereinander derselbe), dazu der Punkteverlauf aller Teilnehmer als Diagramm (beliebig viele). Am Ende das **Finale** mit Sonderpreisen und Rückblick.
 - **Erinnerungen** privat zur eigenen Uhrzeit (Standard 19:00): in der Kalibrierwoche, nach 3 Tagen ohne Training, nach 4 Tagen ohne Messung. `/erinnerungen an|aus|18:30`.
 - **Zeitplan** als Termine in der Datenbank: jeder Termin läuft genau einmal, verpasste Berichte werden nach einem Neustart nachgeholt, Erinnerungen nur bis 2 Stunden zu spät.
 - **Sprüche** (`src/texte/sprueche.json`) mit Platzhaltern und Auswahl ohne direkte Wiederholung.
 - **Docker** und Webhook-Betrieb mit `/health`-Endpunkt.
 
-Als Nächstes: Teams, Mini App.
+Als Nächstes: Mini App.
 
 ## Lokal starten
 

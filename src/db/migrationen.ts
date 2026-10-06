@@ -182,4 +182,12 @@ export const MIGRATIONEN: readonly { version: number; name: string; sql: string 
       );
     `,
   },
+  {
+    version: 4,
+    name: "team_namen",
+    sql: `
+      -- Teamnamen pro Season eindeutig, damit /team Name beitreten oder anlegen kann
+      CREATE UNIQUE INDEX team_name ON team (season, name COLLATE NOCASE);
+    `,
+  },
 ];

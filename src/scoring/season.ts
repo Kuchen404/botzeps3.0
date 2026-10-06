@@ -156,6 +156,8 @@ export interface TeamStand {
   durchschnitt: number;
   /** +3 für jede Woche, in der alle Mitglieder ihr Ziel erreicht haben. */
   bonus: number;
+  /** 0-basierte Wochen, in denen es den Bonus gab. */
+  bonusWochen: number[];
   gesamt: number;
   platz: number;
 }
@@ -172,13 +174,12 @@ export function teamStand(
     const mitStart = mitglieder.filter((st) => st.start !== null);
     const durchschnitt = mitStart.length ? mitStart.reduce((s, st) => s + st.gesamt, 0) / mitStart.length : 0;
     const anzahlWochen = Math.max(0, ...mitglieder.map((st) => st.wochen.length));
-    let bonus = 0;
+    const bonusWochen: number[] = [];
     for (let w = 0; w < anzahlWochen; w++) {
-      if (mitglieder.length > 0 && mitglieder.every((st) => st.wochen[w]?.zielErreicht)) {
-        bonus += TEAM_BONUS_PRO_WOCHE;
-      }
+      if (mitglieder.length > 0 && mitglieder.every((st) => st.wochen[w]?.zielErreicht)) bonusWochen.push(w);
     }
-    return { id: team.id, name: team.name, durchschnitt, bonus, gesamt: durchschnitt + bonus };
+    const bonus = bonusWochen.length * TEAM_BONUS_PRO_WOCHE;
+    return { id: team.id, name: team.name, durchschnitt, bonus, bonusWochen, gesamt: durchschnitt + bonus };
   });
   const sortiert = [...ergebnis].sort((a, b) => b.gesamt - a.gesamt);
   const mitPlatz: TeamStand[] = [];
