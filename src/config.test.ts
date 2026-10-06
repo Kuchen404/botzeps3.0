@@ -21,4 +21,10 @@ describe("Konfiguration", () => {
     });
     expect(c.WEBHOOK_URL).toBe("https://botzeps.example.de");
   });
+
+  it("Demo-Modus nur, wenn ausdrücklich eingeschaltet", () => {
+    expect(ladeConfig({ BOT_TOKEN: "x" }).DEMO_MODUS).toBe(false);
+    expect(ladeConfig({ BOT_TOKEN: "x", DEMO_MODUS: "1" }).DEMO_MODUS).toBe(true);
+    expect(() => ladeConfig({ BOT_TOKEN: "x", DEMO_MODUS: "ja" })).toThrow(/DEMO_MODUS/);
+  });
 });

@@ -11,6 +11,11 @@ const schema = z
     DATABASE_PATH: z.string().min(1).default("./data/botzeps.db"),
     TZ: z.string().default("Europe/Berlin"),
     LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
+    // Nur für einen Test-Bot: Fake-Teilnehmer und Zeitsprünge (/demo, /vorspulen)
+    DEMO_MODUS: z
+      .enum(["0", "1", "true", "false", ""])
+      .default("0")
+      .transform((v) => v === "1" || v === "true"),
   })
   .superRefine((env, ctx) => {
     if (env.BOT_MODE === "webhook") {
