@@ -21,7 +21,7 @@ Dieses Grundgerüst enthält:
 - **Erinnerungen** privat zur eigenen Uhrzeit (Standard 19:00): in der Kalibrierwoche, nach 3 Tagen ohne Training, nach 4 Tagen ohne Messung. `/erinnerungen an|aus|18:30`.
 - **Zeitplan** als Termine in der Datenbank: jeder Termin läuft genau einmal, verpasste Berichte werden nach einem Neustart nachgeholt, Erinnerungen nur bis 2 Stunden zu spät.
 - **Sprüche** (`src/texte/sprueche.json`) mit Platzhaltern und Auswahl ohne direkte Wiederholung.
-- **Mini App** (`src/miniapp/`) unter `/app`, geöffnet über den Menüknopf „Botzeps“ im privaten Chat oder `/app`: Stand mit interaktivem Punkteverlauf, Rangliste und Teams, eigene Waagenwerte als Diagramm, Einträge ändern und löschen, Erinnerungen einstellen. Anmeldung automatisch über die signierten Telegram-initData, keine PIN.
+- **Mini App** (`src/miniapp/`) unter `/app`, geöffnet über den Menüknopf „Botzeps“ im privaten Chat oder `/app`: Stand mit interaktivem Punkteverlauf, Rangliste und Teams, eigene Waagenwerte als Diagramm, Einträge ändern und löschen, Erinnerungen einstellen, im Reiter „Ruhm“ der eigene Rang mit Fortschrittsbalken, alle Erfolge und die Ruhmeshalle der Gruppe. Anmeldung automatisch über die signierten Telegram-initData, keine PIN.
 - **Docker** und Webhook-Betrieb mit `/health`-Endpunkt.
 - **Tägliches Backup** der Datenbank mit Prüfung, die letzten 30 werden aufgehoben, optional zusätzlich als Datei per Telegram (siehe „Backup und Wiederherstellen“).
 

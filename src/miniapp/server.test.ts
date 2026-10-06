@@ -175,4 +175,31 @@ describe("Mini App", () => {
       server.close();
     }
   });
+
+  it("/api/ruhm: Rang mit Weg zum nächsten, alle Erfolge, Ruhmeshalle der Gruppe", async () => {
+    const { server, holen } = await aufbau();
+    try {
+      const r = await holen("/api/ruhm");
+      expect(r.status).toBe(200);
+      expect(r.json.rang).toMatchObject({ name: "Couchkartoffel", ab: 0, naechster: { name: "Lauch", ab: 1000 } });
+      expect(r.json.rang.last).toBeGreaterThan(0);
+      expect(r.json.rang.naechster.fehlen).toBe(1000 - r.json.rang.last);
+      expect(r.json.raenge).toHaveLength(7);
+      expect(r.json.erfolge).toHaveLength(14);
+      expect(r.json.erfolge.find((e: { art: string }) => e.art === "erste_einheit")).toMatchObject({
+        titel: "Erster Schweißtropfen",
+        erreichtAm: "2026-10-14",
+      });
+      expect(r.json.erfolge.find((e: { art: string }) => e.art === "champion").erreichtAm).toBeNull();
+      expect(r.json.gruppen).toHaveLength(1);
+      const mitglieder = r.json.gruppen[0].mitglieder as { name: string; ich: boolean; emoji: string }[];
+      expect(mitglieder.map((m) => m.name)).toEqual(["Kevin", "Peter"]);
+      expect(mitglieder[0]).toMatchObject({ ich: true, emoji: "🛋" });
+      expect(r.json.gruppen[0].laengsteEinheit).toMatchObject({ name: "Kevin", minuten: 100 });
+      // Keine Waagenwerte anderer Leute
+      expect(JSON.stringify(r.json)).not.toContain("fett");
+    } finally {
+      server.close();
+    }
+  });
 });

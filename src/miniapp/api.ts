@@ -11,6 +11,9 @@ import { plusTage } from "../scoring/datum.js";
 import { type TeilnehmerStand, seasonEnde, wocheVon } from "../scoring/season.js";
 import { type Boss, bosseDerSeason } from "../db/season-repo.js";
 import { bossAnzeigename, bossEmoji, bossKampf } from "../scoring/boss.js";
+import { erfolgeDesNutzers, lebenslangeLast, ruhmeshalle } from "../db/erfolg-repo.js";
+import { ERFOLGE, ERFOLG_ARTEN } from "../scoring/erfolge.js";
+import { RAENGE, naechsterRang, rangFuer } from "../scoring/raenge.js";
 import type { MiniAppNutzer } from "./auth.js";
 
 /**
@@ -128,6 +131,38 @@ function ich(db: Db, nutzerId: number, telegramId: number) {
   };
 }
 
+/** Eigener Rang und Erfolge über alle Seasons, dazu die Ruhmeshalle jeder eigenen Gruppe. */
+function ruhm(db: Db, nutzerId: number) {
+  const last = lebenslangeLast(db, nutzerId);
+  const rang = rangFuer(last);
+  const naechster = naechsterRang(last);
+  const am = new Map(erfolgeDesNutzers(db, nutzerId).map((e) => [e.art, e.erreicht_am]));
+  return {
+    rang: {
+      name: rang.name,
+      emoji: rang.emoji,
+      ab: rang.ab,
+      last,
+      naechster: naechster ? { name: naechster.rang.name, emoji: naechster.rang.emoji, ab: naechster.rang.ab, fehlen: naechster.fehlen } : null,
+    },
+    raenge: RAENGE,
+    erfolge: ERFOLG_ARTEN.map((art) => ({ art, ...ERFOLGE[art], erreichtAm: am.get(art) ?? null })),
+    gruppen: gruppenDesNutzers(db, nutzerId).map((g) => {
+      const r = ruhmeshalle(db, g.id);
+      return {
+        name: g.name,
+        sieger: r.sieger,
+        mitglieder: r.mitglieder.map((m) => {
+          const mr = rangFuer(m.last);
+          return { name: m.name, rang: mr.name, emoji: mr.emoji, last: m.last, erfolge: m.erfolge, ich: m.nutzerId === nutzerId };
+        }),
+        hoechsteWochenlast: r.hoechsteWochenlast,
+        laengsteEinheit: r.laengsteEinheit,
+      };
+    }),
+  };
+}
+
 function eintragJson(e: Eintrag, tag: string) {
   const { gruppenNachricht: _g, gruppeChat: _c, ...rest } = e;
   return { ...rest, aenderbar: aenderbar(e, tag) };
@@ -150,6 +185,9 @@ export async function bearbeiteApi(db: Db, a: Anfrage, gruppenpost: Gruppenpost)
 
   if (a.methode === "GET" && a.pfad === "/api/ich") {
     return { status: 200, json: { name: nutzer.name, ...ich(db, nutzer.id, a.nutzer.id) } };
+  }
+  if (a.methode === "GET" && a.pfad === "/api/ruhm") {
+    return { status: 200, json: ruhm(db, nutzer.id) };
   }
   if (a.methode === "GET" && a.pfad === "/api/eintraege") {
     return { status: 200, json: { eintraege: letzteEintraege(db, nutzer.id, 30).map((e) => eintragJson(e, tag)), dauern: DAUERN } };
