@@ -7,6 +7,10 @@ import { lokalesDatum, plusTage, tageZwischen, zeitpunktIn } from "./scoring/dat
 import { FORTSCHRITT } from "./scoring/fortschritt.js";
 import { kalibrierFenster, seasonEnde } from "./scoring/season.js";
 import { log } from "./log.js";
+import { abgelaufeneAbstimmungen, beendeAbstimmung } from "./db/abstimmung-repo.js";
+import { setzeGruppenNachricht } from "./db/repo.js";
+import { ABSTIMMUNG_STUNDEN, ergebnisText } from "./bot/abstimmung.js";
+import { trainingsPostText } from "./bot/sport.js";
 
 /**
  * Berichte und Erinnerungen als fällige Termine in der Datenbank (Konzept 9):
@@ -14,7 +18,8 @@ import { log } from "./log.js";
  * Nach einem Neustart wird Verpasstes nachgeholt, Erinnerungen aber nur bis 2 Stunden zu spät.
  */
 
-export type Sender = (chatId: number, text: string) => Promise<void>;
+/** Sendet eine Nachricht und gibt, wenn bekannt, ihre message_id zurück. */
+export type Sender = (chatId: number, text: string) => Promise<number | void>;
 
 const ERINNERUNG_VERFALL_MS = 2 * 60 * 60 * 1000;
 export const ERINNERUNG = { tageOhneTraining: 3, tageOhneMessung: 4 } as const;
@@ -234,6 +239,24 @@ export function erinnerungsText(
   return `${nutzer.name}, kurze Ansage:\n${meckern.map((m) => `• ${m}`).join("\n")}\n\nKeine Lust auf Erinnerungen? /erinnerungen aus`;
 }
 
+/** Beendet Abstimmungen über neue Sportarten, die länger als 24 Stunden offen sind. */
+export async function beendeAbgelaufeneAbstimmungen(db: Db, senden: Sender, jetzt: Date): Promise<void> {
+  const grenze = new Date(jetzt.getTime() - ABSTIMMUNG_STUNDEN * 60 * 60 * 1000).toISOString();
+  for (const a of abgelaufeneAbstimmungen(db, grenze)) {
+    const e = beendeAbstimmung(db, a.id, jetzt.toISOString());
+    if (!e) continue;
+    try {
+      await senden(e.gruppeChat, `${ergebnisText(e)} (Abstimmung nach ${ABSTIMMUNG_STUNDEN} Stunden beendet)`);
+      if (e.training) {
+        const id = await senden(e.gruppeChat, trainingsPostText(e.training.nutzerName, e.training.minuten, e.sportart.name));
+        if (id) setzeGruppenNachricht(db, e.training.id, id);
+      }
+    } catch (err) {
+      log.error(`Ergebnis der Abstimmung ${a.id} nicht gesendet`, err);
+    }
+  }
+}
+
 /** Startet die Zeitplanung; gibt eine Funktion zum Anhalten zurück. */
 export function starteZeitplan(db: Db, senden: Sender, zeitzone: string, intervallMs = 60_000): () => void {
   let laeuft = false;
@@ -244,6 +267,7 @@ export function starteZeitplan(db: Db, senden: Sender, zeitzone: string, interva
       const jetzt = new Date();
       plane(db, jetzt, zeitzone);
       await fuehreAus(db, senden, jetzt, zeitzone);
+      await beendeAbgelaufeneAbstimmungen(db, senden, jetzt);
     } catch (err) {
       log.error("Zeitplan-Durchlauf fehlgeschlagen", err);
     } finally {

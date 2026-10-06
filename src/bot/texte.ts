@@ -15,6 +15,7 @@ Befehle:
 /rangliste – wer vorne liegt und wer die Couch wärmt
 /season Name – neue Season anlegen (in der Gruppe), /season zeigt die aktuelle
 /sportarten – welche Sportart wie zählt
+/sportart Name – neue Sportart vorschlagen, die Gruppe stimmt über die Stufe ab
 /erinnerungen – an, aus oder Uhrzeit (z. B. /erinnerungen 18:30)
 /hilfe – diese Hilfe`;
 
