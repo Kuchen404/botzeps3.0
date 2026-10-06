@@ -10,10 +10,12 @@ Dieses Grundgerüst enthält:
 - **Wertung** (`src/scoring/`) als reine, getestete Funktionen nach Konzept Kapitel 3: Fleiß (Minuten × Faktor, Wochenziel 300, Deckel 15, Serienbonus), Fortschritt (relative Fett- und Muskelmasse, Kalibrierwoche, 7-Tage-Mittel, Untergrenze −50), Gewichtung, Rangliste mit Tiebreak, „Fleiß der Woche“, Teams mit Team-Bonus.
 - **Datenbank** (SQLite, `src/db/`) mit Migrationen und dem Datenmodell aus Kapitel 9.
 - **Bot** (grammY, `src/bot/`): `/start` (privat anmelden, in der Gruppe mit „Ich bin dabei“-Knopf), `/sportarten`, `/hilfe`.
+- **Training** mit `/sport 45 Joggen` oder `/sport` mit Knöpfen (eigene letzte Sportarten zuerst), optional `gestern`/`vorgestern`. Jedes Training wird in der Gruppe gepostet.
+- **Messung** mit `/waage 82,4 18,5 41,2` nur im privaten Chat, mit Plausibilitätsprüfung und Rückfrage bei Sprüngen (> 3 kg oder > 3 Prozentpunkte Fett gegenüber dem 7-Tage-Mittel).
 - **Sprüche** (`src/texte/sprueche.json`) mit Platzhaltern und Auswahl ohne direkte Wiederholung.
 - **Docker** und Webhook-Betrieb mit `/health`-Endpunkt.
 
-Als Nächstes: `/sport`, `/waage`, `/season`, `/stand`, `/rangliste`, Wochenbericht und Erinnerungen, danach Teams, Mini App.
+Als Nächstes: `/season`, `/stand`, `/rangliste`, Wochenbericht und Erinnerungen, danach `/verlauf`, Teams, Mini App.
 
 ## Lokal starten
 
