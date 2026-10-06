@@ -1,3 +1,4 @@
+import { InputFile } from "grammy";
 import { ladeConfig } from "./config.js";
 import { oeffneDb } from "./db/index.js";
 import { BEFEHLE, erstelleBot } from "./bot/index.js";
@@ -33,6 +34,7 @@ async function main(): Promise<void> {
   const stoppeZeitplan = starteZeitplan(
     db,
     async (chatId, text) => (await bot.api.sendMessage(chatId, text)).message_id,
+    (chatId, png) => bot.api.sendPhoto(chatId, new InputFile(png, "punkteverlauf.png")),
     config.TZ,
   );
 

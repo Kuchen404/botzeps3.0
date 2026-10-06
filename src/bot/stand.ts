@@ -1,10 +1,12 @@
-import { Composer, type Context } from "grammy";
+import { Composer, InputFile, type Context } from "grammy";
 import type { Db } from "../db/index.js";
 import { gruppenDesNutzers, speichereNutzer } from "../db/repo.js";
 import { type SeasonZeile, aktuelleSeason, letzteSeason } from "../db/season-repo.js";
 import { type Stand, berechneStand } from "../bericht/stand.js";
 import { type TeilnehmerStand, fleissDerWoche, kalibrierFenster, seasonEnde, wocheVon } from "../scoring/season.js";
 import { FORTSCHRITT } from "../scoring/fortschritt.js";
+import { diagrammPng, eigenesDiagramm, punkteverlauf } from "../bericht/punkteverlauf.js";
+import { log } from "../log.js";
 import { fuelle, waehleSpruch } from "../texte/sprueche.js";
 import { anzeigename, datumDe, gruppenId, gruppenZeitzone, heute, zahlDe } from "./kontext.js";
 
@@ -120,14 +122,26 @@ export function standModul(db: Db): Composer<Context> {
     const hier = gruppenId(db, ctx);
     const gruppen = hier !== null ? [hier] : gruppenDesNutzers(db, nutzer.id).map((g) => g.id);
     const texte: string[] = [];
+    const diagramme: { s: SeasonZeile; id: string }[] = [];
     for (const g of gruppen) {
       const s = relevanteSeason(db, g, tag);
       if (!s) continue;
       const staende = berechneStand(db, s, tag);
       const ich = staende.find((st) => st.telegramId === von.id);
-      if (ich) texte.push(standText(s, ich, staende.length, tag, hier === null));
+      if (!ich) continue;
+      texte.push(standText(s, ich, staende.length, tag, hier === null));
+      if (tag >= s.start) diagramme.push({ s, id: ich.id });
     }
     await ctx.reply(texte.length ? texte.join("\n\n") : "Du bist in keiner Season. In der Gruppe /season tippen oder trainieren, dann bist du dabei.");
+    for (const { s, id } of diagramme) {
+      try {
+        const verlauf = punkteverlauf(db, s, tag);
+        const d = verlauf && eigenesDiagramm(s, verlauf, id);
+        if (d) await ctx.replyWithPhoto(new InputFile(diagrammPng(d), "stand.png"));
+      } catch (err) {
+        log.error("Diagramm zu /stand fehlgeschlagen", err);
+      }
+    }
   });
 
   return modul;
