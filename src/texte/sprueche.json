@@ -1,0 +1,115 @@
+{
+  "_info": "Spruchsammlung für Botzeps (derber Ton). Platzhalter: {name}, {platz}, {punkte}, {abstand} (Punkte zum Vordermann bzw. Verfolger), {minuten}, {sportart}, {serie} (Wochen in Folge mit erreichtem Ziel). Der Bot wählt pro Person zufällig einen Spruch aus der passenden Kategorie und nimmt nicht zweimal hintereinander denselben.",
+  "platz1": [
+    "{name} thront mit {punkte} Punkten ganz oben. Der Rest guckt nur auf seinen Hintern.",
+    "Platz 1: {name}. Wer {name} einholen will, muss früher aufstehen. Viel früher.",
+    "{name} ist so weit vorne, dass die anderen ein Fernglas brauchen.",
+    "{name} führt. Ihr anderen seid gerade nur Statisten in diesem Fitnessvideo.",
+    "Die Krone trägt {name}. Knien dürft ihr, aber erst nach dem Training.",
+    "{name} auf Platz 1. Dem Sofa wurde offiziell gekündigt.",
+    "{name} ballert alles weg. Wenn das so weitergeht, kann der Rest gleich zum Bäcker gehen.",
+    "{name} führt mit {abstand} Punkten Vorsprung. Das ist kein Vorsprung mehr, das ist eine andere Postleitzahl.",
+    "Platz 1 für {name}. Bitte nicht arrogant werden, die Waage weiß, wo dein Haus wohnt.",
+    "{name} ganz oben. Der Rest ist eingeladen, sich ein Beispiel zu nehmen, oder wenigstens eine Scheibe.",
+    "{name} auf der Pole Position. Die Konkurrenz steht noch in der Boxengasse und isst Currywurst.",
+    "{name} ist Tabellenführer. Herzlichen Glückwunsch, ab jetzt jagen dich alle. Lauf, Forrest, lauf!"
+  ],
+  "oben": [
+    "{name} auf Platz {platz}. Ganz oben ist es nicht, aber die Aussicht ist trotzdem geil.",
+    "{name} mischt oben mit. Noch {abstand} Punkte, dann gibt's Krone statt Kartoffelchips.",
+    "{name} auf {platz}. Stabil wie ein Kühlschrank, der endlich mal nicht geöffnet wird.",
+    "{name} klopft oben an. Der Spitzenreiter sollte langsam die Türen abschließen.",
+    "{name} ist auf Platz {platz} und atmet dem Führenden in den Nacken. Ekelhaft, aber effektiv.",
+    "{name} hält sich oben. Nicht schlecht für jemanden, der vor Kurzem noch Treppen gemieden hat.",
+    "Platz {platz} für {name}. Weiter so, und die Jogginghose wird endlich wieder zum Joggen benutzt.",
+    "{name} auf {platz}. Ein bisschen mehr Gas und der Thron wackelt.",
+    "{name} spielt oben mit. Das Fett verlässt das sinkende Schiff.",
+    "{name} ist dran. {abstand} Punkte sind nichts, das ist ein Wochenende ohne Pizza.",
+    "{name} auf Platz {platz}. Respekt, du bist offiziell nicht mehr der Grund, warum wir den Bot gebraucht haben.",
+    "{name} auf {platz}. Fast oben, wie der Bizeps beim Curlen, nur halt noch nicht ganz.",
+    "{name} kratzt an der Spitze. Noch ein paar Einheiten und du darfst den anderen beim Abendessen von deinem Training erzählen.",
+    "Oben dabei: {name}. Die Schokolade im Schrank hat Angst.",
+    "{name} hält Platz {platz}. Sieht nach Ehrgeiz aus, riecht nach Schweiß. Gute Kombi."
+  ],
+  "mitte": [
+    "{name} auf {platz}. Das solide Mittelfeld, die Bundesliga-Version von Mainz 05.",
+    "{name} ist genau in der Mitte. Nicht Fisch, nicht Fleisch, irgendwas mit Tofu.",
+    "{name} auf Platz {platz}. Unauffällig wie ein Ninja, nur leider auch so selten zu sehen.",
+    "{name} dümpelt im Mittelfeld. Nach oben ist Platz, nach unten leider auch.",
+    "{name} auf {platz}. Ganz okay. Aber „ganz okay“ hat noch nie einen Pokal gewonnen.",
+    "{name} mittendrin statt nur dabei. Jetzt noch mal Arsch hoch, dann wird's was."
+  ],
+  "unten": [
+    "{name} auf Platz {platz}. Die Couch hat schon eine Delle in deiner Form.",
+    "{name} ist unten. Nicht schlimm, von hier aus geht's nur noch nach oben. Theoretisch.",
+    "{name} auf {platz}. Dein Trainingsplan ist offenbar ein Gerücht.",
+    "{name} hängt hinten. Die Sportschuhe haben eine Vermisstenanzeige aufgegeben.",
+    "{name} auf Platz {platz}. Selbst die Waage fragt sich, ob du sie nur zur Deko hast.",
+    "{name}, du bist so weit hinten, dass der Bot dich fast vergessen hätte.",
+    "{name} auf {platz}. Bewegung ist nicht nur, zum Kühlschrank zu laufen.",
+    "{name} unten in der Tabelle. Das Fitnessstudio hat angerufen, sie wollen wissen, ob du noch lebst.",
+    "{name} auf {platz}. Du bist der Grund, warum die anderen sich gut fühlen. Danke für deinen Dienst.",
+    "{name} kämpft gegen den Abstieg. Und verliert gerade nach Punkten.",
+    "{name} auf {platz}. Dein Puls war diese Woche wohl nur beim Netflix-Finale oben.",
+    "{name}, {abstand} Punkte zum Vordermann. Das ist machbar, wenn man den Hintern hochkriegt.",
+    "{name} auf Platz {platz}. Dein Muskelanteil hat sich in den Urlaub verabschiedet.",
+    "{name} ist unten. Nicht traurig sein, irgendwer muss ja die Statistik nach unten ziehen.",
+    "{name} auf {platz}. Du trainierst wie das WLAN in der Bahn: theoretisch da, praktisch nichts.",
+    "{name} dümpelt unten rum. Die Pizza-Lieferung kennt dich schon beim Vornamen.",
+    "{name} auf Platz {platz}. Wenn Ausreden Kalorien verbrennen würden, wärst du Weltmeister.",
+    "{name}, deine Leistung diese Woche: knapp über Wachkoma.",
+    "{name} auf {platz}. Die einzigen Gewichte, die du diese Woche gehoben hast, waren Bierkisten.",
+    "{name} unten. Noch ist nichts verloren, außer deiner Würde."
+  ],
+  "letzter": [
+    "Rote Laterne für {name}. Leuchtet schön, motiviert aber niemanden.",
+    "{name} ist Letzter. Herzlichen Glückwunsch, du hast den Bodensatz erreicht.",
+    "{name} auf dem letzten Platz. Selbst eine Schnecke auf dem Ergometer hätte mehr Punkte.",
+    "Letzter: {name}. Wir haben dich lieb, aber nicht so sehr wie du dein Sofa.",
+    "{name} bildet das Schlusslicht. Irgendwer muss den anderen ja Selbstbewusstsein schenken.",
+    "{name} ist Letzter. Wenn du so weitermachst, benennen wir den Platz nach dir.",
+    "{name} auf dem letzten Platz. Das Gute: Niemand kann dich mehr überholen.",
+    "Letzter Platz für {name}. Die Waage hat beim letzten Mal kurz geweint."
+  ],
+  "aufsteiger": [
+    "{name} schießt nach oben wie ein Proteinshake nach dem dritten Löffel Pulver.",
+    "{name} macht Plätze gut. Hat da jemand endlich das Sofa verkauft?",
+    "Aufsteiger der Woche: {name}. Wer hätte das gedacht? Ehrlich, keiner.",
+    "{name} klettert nach oben. Die Faulpelze unter euch sollten jetzt nervös werden."
+  ],
+  "absteiger": [
+    "{name} rutscht ab. Hat wohl jemand den Wochenend-Buffet-Modus aktiviert.",
+    "{name} geht runter wie ein Stein. Leider nur in der Tabelle, nicht auf der Waage.",
+    "{name} verliert Plätze. Erzähl, war die Pizza es wenigstens wert?",
+    "Absturz der Woche: {name}. Bitte anschnallen, es geht weiter bergab."
+  ],
+  "wochenziel_verfehlt": [
+    "{name} hat das Wochenziel nicht geschafft. Die Ausrede bitte schriftlich und in dreifacher Ausführung.",
+    "{name}: Wochenziel verfehlt. Faulheit ist auch eine Sportart, nur halt keine, die hier zählt.",
+    "{name} hat diese Woche weniger geschwitzt als ein Eiswürfel im Gefrierfach.",
+    "{name}, das Wochenziel war kein Vorschlag."
+  ],
+  "serie": [
+    "{name} hat zum {serie}. Mal in Folge das Wochenziel geknackt. Maschine! 🔥",
+    "{name} ist seit {serie} Wochen nicht zu bremsen. Wer hat dem was ins Müsli gemischt?",
+    "{serie} Wochen in Folge: {name} läuft wie ein Uhrwerk, nur verschwitzter."
+  ],
+  "training_gepostet": [
+    "{name}: {minuten} min {sportart} 💪 Und was habt ihr heute gemacht?",
+    "{name} hat {minuten} min {sportart} hinter sich. Der Rest kann sich jetzt schämen.",
+    "{minuten} min {sportart} von {name}. Das Sofa ist traurig, wir sind stolz.",
+    "{name} war {minuten} min beim {sportart}. Schweißgeruch bis hierher.",
+    "Ding dong! {name} hat {minuten} min {sportart} abgeliefert.",
+    "{name}: {minuten} min {sportart}. Wer jetzt noch auf der Couch liegt, wird beobachtet."
+  ],
+  "finale_sieger": [
+    "Und der Sieger ist … {name}! Mit {punkte} Punkten hat {name} euch alle nass gemacht. 🏆",
+    "{name} gewinnt die Season! Ihr anderen dürft jetzt zugeben, dass ihr zu faul wart.",
+    "Der neue Botzeps-Champion: {name}. Ruhm, Ehre und der Neid aller anderen gehören dir."
+  ],
+  "finale_letzter": [
+    "Den letzten Platz der Season holt sich {name}. Als Preis gibt's eine Jahresmitgliedschaft im Club der Couchkartoffeln.",
+    "{name} beendet die Season als Letzter. Nächste Season wird alles besser, sagen sie alle.",
+    "Schlusslicht der Season: {name}. Du warst konstant. Konstant schlecht, aber konstant."
+  ]
+}
