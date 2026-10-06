@@ -27,8 +27,9 @@ import { STUFEN } from "../domain/sportarten.js";
 import { plusTage } from "../scoring/datum.js";
 import type { Faktor } from "../scoring/fleiss.js";
 import { log } from "../log.js";
-import { anzeigename, argumente, gruppenId, heute, uhr } from "./kontext.js";
+import { anzeigename, argumente, gruppenId, gruppenZeitzone, heute, uhr } from "./kontext.js";
 import { trainingsPostText } from "./sport.js";
+import { meldungenNachTraining, mitMeldungen } from "../bericht/nach-training.js";
 
 export const ABSTIMMUNG_STUNDEN = 24;
 
@@ -108,7 +109,9 @@ export function abstimmungsModul(db: Db): Composer<Context> {
       log.debug("Abstimmungsnachricht nicht aktualisiert", err);
     }
     if (e.training) {
-      const post = await ctx.api.sendMessage(e.gruppeChat, trainingsPostText(e.training.nutzerName, e.training.minuten, e.sportart.name));
+      const text = trainingsPostText(e.training.nutzerName, e.training.minuten, e.sportart.name);
+      const meldungen = meldungenNachTraining(db, e.training.id, heute(gruppenZeitzone()));
+      const post = await ctx.api.sendMessage(e.gruppeChat, mitMeldungen(text, meldungen));
       setzeGruppenNachricht(db, e.training.id, post.message_id);
     }
   }

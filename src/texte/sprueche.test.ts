@@ -9,7 +9,7 @@ describe("Sprüche", () => {
   });
 
   it("nutzt nur bekannte Platzhalter", () => {
-    const erlaubt = new Set(["name", "platz", "punkte", "abstand", "minuten", "sportart", "serie"]);
+    const erlaubt = new Set(["name", "platz", "punkte", "abstand", "minuten", "sportart", "serie", "opfer", "rang", "boss"]);
     for (const liste of Object.values(SPRUECHE)) {
       for (const spruch of liste) {
         for (const [, p] of spruch.matchAll(/\{(\w+)\}/g)) expect(erlaubt, spruch).toContain(p);

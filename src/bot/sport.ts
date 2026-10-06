@@ -20,6 +20,7 @@ import { plusTage } from "../scoring/datum.js";
 import { einheitsLast } from "../scoring/fleiss.js";
 import { fuelle, waehleSpruch } from "../texte/sprueche.js";
 import { log } from "../log.js";
+import { meldungenNachTraining, mitMeldungen } from "../bericht/nach-training.js";
 import { anzeigename, argumente, gruppenId, gruppenZeitzone, heute } from "./kontext.js";
 
 const DAUERN = [15, 30, 45, 60, 90, 120];
@@ -101,14 +102,15 @@ export function sportModul(db: Db): Composer<Context> {
 
     const datum = plusTage(heute(nutzer.zeitzone), -a.tage);
     const trainingId = speichereTraining(db, { nutzer: nutzer.id, datum, minuten: a.minuten, sportart });
+    const meldungen = meldungenNachTraining(db, trainingId, heute(gruppenZeitzone()));
     const post = trainingsPostText(nutzer.name, a.minuten, sportart.name);
     const last = einheitsLast({ minuten: a.minuten, faktor: sportart.faktor });
 
     if (ctx.chat?.id === gruppe.telegram_chat_id) {
-      return { text: `${post}${TAG_TEXT[a.tage]}`, postFuer: trainingId };
+      return { text: mitMeldungen(`${post}${TAG_TEXT[a.tage]}`, meldungen), postFuer: trainingId };
     }
     try {
-      const gesendet = await ctx.api.sendMessage(gruppe.telegram_chat_id, `${post}${TAG_TEXT[a.tage]}`);
+      const gesendet = await ctx.api.sendMessage(gruppe.telegram_chat_id, mitMeldungen(`${post}${TAG_TEXT[a.tage]}`, meldungen));
       setzeGruppenNachricht(db, trainingId, gesendet.message_id);
       return { text: `Eingetragen: ${a.minuten} min ${sportart.name}${TAG_TEXT[a.tage]}, ${last} Lastpunkte. In „${gruppe.name}“ gepostet.` };
     } catch (err) {

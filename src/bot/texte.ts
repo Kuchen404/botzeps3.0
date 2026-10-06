@@ -4,6 +4,8 @@ So läuft's:
 • Fleiß: Jede Einheit zählt als Minuten × Faktor der Sportart (leicht ×1, mittel ×2, intensiv ×3). Wochenziel 300, das gibt 10 Punkte, maximal 15.
 • Fortschritt: Fett- und Muskelmasse von der Waage, relativ zum Startwert aus der Kalibrierwoche.
 • Jeden Sonntag um 20 Uhr kommt der Wochenbericht, am Ende das Finale mit Sonderpreisen.
+• Boss-Wochen: In der 2. und der vorletzten Woche greift ein Boss an. Prügelt ihn mit euren Trainings weg, dann gibt's Bonuspunkte für alle, die mitgemacht haben.
+• Ränge und Erfolge zählen über alle Seasons. Wer jemanden überholt, wird sofort gefeiert.
 
 Befehle:
 /start – anmelden
@@ -14,6 +16,8 @@ Befehle:
 /app – Mini App: Stand, Diagramme, Waage, Einträge, Einstellungen
 /verlauf – letzte Einträge ändern oder löschen (bis 2 Tage zurück, nur privat)
 /rangliste – wer vorne liegt und wer die Couch wärmt
+/erfolge – deine Erfolge und dein Rang
+/ruhmeshalle – Sieger, Ränge und Rekorde der Gruppe
 /season Name – neue Season anlegen (in der Gruppe), /season zeigt die aktuelle
 /teams – Teams anzeigen, vor dem Start auslosen (Ersteller oder Admins)
 /team Name – Team beitreten oder gründen (bis zum Start)

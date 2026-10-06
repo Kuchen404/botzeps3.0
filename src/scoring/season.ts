@@ -1,5 +1,6 @@
 import { type IsoDatum, plusTage, tageZwischen, imZeitraum } from "./datum.js";
 import { type Training, type Wochenwertung, FLEISS, gesamtLast, werteWochen } from "./fleiss.js";
+import { type BossEinstellung, bossKampf } from "./boss.js";
 import {
   type Fortschrittswertung,
   type Koerpermassen,
@@ -17,6 +18,8 @@ export interface SeasonEinstellungen {
   gewichtFleiss: number;
   gewichtFortschritt: number;
   wochenzielLast: number;
+  /** Angekündigte Bosse der Season. */
+  bosse?: readonly BossEinstellung[];
 }
 
 export const STANDARD_SEASON: Omit<SeasonEinstellungen, "start"> = {
@@ -44,6 +47,8 @@ export interface TeilnehmerStand {
   start: Koerpermassen | null;
   aktuell: Koerpermassen | null;
   fortschritt: Fortschrittswertung | null;
+  /** Bonus für Siege gegen Bosse, ungewichtet in `gesamt` enthalten. */
+  bossBonus: number;
   /** Gewichtete Gesamtpunkte. */
   gesamt: number;
   /** Gewichtete Fleißpunkte (Tiebreaker). */
@@ -117,7 +122,7 @@ export function teilnehmerStand(
   const fleissGewichtet = fleiss * gewichtsFaktor(s.gewichtFleiss);
   const gesamt = fleissGewichtet + (fw?.punkte ?? 0) * gewichtsFaktor(s.gewichtFortschritt);
 
-  return { id: t.id, name: t.name, wochen, fleiss, start, aktuell, fortschritt: fw, gesamt, fleissGewichtet };
+  return { id: t.id, name: t.name, wochen, fleiss, start, aktuell, fortschritt: fw, bossBonus: 0, gesamt, fleissGewichtet };
 }
 
 /**
@@ -137,8 +142,18 @@ export function rangliste<T extends { gesamt: number; fleissGewichtet: number }>
   return ergebnis;
 }
 
+/** Stand aller Teilnehmer; für jeden besiegten Boss bekommen alle Beteiligten den Bonus. */
 export function seasonStand(s: SeasonEinstellungen, teilnehmer: readonly Teilnehmer[], stichtag: IsoDatum): TeilnehmerStand[] {
-  return rangliste(teilnehmer.map((t) => teilnehmerStand(s, t, stichtag)));
+  let staende = teilnehmer.map((t) => teilnehmerStand(s, t, stichtag));
+  for (const boss of s.bosse ?? []) {
+    const kampf = bossKampf(boss, staende);
+    if (!kampf.besiegt) continue;
+    const beteiligt = new Set(kampf.beteiligte);
+    staende = staende.map((st) =>
+      beteiligt.has(st.id) ? { ...st, bossBonus: st.bossBonus + kampf.bonus, gesamt: st.gesamt + kampf.bonus } : st,
+    );
+  }
+  return rangliste(staende);
 }
 
 /** „Fleiß der Woche“: alle mit der höchsten Last in dieser Woche (mindestens > 0). */

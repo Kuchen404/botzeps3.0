@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { migriere, oeffneDb } from "./index.js";
+import { MIGRATIONEN } from "./migrationen.js";
 import { speichereGruppe, speichereNutzer, sportartenDerGruppe, trageMitgliedEin } from "./repo.js";
 import { STANDARD_SPORTARTEN } from "../domain/sportarten.js";
 
@@ -8,7 +9,7 @@ describe("Datenbank", () => {
     const db = oeffneDb(":memory:");
     expect(migriere(db)).toEqual([]);
     const versionen = db.prepare("SELECT version FROM schema_version").all();
-    expect(versionen).toHaveLength(4);
+    expect(versionen).toHaveLength(MIGRATIONEN.length);
   });
 
   it("registriert Nutzer und Gruppen idempotent", () => {

@@ -9,6 +9,8 @@ import { FORTSCHRITT } from "../scoring/fortschritt.js";
 import { diagrammPng, eigenesDiagramm, punkteverlauf } from "../bericht/punkteverlauf.js";
 import { log } from "../log.js";
 import { fuelle, waehleSpruch } from "../texte/sprueche.js";
+import { lebenslangeLast } from "../db/erfolg-repo.js";
+import { rangZeile } from "./ruhm.js";
 import { anzeigename, datumDe, gruppenId, gruppenZeitzone, heute, zahlDe } from "./kontext.js";
 
 /** Season, auf die sich /stand und /rangliste beziehen: die laufende, sonst die zuletzt gestartete. */
@@ -81,6 +83,7 @@ export function standText(s: SeasonZeile, st: Stand, anzahl: number, tag: string
     const serie = st.wochen.at(-1)?.zielErreicht ? st.wochen.at(-1)!.serie : (st.wochen.at(-2)?.serie ?? 0);
     zeilen.push(`Fleiß: ${p(st.fleiss)} Punkte${serie >= 2 ? `, Serie ${serie} Wochen 🔥` : ""}`);
   }
+  if (st.bossBonus) zeilen.push(`Boss-Bonus: +${p(st.bossBonus)} Punkte 🐉`);
 
   if (!st.start) {
     const fenster = kalibrierFenster(s, st.beitritt);
@@ -135,7 +138,12 @@ export function standModul(db: Db): Composer<Context> {
       texte.push(standText(s, ich, staende.length, tag, hier === null));
       if (tag >= s.start) diagramme.push({ s, id: ich.id });
     }
-    await ctx.reply(texte.length ? texte.join("\n\n") : "Du bist in keiner Season. In der Gruppe /season tippen oder trainieren, dann bist du dabei.");
+    const rang = rangZeile(lebenslangeLast(db, nutzer.id));
+    await ctx.reply(
+      texte.length
+        ? `${texte.join("\n\n")}\n\n${rang}`
+        : `Du bist in keiner Season. In der Gruppe /season tippen oder trainieren, dann bist du dabei.\n\n${rang}`,
+    );
     for (const { s, id } of diagramme) {
       try {
         const verlauf = punkteverlauf(db, s, tag);

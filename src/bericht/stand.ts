@@ -1,5 +1,5 @@
 import type { Db } from "../db/index.js";
-import { type SeasonZeile, einstellungen, ladeTeilnehmer } from "../db/season-repo.js";
+import { type SeasonZeile, bosseDerSeason, einstellungen, ladeTeilnehmer } from "../db/season-repo.js";
 import { teamsDerSeason } from "../db/team-repo.js";
 import { type TeamStand, type TeilnehmerStand, kalibrierFenster, seasonStand, teamStand } from "../scoring/season.js";
 
@@ -7,7 +7,7 @@ export type Stand = TeilnehmerStand & { telegramId: number; beitritt: string; ka
 
 export function berechneStand(db: Db, s: SeasonZeile, tag: string): Stand[] {
   const teilnehmer = ladeTeilnehmer(db, s);
-  const staende = seasonStand(einstellungen(s), teilnehmer, tag);
+  const staende = seasonStand(einstellungen(s, bosseDerSeason(db, s)), teilnehmer, tag);
   return staende.map((st) => {
     const t = teilnehmer.find((x) => x.id === st.id)!;
     const fenster = kalibrierFenster(s, t.beitritt);
