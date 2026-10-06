@@ -1,0 +1,16 @@
+services:
+  botzeps:
+    build: .
+    image: botzeps:latest
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_PATH: /data/botzeps.db
+    volumes:
+      - botzeps-daten:/data
+    ports:
+      # Nur lokal erreichbar; nach außen über einen Reverse Proxy mit HTTPS (für den Webhook)
+      - "127.0.0.1:3000:3000"
+
+volumes:
+  botzeps-daten:
