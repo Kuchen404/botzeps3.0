@@ -12,5 +12,24 @@ services:
       # Nur lokal erreichbar; nach außen über einen Reverse Proxy mit HTTPS (für den Webhook)
       - "127.0.0.1:3000:3000"
 
+  # Test-Bot mit Fake-Leuten und Zeitsprüngen, nur mit `--profile demo` (siehe README „Demo-Modus“)
+  botzeps-demo:
+    build: .
+    image: botzeps:latest
+    profiles: ["demo"]
+    restart: "no"
+    environment:
+      BOT_TOKEN: ${DEMO_BOT_TOKEN:-}
+      BOT_MODE: polling
+      DEMO_MODUS: "1"
+      DATABASE_PATH: /data/demo.db
+      MINIAPP_URL: ${DEMO_MINIAPP_URL:-}
+      TZ: Europe/Berlin
+    volumes:
+      - botzeps-demo:/data
+    ports:
+      - "127.0.0.1:3001:3000"
+
 volumes:
   botzeps-daten:
+  botzeps-demo:

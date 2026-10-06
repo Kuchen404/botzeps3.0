@@ -22,9 +22,9 @@ export const PRIVAT = { id: 42, type: "private" as const, first_name: "Kevin" };
 type Chat = { id: number; type: "private" | "supergroup"; title?: string };
 
 /** Bot mit abgefangenen API-Aufrufen statt echter Telegram-Verbindung. */
-export function testBot() {
+export function testBot(optionen: Parameters<typeof erstelleBot>[3] = {}) {
   const db = oeffneDb(":memory:");
-  const bot = erstelleBot("test-token", db, BOT_INFO);
+  const bot = erstelleBot("test-token", db, BOT_INFO, optionen);
   const aufrufe: { methode: string; payload: Record<string, unknown> }[] = [];
   let nachrichtId = 1000;
   bot.api.config.use(async (_prev, methode, payload) => {

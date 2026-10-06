@@ -35,6 +35,30 @@ npm run dev            # Polling-Modus, startet bei Änderungen neu
 npm test               # Unit-Tests
 ```
 
+## Demo-Modus: alles in ein paar Minuten ansehen
+
+Statt 10 Wochen mit mehreren Leuten zu testen: ein eigener Test-Bot mit Fake-Teilnehmern und einer Uhr, die man vorspulen kann.
+
+1. Bei @BotFather mit `/newbot` einen zweiten Bot anlegen (z. B. `botzeps_test_bot`), Token kopieren.
+2. Eine Telegram-Gruppe nur für den Test anlegen und den Test-Bot hinzufügen. Den Test-Bot einmal privat mit `/start` anschreiben (für `/waage` und Erinnerungen).
+3. Starten, entweder auf dem Server neben dem echten Bot:
+   ```bash
+   # in .env zusätzlich: DEMO_BOT_TOKEN=<Token des Test-Bots>
+   docker compose --profile demo up -d --build botzeps-demo
+   docker compose logs -f botzeps-demo   # beenden: docker compose stop botzeps-demo
+   ```
+   oder lokal mit Node.js 22: `.env` mit dem Test-Token, `DEMO_MODUS=1` und `DATABASE_PATH=./data/demo.db`, dann `npm run dev`.
+4. In der Testgruppe:
+   - `/demo` (oder `/demo 10` für 10 Wochen, Standard 6): legt eine Season ab nächstem Montag an, mit dir und fünf Fake-Leuten (Streber, Sofakönig, Muskelprotz, …). Du läufst auf Autopilot mit, damit dein eigener Stand nicht leer ist.
+   - `/vorspulen`: springt zum nächsten Ereignis (Wochenbericht, Boss-Ankündigung, Finale) und löst es sofort aus. Die Fake-Leute trainieren und wiegen sich in der übersprungenen Zeit von selbst.
+   - `/vorspulen 3` springt 3 Tage, `/vorspulen ende` bis nach dem Finale.
+   - Dazwischen funktioniert alles wie im Ernstfall: `/sport`, `/waage` (privat), `/stand`, `/rangliste`, `/teams` (vor dem ersten Sprung), `/erfolge`, `/ruhmeshalle`. Einträge zählen für den vorgespulten Tag.
+   - `/autopilot aus`, wenn du lieber selbst einträgst. `/demo` fängt komplett von vorne an.
+
+Die Mini App braucht HTTPS. Für den Test-Bot geht sie nur, wenn der Reverse Proxy eine eigene Adresse (z. B. `https://demo.example.de`) mit `/app` und `/api/` auf Port 3001 weiterreicht und `DEMO_MINIAPP_URL=https://demo.example.de/app` gesetzt ist.
+
+**Wichtig:** Der Demo-Modus ist nur mit `DEMO_MODUS=1` aktiv. `/demo` löscht in der Gruppe alle Seasons und die Einträge aller Mitglieder, und die Uhr gilt für den ganzen Bot. Deshalb nie mit dem echten Bot-Token oder der echten Datenbank benutzen.
+
 ## Betrieb mit Docker
 
 ```bash

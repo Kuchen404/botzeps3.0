@@ -353,17 +353,28 @@ export async function beendeAbgelaufeneAbstimmungen(db: Db, senden: Sender, jetz
   }
 }
 
+/** Ein Durchlauf: Termine planen, Fälliges ausführen, abgelaufene Abstimmungen beenden. */
+export async function zeitplanLauf(db: Db, senden: Sender, foto: FotoSender, jetzt: Date, zeitzone: string): Promise<void> {
+  plane(db, jetzt, zeitzone);
+  await fuehreAus(db, senden, jetzt, zeitzone, foto);
+  await beendeAbgelaufeneAbstimmungen(db, senden, jetzt, zeitzone);
+}
+
 /** Startet die Zeitplanung; gibt eine Funktion zum Anhalten zurück. */
-export function starteZeitplan(db: Db, senden: Sender, foto: FotoSender, zeitzone: string, intervallMs = 60_000): () => void {
+export function starteZeitplan(
+  db: Db,
+  senden: Sender,
+  foto: FotoSender,
+  zeitzone: string,
+  intervallMs = 60_000,
+  uhr: () => Date = () => new Date(),
+): () => void {
   let laeuft = false;
   const tick = async () => {
     if (laeuft) return;
     laeuft = true;
     try {
-      const jetzt = new Date();
-      plane(db, jetzt, zeitzone);
-      await fuehreAus(db, senden, jetzt, zeitzone, foto);
-      await beendeAbgelaufeneAbstimmungen(db, senden, jetzt, zeitzone);
+      await zeitplanLauf(db, senden, foto, uhr(), zeitzone);
     } catch (err) {
       log.error("Zeitplan-Durchlauf fehlgeschlagen", err);
     } finally {

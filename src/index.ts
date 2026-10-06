@@ -5,6 +5,8 @@ import { BEFEHLE, erstelleBot } from "./bot/index.js";
 import { MINIAPP_PFAD, WEBHOOK_PFAD, erstelleServer } from "./server.js";
 import { log, setzeLogStufe } from "./log.js";
 import { starteZeitplan } from "./zeitplan.js";
+import { uhr } from "./bot/kontext.js";
+import { DEMO_BEFEHLE, aktiviereDemo } from "./demo/index.js";
 
 async function main(): Promise<void> {
   const config = ladeConfig();
@@ -16,9 +18,13 @@ async function main(): Promise<void> {
   // Mini App: eigene Adresse oder dieselbe wie der Webhook, Pfad /app
   const miniAppUrl =
     config.MINIAPP_URL ?? (config.BOT_MODE === "webhook" && config.WEBHOOK_URL ? new URL(MINIAPP_PFAD, config.WEBHOOK_URL).toString() : undefined);
-  const bot = erstelleBot(config.BOT_TOKEN, db, undefined, { miniAppUrl });
+  if (config.DEMO_MODUS) {
+    aktiviereDemo(db);
+    log.warn(`DEMO-MODUS: /demo löscht Einträge der Testgruppe, /vorspulen verstellt die Uhr (Bot-Zeit ${uhr.jetzt().toISOString()}). Nur mit einem Test-Bot benutzen!`);
+  }
+  const bot = erstelleBot(config.BOT_TOKEN, db, undefined, { miniAppUrl, demo: config.DEMO_MODUS });
   await bot.init();
-  await bot.api.setMyCommands(BEFEHLE);
+  await bot.api.setMyCommands(config.DEMO_MODUS ? [...DEMO_BEFEHLE, ...BEFEHLE] : BEFEHLE);
   log.info(`Angemeldet als @${bot.botInfo.username}`);
   if (miniAppUrl) {
     try {
@@ -59,6 +65,8 @@ async function main(): Promise<void> {
     async (chatId, text) => (await bot.api.sendMessage(chatId, text)).message_id,
     (chatId, png) => bot.api.sendPhoto(chatId, new InputFile(png, "punkteverlauf.png")),
     config.TZ,
+    60_000,
+    () => uhr.jetzt(),
   );
 
   let beendet = false;

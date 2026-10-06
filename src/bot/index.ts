@@ -13,6 +13,7 @@ import { verlaufModul } from "./verlauf.js";
 import { abstimmungsModul } from "./abstimmung.js";
 import { teamModul } from "./teams.js";
 import { ruhmModul } from "./ruhm.js";
+import { demoModul } from "../demo/index.js";
 import { sportModul } from "./sport.js";
 import { WAAGE_ANLEITUNG, waageModul } from "./waage.js";
 import { HILFE, MITMACHEN_KNOPF, gruppenBegruessung, mitgliedNeu, mitgliedSchonDabei, willkommenPrivat } from "./texte.js";
@@ -38,7 +39,7 @@ export const BEFEHLE = [
   { command: "hilfe", description: "So funktioniert Botzeps" },
 ];
 
-export function erstelleBot(token: string, db: Db, botInfo?: UserFromGetMe, optionen: { miniAppUrl?: string } = {}): Bot {
+export function erstelleBot(token: string, db: Db, botInfo?: UserFromGetMe, optionen: { miniAppUrl?: string; demo?: boolean } = {}): Bot {
   const bot = new Bot(token, botInfo ? { botInfo } : undefined);
 
   bot.command("app", async (ctx) => {
@@ -107,6 +108,7 @@ export function erstelleBot(token: string, db: Db, botInfo?: UserFromGetMe, opti
   bot.use(abstimmungsModul(db));
   bot.use(teamModul(db));
   bot.use(ruhmModul(db));
+  if (optionen.demo) bot.use(demoModul(db));
 
   bot.command(["hilfe", "help"], (ctx) => ctx.reply(HILFE));
 
