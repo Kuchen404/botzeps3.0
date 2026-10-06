@@ -1,4 +1,4 @@
-import type { TeilnehmerStand } from "../scoring/season.js";
+import { type TeamStand, type TeilnehmerStand, TEAM_BONUS_PRO_WOCHE } from "../scoring/season.js";
 import { type Kategorie, fuelle, platzKategorie, waehleSpruch } from "../texte/sprueche.js";
 
 export interface Vorwoche {
@@ -30,6 +30,15 @@ function abstand(staende: readonly TeilnehmerStand[], i: number): number {
   return anderer ? Math.abs(ich.gesamt - anderer.gesamt) : 0;
 }
 
+/** Teamwertung als Zeilen, leer ohne Teams. */
+export function teamZeilen(teams: readonly TeamStand[]): string[] {
+  if (teams.length === 0) return [];
+  return [
+    "👥 Teamwertung:",
+    ...teams.map((t) => `${t.platz}. ${t.name}: ${z(t.gesamt)}${t.bonus > 0 ? ` (Schnitt ${z(t.durchschnitt)} + ${z(t.bonus)} Bonus)` : ""}`),
+  ];
+}
+
 export interface Wochenbericht {
   text: string;
   sprueche: BerichtZeile[];
@@ -45,6 +54,7 @@ export function wochenbericht(
   woche: number,
   staende: readonly TeilnehmerStand[],
   vorwoche: ReadonlyMap<string, Vorwoche>,
+  teams: readonly TeamStand[] = [],
   zufall: () => number = Math.random,
 ): Wochenbericht {
   const kopf = `📅 Wochenbericht „${season.name}“, Woche ${woche + 1} von ${season.wochen}`;
@@ -69,6 +79,10 @@ export function wochenbericht(
       ? `✅ Wochenziel (${season.wochenzielLast}) geschafft: ${geschafft.map((g) => g.name).join(", ")}`
       : `✅ Wochenziel (${season.wochenzielLast}) geschafft: niemand. Peinlich.`,
   );
+  const bonusTeams = teams.filter((t) => t.bonusWochen.includes(woche));
+  if (bonusTeams.length) {
+    infos.push(`🎯 Team-Bonus +${TEAM_BONUS_PRO_WOCHE}: ${bonusTeams.map((t) => t.name).join(", ")}, alle haben ihr Ziel geschafft`);
+  }
 
   const sprueche: BerichtZeile[] = staende.map((st, i) => {
     const vorher = vorwoche.get(st.id);
@@ -98,7 +112,19 @@ export function wochenbericht(
       ? ["", "⚠️ Nächste Woche ist die letzte. Der Endwert ist der Schnitt eurer Messungen dieser Woche, also messen, messen, messen."]
       : [];
 
-  const text = [kopf, "", ...zeilen, "", ...infos, "", ...sprueche.map((s) => s.text), ...extra, ...hinweis].join("\n");
+  const team = teamZeilen(teams);
+  const text = [
+    kopf,
+    "",
+    ...zeilen,
+    ...(team.length ? ["", ...team] : []),
+    "",
+    ...infos,
+    "",
+    ...sprueche.map((s) => s.text),
+    ...extra,
+    ...hinweis,
+  ].join("\n");
   return { text, sprueche };
 }
 
@@ -138,6 +164,7 @@ export function finale(
   season: { name: string },
   staende: readonly TeilnehmerStand[],
   extras: ReadonlyMap<string, Extras>,
+  teams: readonly TeamStand[] = [],
   zufall: () => number = Math.random,
 ): { text: string; preise: Sonderpreis[] } {
   const kopf = `🏁 Finale „${season.name}“`;
@@ -160,6 +187,9 @@ export function finale(
     }),
     "",
     ...zeilen,
+    ...(teams.length
+      ? ["", `🏆 Teamsieger: ${teams.filter((t) => t.platz === 1).map((t) => t.name).join(" und ")}`, ...teamZeilen(teams)]
+      : []),
     ...(preisZeilen.length ? ["", "Sonderpreise:", ...preisZeilen] : []),
     ...(staende.length >= 2 && letzter.platz > 1
       ? ["", fuelle(waehleSpruch("finale_letzter", undefined, zufall), { name: letzter.name, punkte: z(letzter.gesamt) })]

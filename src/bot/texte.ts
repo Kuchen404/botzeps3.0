@@ -14,6 +14,8 @@ Befehle:
 /verlauf – letzte Einträge ändern oder löschen (bis 2 Tage zurück, nur privat)
 /rangliste – wer vorne liegt und wer die Couch wärmt
 /season Name – neue Season anlegen (in der Gruppe), /season zeigt die aktuelle
+/teams – Teams anzeigen, vor dem Start auslosen (Ersteller oder Admins)
+/team Name – Team beitreten oder gründen (bis zum Start)
 /sportarten – welche Sportart wie zählt
 /sportart Name – neue Sportart vorschlagen, die Gruppe stimmt über die Stufe ab
 /erinnerungen – an, aus oder Uhrzeit (z. B. /erinnerungen 18:30)

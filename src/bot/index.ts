@@ -11,6 +11,7 @@ import { standModul } from "./stand.js";
 import { erinnerungsModul } from "./erinnerungen.js";
 import { verlaufModul } from "./verlauf.js";
 import { abstimmungsModul } from "./abstimmung.js";
+import { teamModul } from "./teams.js";
 import { sportModul } from "./sport.js";
 import { WAAGE_ANLEITUNG, waageModul } from "./waage.js";
 import { HILFE, MITMACHEN_KNOPF, gruppenBegruessung, mitgliedNeu, mitgliedSchonDabei, willkommenPrivat } from "./texte.js";
@@ -25,6 +26,8 @@ export const BEFEHLE = [
   { command: "verlauf", description: "Einträge korrigieren oder löschen (privat)" },
   { command: "rangliste", description: "Rangliste der Season" },
   { command: "season", description: "Season anzeigen oder anlegen" },
+  { command: "teams", description: "Teams anzeigen oder auslosen" },
+  { command: "team", description: "Team beitreten oder gründen, z. B. /team Bizeps-Brigade" },
   { command: "sportarten", description: "Welche Sportart wie zählt" },
   { command: "sportart", description: "Neue Sportart zur Abstimmung stellen" },
   { command: "erinnerungen", description: "Erinnerungen an/aus, Uhrzeit" },
@@ -75,6 +78,7 @@ export function erstelleBot(token: string, db: Db, botInfo?: UserFromGetMe): Bot
   bot.use(erinnerungsModul(db));
   bot.use(verlaufModul(db));
   bot.use(abstimmungsModul(db));
+  bot.use(teamModul(db));
 
   bot.command(["hilfe", "help"], (ctx) => ctx.reply(HILFE));
 

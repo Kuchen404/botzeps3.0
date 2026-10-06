@@ -1,4 +1,5 @@
 import type { Db } from "./index.js";
+import { teileKleinstemTeamZu } from "./team-repo.js";
 import type { Faktor } from "../scoring/fleiss.js";
 import type { Messung } from "../scoring/fortschritt.js";
 import { type SeasonEinstellungen, type Teilnehmer, kalibrierFenster, seasonEnde } from "../scoring/season.js";
@@ -79,10 +80,11 @@ export function aendereSeason(db: Db, id: number, a: SeasonAenderung): SeasonZei
 
 /** Nimmt einen Nutzer an der Season teil (idempotent). Gibt true zurück, wenn er neu dabei ist. */
 export function nimmTeil(db: Db, seasonId: number, nutzerId: number, beitritt: string): boolean {
-  return (
+  const neu =
     db.prepare("INSERT OR IGNORE INTO teilnahme (season, nutzer, beitritt) VALUES (?, ?, ?)").run(seasonId, nutzerId, beitritt)
-      .changes > 0
-  );
+      .changes > 0;
+  if (neu) teileKleinstemTeamZu(db, seasonId, nutzerId);
+  return neu;
 }
 
 /** Alle Teilnehmer mit Trainings und Messungen, wie sie die Wertung braucht. */

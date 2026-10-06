@@ -2,8 +2,9 @@ import { Composer, InputFile, type Context } from "grammy";
 import type { Db } from "../db/index.js";
 import { gruppenDesNutzers, speichereNutzer } from "../db/repo.js";
 import { type SeasonZeile, aktuelleSeason, letzteSeason } from "../db/season-repo.js";
-import { type Stand, berechneStand } from "../bericht/stand.js";
-import { type TeilnehmerStand, fleissDerWoche, kalibrierFenster, seasonEnde, wocheVon } from "../scoring/season.js";
+import { type Stand, berechneStand, berechneTeams } from "../bericht/stand.js";
+import { teamZeilen } from "../bericht/texte.js";
+import { type TeamStand, type TeilnehmerStand, fleissDerWoche, kalibrierFenster, seasonEnde, wocheVon } from "../scoring/season.js";
 import { FORTSCHRITT } from "../scoring/fortschritt.js";
 import { diagrammPng, eigenesDiagramm, punkteverlauf } from "../bericht/punkteverlauf.js";
 import { log } from "../log.js";
@@ -26,7 +27,7 @@ function abzeichen(st: Stand, woche: number | null): string {
   return teile.length ? ` ${teile.join(" ")}` : "";
 }
 
-export function ranglisteText(s: SeasonZeile, staende: Stand[], tag: string): string {
+export function ranglisteText(s: SeasonZeile, staende: Stand[], tag: string, teams: readonly TeamStand[] = []): string {
   if (tag < s.start) {
     const fertig = staende.filter((st) => st.kalibrierMessungen >= FORTSCHRITT.minMessungenKalibrierung).length;
     return `„${s.name}“ startet am ${datumDe(s.start)}, Punkte gibt's danach.\nKalibrierung: ${fertig} von ${staende.length} haben ihre 3 Messungen.`;
@@ -63,7 +64,8 @@ export function ranglisteText(s: SeasonZeile, staende: Stand[], tag: string): st
   }
   const fleissig = woche === null ? [] : fleissDerWoche(staende, woche);
   const titel = fleissig.length ? [`💪 Fleiß der Woche bisher: ${fleissig.map((f) => f.name).join(", ")}`] : [];
-  return [kopf, "", ...zeilen, "", ...titel, ...sprueche].join("\n");
+  const team = teamZeilen(teams);
+  return [kopf, "", ...zeilen, ...(team.length ? ["", ...team] : []), "", ...titel, ...sprueche].join("\n");
 }
 
 export function standText(s: SeasonZeile, st: Stand, anzahl: number, tag: string, privat: boolean): string {
@@ -111,7 +113,8 @@ export function standModul(db: Db): Composer<Context> {
       await ctx.reply("Keine Season, keine Rangliste. In der Gruppe mit /season Name eine anlegen.");
       return;
     }
-    await ctx.reply(ranglisteText(s, berechneStand(db, s, tag), tag));
+    const staende = berechneStand(db, s, tag);
+    await ctx.reply(ranglisteText(s, staende, tag, tag >= s.start ? berechneTeams(db, s, staende) : []));
   });
 
   modul.command("stand", async (ctx) => {
