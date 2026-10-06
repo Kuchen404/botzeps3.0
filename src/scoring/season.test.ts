@@ -5,6 +5,7 @@ import { plusTage } from "./datum.js";
 import {
   STANDARD_SEASON,
   fleissDerWoche,
+  roteLaterne,
   kalibrierFenster,
   rangliste,
   seasonEnde,
@@ -208,5 +209,25 @@ describe("Teams", () => {
     );
     expect(teams[0]).toMatchObject({ id: "t1", durchschnitt: 10, bonus: 3, gesamt: 13, platz: 1 });
     expect(teams[1]).toMatchObject({ id: "t2", durchschnitt: 0, bonus: 0, platz: 2 });
+  });
+});
+
+describe("Rote Laterne", () => {
+  const START = "2026-10-12";
+  const t = (id: string, last: number, beitritt = "2026-10-06") => ({ id, last, beitritt });
+
+  it("geht an alle mit der niedrigsten Last", () => {
+    expect(roteLaterne(START, 0, [t("a", 300), t("b", 40), t("c", 40)])).toEqual(["b", "c"]);
+  });
+
+  it("nicht, wenn alle gleich viel haben oder nur einer dabei ist", () => {
+    expect(roteLaterne(START, 0, [t("a", 0), t("b", 0)])).toEqual([]);
+    expect(roteLaterne(START, 0, [t("a", 10)])).toEqual([]);
+  });
+
+  it("nur, wer die ganze Woche dabei war", () => {
+    // c kommt mitten in Woche 2 dazu: zählt erst ab Woche 3
+    expect(roteLaterne(START, 1, [t("a", 300), t("b", 100), t("c", 0, "2026-10-21")])).toEqual(["b"]);
+    expect(roteLaterne(START, 2, [t("a", 300), t("b", 100), t("c", 0, "2026-10-21")])).toEqual(["c"]);
   });
 });

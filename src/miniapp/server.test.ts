@@ -89,8 +89,8 @@ describe("Mini App", () => {
       expect(s.ich).toMatchObject({ platz: 1, gesamt: 110, fleiss: 10, fortschritt: 100, wochenLast: 300, zielErreicht: true });
       expect(s.ich.fettKg).toEqual({ start: 27, aktuell: 24.3 });
       expect(s.rangliste).toEqual([
-        { platz: 1, name: "Kevin", gesamt: 110, ich: true },
-        { platz: 2, name: "Peter", gesamt: 1, ich: false },
+        { platz: 1, name: "Kevin", gesamt: 110, ich: true, laterne: false },
+        { platz: 2, name: "Peter", gesamt: 1, ich: false, laterne: false },
       ]);
       expect(s.verlauf.x).toEqual(["Start", "W1"]);
       expect(json.messungen).toHaveLength(5);

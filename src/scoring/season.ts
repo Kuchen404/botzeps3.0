@@ -164,6 +164,23 @@ export function fleissDerWoche(staende: readonly TeilnehmerStand[], woche: numbe
   return staende.filter((st) => last(st) === max);
 }
 
+/**
+ * „Rote Laterne“ (Gegenstück zum Fleiß der Woche): alle mit der niedrigsten Last der Woche.
+ * Zählt nur, wer die ganze Woche dabei war; keine Laterne, wenn alle gleich viel haben.
+ */
+export function roteLaterne(
+  start: IsoDatum,
+  woche: number,
+  teilnehmer: readonly { id: string; beitritt: IsoDatum; last: number }[],
+): string[] {
+  const dabei = teilnehmer.filter((t) => t.beitritt <= plusTage(start, woche * 7));
+  if (dabei.length < 2) return [];
+  const lasten = dabei.map((t) => t.last);
+  const min = Math.min(...lasten);
+  if (min === Math.max(...lasten)) return [];
+  return dabei.filter((t) => t.last === min).map((t) => t.id);
+}
+
 export interface TeamStand {
   id: string;
   name: string;

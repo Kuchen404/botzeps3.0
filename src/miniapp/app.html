@@ -317,7 +317,8 @@ function standTab(s) {
     kinder.push(karte("Diese Woche", [
       el("div", { text: ich.wochenLast + " von " + ich.wochenziel + " Lastpunkten" + (ich.zielErreicht ? " ✅" : "") }),
       el("div", { class: "balken" }, [el("div", { style: "width:" + anteil + "%" })]),
-      ich.serie >= 2 ? el("div", { class: "hint", text: "Serie: " + ich.serie + " Wochen 🔥" }) : null
+      ich.serie >= 2 ? el("div", { class: "hint", text: "Serie: " + ich.serie + " Wochen 🔥" }) : null,
+      ich.laterne ? el("p", { text: "🏮 Du trägst die Rote Laterne" + (ich.laterne > 1 ? " (schon " + ich.laterne + "× diese Season)" : "") + ". Weg ist sie erst, wenn diese Woche jemand fauler ist als du." }) : null
     ]));
   }
   if (ich.fettKg) {
@@ -331,7 +332,7 @@ function standTab(s) {
   if (s.teams.length) kinder.push(karte("Teams", s.teams.map(function (t) {
     return zeile(t.platz + ". " + t.name, zahl(t.gesamt) + (t.bonus ? " (inkl. " + zahl(t.bonus) + " Bonus)" : ""));
   })));
-  kinder.push(karte("Rangliste", s.rangliste.map(function (r) { return zeile(r.platz + ". " + r.name, zahl(r.gesamt), r.ich ? "ich" : ""); })));
+  kinder.push(karte("Rangliste", s.rangliste.map(function (r) { return zeile(r.platz + ". " + r.name + (r.laterne ? " 🏮" : ""), zahl(r.gesamt), r.ich ? "ich" : ""); })));
   return kinder;
 }
 

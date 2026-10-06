@@ -62,7 +62,7 @@
     "{name} unten. Noch ist nichts verloren, außer deiner Würde."
   ],
   "letzter": [
-    "Rote Laterne für {name}. Leuchtet schön, motiviert aber niemanden.",
+    "Schlusslicht {name}. Leuchtet schön, motiviert aber niemanden.",
     "{name} ist Letzter. Herzlichen Glückwunsch, du hast den Bodensatz erreicht.",
     "{name} auf dem letzten Platz. Selbst eine Schnecke auf dem Ergometer hätte mehr Punkte.",
     "Letzter: {name}. Wir haben dich lieb, aber nicht so sehr wie du dein Sofa.",
@@ -149,5 +149,15 @@
     "{name} hat beim Kampf gegen {boss} keinen Finger gerührt. Feigling.",
     "Während die anderen gegen {boss} gekämpft haben, lag {name} auf dem Sofa. Applaus, du Held.",
     "{name} hat sich beim Boss versteckt. {boss} lässt schön grüßen."
+  ],
+  "rote_laterne": [
+    "🏮 {name} trägt die Rote Laterne. Die faulste Sau der Woche, amtlich bestätigt.",
+    "🏮 {name} hat diese Woche weniger geschwitzt als ein Eiswürfel im Gefrierfach. Laterne an!",
+    "🏮 Rote Laterne für {name}. Häng sie dir übers Sofa, da verbringst du ja eh die meiste Zeit.",
+    "🏮 {name} leuchtet jetzt rot hinter dem Namen. Nicht vor Scham, sondern weil die Lampe nicht ausgeht, bis du trainierst.",
+    "🏮 {name}, die Laterne gehört dir. Glückwunsch zum Titel „Lauch der Woche“.",
+    "🏮 Selbst die Fernbedienung hat mehr Bewegung gesehen als {name}. Rote Laterne.",
+    "🏮 {name} hat die Woche im Energiesparmodus verbracht. Dafür gibt's die Rote Laterne.",
+    "🏮 {name} trägt die Laterne. Sieht man im Dunkeln wenigstens, wo die Couch steht."
   ]
 }
