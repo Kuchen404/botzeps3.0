@@ -12,7 +12,7 @@ import { fuelle, waehleSpruch } from "../texte/sprueche.js";
 import { anzeigename, datumDe, gruppenId, gruppenZeitzone, heute, zahlDe } from "./kontext.js";
 
 /** Season, auf die sich /stand und /rangliste beziehen: die laufende, sonst die zuletzt gestartete. */
-function relevanteSeason(db: Db, gruppeId: number, tag: string): SeasonZeile | undefined {
+export function relevanteSeason(db: Db, gruppeId: number, tag: string): SeasonZeile | undefined {
   const aktuell = aktuelleSeason(db, gruppeId, tag);
   return aktuell && aktuell.start <= tag ? aktuell : (letzteSeason(db, gruppeId, tag) ?? aktuell);
 }

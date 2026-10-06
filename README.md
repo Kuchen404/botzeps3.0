@@ -21,9 +21,8 @@ Dieses Grundgerüst enthält:
 - **Erinnerungen** privat zur eigenen Uhrzeit (Standard 19:00): in der Kalibrierwoche, nach 3 Tagen ohne Training, nach 4 Tagen ohne Messung. `/erinnerungen an|aus|18:30`.
 - **Zeitplan** als Termine in der Datenbank: jeder Termin läuft genau einmal, verpasste Berichte werden nach einem Neustart nachgeholt, Erinnerungen nur bis 2 Stunden zu spät.
 - **Sprüche** (`src/texte/sprueche.json`) mit Platzhaltern und Auswahl ohne direkte Wiederholung.
+- **Mini App** (`src/miniapp/`) unter `/app`, geöffnet über den Menüknopf „Botzeps“ im privaten Chat oder `/app`: Stand mit interaktivem Punkteverlauf, Rangliste und Teams, eigene Waagenwerte als Diagramm, Einträge ändern und löschen, Erinnerungen einstellen. Anmeldung automatisch über die signierten Telegram-initData, keine PIN.
 - **Docker** und Webhook-Betrieb mit `/health`-Endpunkt.
-
-Als Nächstes: Mini App.
 
 ## Lokal starten
 
@@ -45,7 +44,8 @@ docker compose up -d --build
 
 - Die Datenbank liegt im Volume `botzeps-daten` unter `/data/botzeps.db`.
 - Der Container hört auf Port 3000 (nur `127.0.0.1`). Für den Webhook braucht Telegram HTTPS: einen Reverse Proxy (z. B. Caddy, Traefik, nginx) davor setzen, der `https://<WEBHOOK_URL>/telegram` an den Container weiterreicht.
-- Ohne öffentliche Adresse geht auch `BOT_MODE=polling`; dann ist kein Reverse Proxy nötig.
+- Die Mini App liegt unter `https://<WEBHOOK_URL>/app` und spricht mit `/api/…`; der Reverse Proxy muss diese Pfade ebenfalls weiterreichen. Eine andere Adresse geht über `MINIAPP_URL`. Beim Start setzt der Bot den Menüknopf „Botzeps“, bei BotFather ist nichts einzustellen.
+- Ohne öffentliche Adresse geht auch `BOT_MODE=polling`; dann ist kein Reverse Proxy nötig, aber auch keine Mini App (Telegram verlangt HTTPS).
 - Backup: `docker compose exec botzeps node -e "require('better-sqlite3')('/data/botzeps.db').backup('/data/backup.db')"` oder das Volume sichern.
 
 **Der Bot-Token gehört nie ins Repo.** Er steht nur in `.env`, die von Git ignoriert wird.

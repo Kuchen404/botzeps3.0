@@ -7,7 +7,7 @@ import { plusTage } from "../scoring/datum.js";
 import { log } from "../log.js";
 import { anzeigename, datumDe, heute, istGruppe, uhr, zahlDe } from "./kontext.js";
 
-const DAUERN = [15, 30, 45, 60, 90, 120];
+export const DAUERN = [15, 30, 45, 60, 90, 120];
 
 function kurz(e: Eintrag): string {
   const tag = datumDe(e.datum).slice(0, 6);
@@ -17,8 +17,13 @@ function kurz(e: Eintrag): string {
 }
 
 /** Ändern und Löschen nur innerhalb des Rückdatier-Fensters (Konzept 4: kein Schummeln im Nachhinein). */
-function aenderbar(e: Eintrag, tag: string): boolean {
+export function aenderbar(e: Eintrag, tag: string): boolean {
   return e.datum >= plusTage(tag, -GRENZEN.maxTageZurueck);
+}
+
+/** Neuer Text des Gruppenposts nach geänderter Dauer. */
+export function korrekturText(name: string, e: Eintrag, minuten: number): string {
+  return `${name}: ${minuten} min ${e.sportart} (korrigiert von ${e.minuten} min)`;
 }
 
 export function verlaufModul(db: Db): Composer<Context> {
@@ -128,7 +133,7 @@ export function verlaufModul(db: Db): Composer<Context> {
     if (!ok) return;
     aendereTrainingsdauer(db, ok.e, ok.nutzer.id, minuten);
     const neu = { ...ok.e, minuten };
-    await gruppenpost(ctx, ok.e, `${ok.nutzer.name}: ${minuten} min ${ok.e.sportart} (korrigiert von ${ok.e.minuten} min)`);
+    await gruppenpost(ctx, ok.e, korrekturText(ok.nutzer.name, ok.e, minuten));
     await ctx.answerCallbackQuery({ text: "Geändert" });
     await ctx.editMessageText(`Geändert: ${kurz(neu)}`, { reply_markup: new InlineKeyboard().text("Zurück zum Verlauf", "vl") });
   });

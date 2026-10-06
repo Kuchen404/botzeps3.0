@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Botzeps</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root {
+    --bg: var(--tg-theme-bg-color, #ffffff);
+    --bg2: var(--tg-theme-secondary-bg-color, #f2f2f7);
+    --text: var(--tg-theme-text-color, #1c1c1e);
+    --hint: var(--tg-theme-hint-color, #8e8e93);
+    --link: var(--tg-theme-link-color, #2481cc);
+    --button: var(--tg-theme-button-color, #2481cc);
+    --button-text: var(--tg-theme-button-text-color, #ffffff);
+    --danger: var(--tg-theme-destructive-text-color, #e53935);
+    --c1: #1f77b4; --c2: #d62728; --c3: #2ca02c;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg2); color: var(--text); }
+  header { padding: 14px 16px 6px; }
+  h1 { font-size: 20px; margin: 0; }
+  select { margin-top: 6px; width: 100%; padding: 8px; border-radius: 10px; border: 0; background: var(--bg); color: var(--text); font-size: 15px; }
+  nav { display: flex; gap: 6px; padding: 8px 16px; position: sticky; top: 0; background: var(--bg2); z-index: 2; }
+  nav button { flex: 1; padding: 8px 4px; border: 0; border-radius: 10px; background: var(--bg); color: var(--text); font-size: 14px; }
+  nav button.aktiv { background: var(--button); color: var(--button-text); }
+  main { padding: 0 16px 24px; }
+  .karte { background: var(--bg); border-radius: 14px; padding: 14px; margin-top: 12px; }
+  .karte h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--hint); margin: 0 0 8px; font-weight: 600; }
+  .gross { font-size: 34px; font-weight: 700; }
+  .zeile { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--bg2); }
+  .zeile:last-child { border-bottom: 0; }
+  .ich { font-weight: 700; }
+  .hint { color: var(--hint); font-size: 13px; }
+  .balken { height: 10px; background: var(--bg2); border-radius: 5px; overflow: hidden; margin: 6px 0 2px; }
+  .balken > div { height: 100%; background: var(--button); }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+  .chips button { border: 1px solid var(--hint); background: none; color: var(--text); border-radius: 14px; padding: 4px 10px; font-size: 13px; }
+  .chips button.aktiv { background: var(--button); color: var(--button-text); border-color: var(--button); }
+  svg { width: 100%; height: auto; display: block; touch-action: pan-y; }
+  svg text { fill: var(--hint); font-size: 11px; }
+  .tipp { min-height: 20px; font-size: 13px; margin-top: 4px; }
+  .knopf { border: 0; border-radius: 10px; padding: 8px 12px; background: var(--button); color: var(--button-text); font-size: 14px; }
+  .knopf.leise { background: var(--bg2); color: var(--text); }
+  .knopf.weg { background: none; color: var(--danger); padding: 8px 4px; }
+  .eintrag { padding: 10px 0; border-bottom: 1px solid var(--bg2); }
+  .eintrag:last-child { border-bottom: 0; }
+  .aktionen { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; align-items: center; }
+  .aktionen select { width: auto; margin: 0; background: var(--bg2); }
+  label.schalter { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; }
+  input[type=time] { font-size: 16px; padding: 6px; border-radius: 8px; border: 1px solid var(--hint); background: var(--bg); color: var(--text); }
+  .fehler { color: var(--danger); padding: 16px; }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="titel">Botzeps</h1>
+  <select id="season" hidden></select>
+</header>
+<nav>
+  <button data-tab="stand" class="aktiv">Stand</button>
+  <button data-tab="waage">Waage</button>
+  <button data-tab="eintraege">Einträge</button>
+  <button data-tab="einstellungen">Mehr</button>
+</nav>
+<main id="inhalt"><p class="hint">Lädt …</p></main>
+
+<script nonce="{{NONCE}}">
+"use strict";
+var tg = window.Telegram && window.Telegram.WebApp;
+if (tg) { tg.ready(); tg.expand(); }
+var daten = null, eintraege = null, tab = "stand", seasonIndex = 0, waageReihe = "fettPct";
+var inhalt = document.getElementById("inhalt");
+
+function api(pfad, body) {
+  return fetch(pfad, {
+    method: body ? "POST" : "GET",
+    headers: { "Authorization": "tma " + (tg ? tg.initData : ""), "Content-Type": "application/json" },
+    body: body ? JSON.stringify(body) : undefined
+  }).then(function (r) {
+    return r.json().then(function (j) { if (!r.ok) throw new Error(j.fehler || "Fehler " + r.status); return j; });
+  });
+}
+
+function el(tag, attrs, kinder) {
+  var e = document.createElement(tag);
+  for (var k in attrs || {}) {
+    if (k === "text") e.textContent = attrs[k];
+    else if (k.slice(0, 2) === "on") e.addEventListener(k.slice(2), attrs[k]);
+    else e.setAttribute(k, attrs[k]);
+  }
+  (kinder || []).forEach(function (c) { if (c) e.appendChild(typeof c === "string" ? document.createTextNode(c) : c); });
+  return e;
+}
+function zahl(x, stellen) { return x == null ? "–" : x.toLocaleString("de-DE", { maximumFractionDigits: stellen == null ? 1 : stellen }); }
+function datum(d) { var t = d.split("-"); return t[2] + "." + t[1] + "."; }
+function karte(titel, kinder) { return el("div", { class: "karte" }, [titel ? el("h2", { text: titel }) : null].concat(kinder)); }
+function zeile(links, rechts, klasse) { return el("div", { class: "zeile" + (klasse ? " " + klasse : "") }, [el("span", { text: links }), el("span", { text: rechts })]); }
+
+/** Liniendiagramm mit Antippen: zeigt die Werte am nächsten Punkt. */
+function diagramm(x, reihen, einheit) {
+  var NS = "http://www.w3.org/2000/svg", B = 340, H = 200, L = 36, R = 10, O = 10, U = 24;
+  var werte = [];
+  reihen.forEach(function (r) { r.werte.forEach(function (w) { if (w != null) werte.push(w); }); });
+  if (!werte.length) return el("p", { class: "hint", text: "Noch keine Daten." });
+  var min = Math.min.apply(null, werte), max = Math.max.apply(null, werte);
+  if (einheit === "Punkte") { min = Math.min(0, min); max = Math.max(0, max); }
+  if (max - min < 1) { max += 0.5; min -= 0.5; }
+  // Runde Achsenschritte (1, 2, 5 × 10^k)
+  var roh = (max - min) / 4, basis = Math.pow(10, Math.floor(Math.log10(roh)));
+  var schrittY = [1, 2, 5, 10].map(function (f) { return f * basis; }).filter(function (v) { return v >= roh; })[0];
+  min = Math.floor(min / schrittY) * schrittY; max = Math.ceil(max / schrittY) * schrittY;
+  var px = function (i) { return L + (x.length <= 1 ? (B - L - R) / 2 : i * (B - L - R) / (x.length - 1)); };
+  var py = function (w) { return O + (1 - (w - min) / (max - min)) * (H - O - U); };
+  var svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("viewBox", "0 0 " + B + " " + H);
+  function neu(tag, a) { var e = document.createElementNS(NS, tag); for (var k in a) e.setAttribute(k, a[k]); svg.appendChild(e); return e; }
+  for (var w = min; w <= max + schrittY / 1000; w += schrittY) {
+    var y = py(w);
+    neu("line", { x1: L, x2: B - R, y1: y, y2: y, stroke: "currentColor", "stroke-opacity": Math.abs(w) < schrittY / 1000 ? "0.35" : "0.12" });
+    neu("text", { x: L - 4, y: y + 4, "text-anchor": "end" }).textContent = zahl(Math.abs(w) < schrittY / 1000 ? 0 : w, schrittY < 1 ? 1 : 0);
+  }
+  var schritt = Math.ceil(x.length / 6), letzte = x.length - 1;
+  x.forEach(function (t, i) {
+    // Die letzte Beschriftung immer, die davor nur mit genug Abstand
+    if (i === letzte || (i % schritt === 0 && letzte - i >= schritt * 0.7)) neu("text", { x: px(i), y: H - 6, "text-anchor": x.length > 1 && i === letzte ? "end" : i === 0 && x.length > 1 ? "start" : "middle" }).textContent = t;
+  });
+  var farben = ["var(--c1)", "var(--c2)", "var(--c3)"];
+  reihen.forEach(function (r, ri) {
+    var d = "", offen = false;
+    r.werte.forEach(function (w, i) { if (w == null) { offen = false; return; } d += (offen ? "L" : "M") + px(i).toFixed(1) + " " + py(w).toFixed(1) + " "; offen = true; });
+    neu("path", { d: d, fill: "none", stroke: farben[ri % 3], "stroke-width": "2.5", "stroke-linejoin": "round" });
+    if (x.length <= 40) r.werte.forEach(function (w, i) { if (w != null) neu("circle", { cx: px(i), cy: py(w), r: 3, fill: farben[ri % 3] }); });
+  });
+  var marke = neu("line", { y1: O, y2: H - U, stroke: "currentColor", "stroke-opacity": "0.4", visibility: "hidden" });
+  var tipp = el("div", { class: "tipp hint", text: "Antippen für Werte" });
+  function zeige(ev) {
+    var box = svg.getBoundingClientRect();
+    var xx = (ev.clientX - box.left) / box.width * B;
+    var i = Math.round((xx - L) / ((B - L - R) / Math.max(1, x.length - 1)));
+    i = Math.max(0, Math.min(x.length - 1, i));
+    marke.setAttribute("x1", px(i)); marke.setAttribute("x2", px(i)); marke.setAttribute("visibility", "visible");
+    tipp.textContent = x[i] + ": " + reihen.map(function (r) { return r.name + " " + zahl(r.werte[i]); }).join(" · ");
+  }
+  svg.addEventListener("pointerdown", zeige);
+  svg.addEventListener("pointermove", function (ev) { if (ev.buttons) zeige(ev); });
+  var legende = reihen.length > 1 ? el("div", { class: "chips" }, reihen.map(function (r, ri) {
+    return el("span", { class: "hint" }, [el("span", { style: "color:" + farben[ri % 3], text: "● " }), r.name]);
+  })) : null;
+  return el("div", {}, [legende, svg, tipp]);
+}
+
+function standTab(s) {
+  var kinder = [];
+  if (!s) return [karte(null, [el("p", { text: "Du bist in keiner Season. In der Gruppe /season tippen oder trainieren, dann bist du dabei." })])];
+  var ich = s.ich;
+  if (!s.gestartet) {
+    kinder.push(karte("Vor dem Start", [
+      el("p", { text: "„" + s.name + "“ startet am " + datum(s.start) + "." }),
+      el("p", { text: "Kalibrierung: " + ich.kalibrierMessungen + " von 3 Messungen." }),
+      el("p", { class: "hint", text: "Messen: im privaten Chat /waage" })
+    ]));
+    return kinder;
+  }
+  kinder.push(karte(s.laeuft ? "Woche " + s.woche + " von " + s.wochen : "Endstand", [
+    el("div", { class: "gross", text: zahl(ich.gesamt) + " Punkte" }),
+    el("div", { text: "Platz " + ich.platz + " von " + s.anzahl }),
+    zeile("Fleiß", zahl(ich.fleiss)),
+    zeile("Fortschritt", ich.fortschritt == null ? "noch kein Wert" : zahl(ich.fortschritt))
+  ]));
+  if (s.laeuft) {
+    var anteil = Math.min(100, Math.round(ich.wochenLast / ich.wochenziel * 100));
+    kinder.push(karte("Diese Woche", [
+      el("div", { text: ich.wochenLast + " von " + ich.wochenziel + " Lastpunkten" + (ich.zielErreicht ? " ✅" : "") }),
+      el("div", { class: "balken" }, [el("div", { style: "width:" + anteil + "%" })]),
+      ich.serie >= 2 ? el("div", { class: "hint", text: "Serie: " + ich.serie + " Wochen 🔥" }) : null
+    ]));
+  }
+  if (ich.fettKg) {
+    kinder.push(karte("Seit dem Start (nur für dich)", [
+      zeile("Fettmasse", zahl(ich.fettKg.start) + " → " + zahl(ich.fettKg.aktuell) + " kg"),
+      zeile("Muskelmasse", zahl(ich.muskelKg.start) + " → " + zahl(ich.muskelKg.aktuell) + " kg")
+    ]));
+  }
+  if (s.verlauf) kinder.push(karte("Punkteverlauf", [diagramm(s.verlauf.x, s.verlauf.reihen, "Punkte")]));
+  if (s.teams.length) kinder.push(karte("Teams", s.teams.map(function (t) {
+    return zeile(t.platz + ". " + t.name, zahl(t.gesamt) + (t.bonus ? " (inkl. " + zahl(t.bonus) + " Bonus)" : ""));
+  })));
+  kinder.push(karte("Rangliste", s.rangliste.map(function (r) { return zeile(r.platz + ". " + r.name, zahl(r.gesamt), r.ich ? "ich" : ""); })));
+  return kinder;
+}
+
+function waageTab() {
+  var m = daten.messungen;
+  if (!m.length) return [karte(null, [el("p", { text: "Noch keine Messungen. Im privaten Chat: /waage 82,4 18,5 41,2" })])];
+  var arten = { gewichtKg: "Gewicht (kg)", fettPct: "Fett (%)", muskelPct: "Muskel (%)" };
+  var chips = el("div", { class: "chips" }, Object.keys(arten).map(function (k) {
+    return el("button", { class: waageReihe === k ? "aktiv" : "", text: arten[k], onclick: function () { waageReihe = k; zeichne(); } });
+  }));
+  var liste = m.slice().reverse().slice(0, 20).map(function (x) {
+    return zeile(datum(x.datum), zahl(x.gewichtKg) + " kg · " + zahl(x.fettPct) + " % · " + zahl(x.muskelPct) + " %");
+  });
+  return [
+    karte("Verlauf (nur für dich)", [chips, diagramm(m.map(function (x) { return datum(x.datum); }), [{ name: arten[waageReihe], werte: m.map(function (x) { return x[waageReihe]; }) }])]),
+    karte("Letzte Messungen", liste)
+  ];
+}
+
+function eintraegeTab() {
+  if (!eintraege) { api("/api/eintraege").then(function (j) { eintraege = j; zeichne(); }).catch(zeigeFehler); return [el("p", { class: "hint", text: "Lädt …" })]; }
+  if (!eintraege.eintraege.length) return [karte(null, [el("p", { text: "Noch nichts eingetragen." })])];
+  var liste = eintraege.eintraege.map(function (e) {
+    var text = e.art === "t"
+      ? "🏃 " + datum(e.datum) + " " + e.minuten + " min " + e.sportart
+      : "⚖️ " + datum(e.datum) + " " + zahl(e.gewichtKg) + " kg · " + zahl(e.fettPct) + " % · " + zahl(e.muskelPct) + " %";
+    var aktionen = null;
+    if (e.aenderbar) {
+      var kinder = [];
+      if (e.art === "t") {
+        var auswahl = el("select", { "aria-label": "Neue Dauer" }, [el("option", { value: "", text: "Dauer ändern" })].concat(
+          eintraege.dauern.filter(function (d) { return d !== e.minuten; }).map(function (d) { return el("option", { value: String(d), text: d + " min" }); })));
+        auswahl.addEventListener("change", function () {
+          if (!auswahl.value) return;
+          aendere("/api/eintrag/dauer", { id: e.id, minuten: Number(auswahl.value) });
+        });
+        kinder.push(auswahl);
+      }
+      kinder.push(el("button", { class: "knopf weg", text: "Löschen", onclick: function () {
+        bestaetige("Wirklich löschen?", function () { aendere("/api/eintrag/loeschen", { art: e.art, id: e.id }); });
+      } }));
+      aktionen = el("div", { class: "aktionen" }, kinder);
+    }
+    return el("div", { class: "eintrag" }, [el("div", { text: text }), aktionen]);
+  });
+  return [karte("Letzte Einträge", liste.concat([el("p", { class: "hint", text: "Ändern und löschen geht bis 2 Tage zurück." })]))];
+}
+
+function einstellungenTab() {
+  var e = daten.einstellungen;
+  var an = el("input", { type: "checkbox" }); an.checked = e.erinnerungen;
+  var zeit = el("input", { type: "time", value: e.uhrzeit, step: "60" });
+  var status = el("span", { class: "hint" });
+  function speichere() {
+    status.textContent = "Speichert …";
+    api("/api/einstellungen", { erinnerungen: an.checked, uhrzeit: zeit.value }).then(function () {
+      e.erinnerungen = an.checked; e.uhrzeit = zeit.value; status.textContent = "Gespeichert ✓";
+      if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred("success");
+    }).catch(function (f) { status.textContent = f.message; });
+  }
+  an.addEventListener("change", speichere);
+  zeit.addEventListener("change", speichere);
+  return [
+    karte("Erinnerungen", [
+      el("label", { class: "schalter" }, ["Erinnerungen an", an]),
+      el("label", { class: "schalter" }, ["Uhrzeit", zeit]),
+      status,
+      el("p", { class: "hint", text: "Privat, wenn du 3 Tage nicht trainiert oder 4 Tage nicht gemessen hast, und in der Kalibrierwoche." })
+    ]),
+    karte("Datenschutz", [el("p", { class: "hint", text: "Deine Waagenwerte siehst nur du. Die Gruppe sieht nur Punkte." })])
+  ];
+}
+
+function bestaetige(frage, dann) {
+  if (tg && tg.showConfirm) tg.showConfirm(frage, function (ok) { if (ok) dann(); });
+  else if (window.confirm(frage)) dann();
+}
+
+function aendere(pfad, body) {
+  api(pfad, body).then(function () {
+    if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred("success");
+    eintraege = null;
+    return api("/api/ich").then(function (j) { daten = j; zeichne(); });
+  }).catch(zeigeFehler);
+}
+
+function zeigeFehler(f) {
+  if (tg && tg.showAlert) tg.showAlert(f.message); else alert(f.message);
+}
+
+function zeichne() {
+  var s = daten.seasons[seasonIndex];
+  var kinder = tab === "stand" ? standTab(s) : tab === "waage" ? waageTab() : tab === "eintraege" ? eintraegeTab() : einstellungenTab();
+  inhalt.replaceChildren.apply(inhalt, kinder.filter(Boolean));
+}
+
+document.querySelectorAll("nav button").forEach(function (b) {
+  b.addEventListener("click", function () {
+    tab = b.getAttribute("data-tab");
+    document.querySelectorAll("nav button").forEach(function (x) { x.classList.toggle("aktiv", x === b); });
+    if (daten) zeichne();
+  });
+});
+
+document.getElementById("season").addEventListener("change", function (ev) { seasonIndex = Number(ev.target.value); zeichne(); });
+
+if (!tg || !tg.initData) {
+  inhalt.replaceChildren(el("p", { class: "fehler", text: "Bitte in Telegram über den Botzeps-Knopf öffnen." }));
+} else {
+  api("/api/ich").then(function (j) {
+    daten = j;
+    document.getElementById("titel").textContent = "💪 " + j.name;
+    var auswahl = document.getElementById("season");
+    if (j.seasons.length > 1) {
+      auswahl.hidden = false;
+      j.seasons.forEach(function (s, i) { auswahl.appendChild(el("option", { value: String(i), text: s.gruppe + ": " + s.name })); });
+    }
+    zeichne();
+  }).catch(function (f) { inhalt.replaceChildren(el("p", { class: "fehler", text: f.message })); });
+}
+</script>
+</body>
+</html>
