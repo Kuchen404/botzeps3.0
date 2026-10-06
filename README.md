@@ -23,6 +23,7 @@ Dieses Grundgerüst enthält:
 - **Sprüche** (`src/texte/sprueche.json`) mit Platzhaltern und Auswahl ohne direkte Wiederholung.
 - **Mini App** (`src/miniapp/`) unter `/app`, geöffnet über den Menüknopf „Botzeps“ im privaten Chat oder `/app`: Stand mit interaktivem Punkteverlauf, Rangliste und Teams, eigene Waagenwerte als Diagramm, Einträge ändern und löschen, Erinnerungen einstellen. Anmeldung automatisch über die signierten Telegram-initData, keine PIN.
 - **Docker** und Webhook-Betrieb mit `/health`-Endpunkt.
+- **Tägliches Backup** der Datenbank mit Prüfung, die letzten 30 werden aufgehoben, optional zusätzlich als Datei per Telegram (siehe „Backup und Wiederherstellen“).
 
 ## Lokal starten
 
@@ -70,7 +71,25 @@ docker compose up -d --build
 - Der Container hört auf Port 3000 (nur `127.0.0.1`). Für den Webhook braucht Telegram HTTPS: einen Reverse Proxy (z. B. Caddy, Traefik, nginx) davor setzen, der `https://<WEBHOOK_URL>/telegram` an den Container weiterreicht.
 - Die Mini App liegt unter `https://<WEBHOOK_URL>/app` und spricht mit `/api/…`; der Reverse Proxy muss diese Pfade ebenfalls weiterreichen. Eine andere Adresse geht über `MINIAPP_URL`. Beim Start setzt der Bot den Menüknopf „Botzeps“, bei BotFather ist nichts einzustellen.
 - Ohne öffentliche Adresse geht auch `BOT_MODE=polling`; dann ist kein Reverse Proxy nötig, aber auch keine Mini App (Telegram verlangt HTTPS).
-- Backup: `docker compose exec botzeps node -e "require('better-sqlite3')('/data/botzeps.db').backup('/data/backup.db')"` oder das Volume sichern.
+- Backups: siehe unten.
+
+### Backup und Wiederherstellen
+
+Der Bot sichert die Datenbank jeden Tag ab 4 Uhr (`BACKUP_UHRZEIT`) nach `/data/backups/botzeps-JJJJ-MM-TT.db` und behält die letzten 30 (`BACKUP_BEHALTEN`, `0` schaltet es ab). Jede Sicherung wird vorher auf Fehler geprüft; ein verpasstes Backup holt er nach dem Start nach.
+
+Weil die Sicherungen im selben Volume liegen, helfen sie nicht, wenn die Platte stirbt. Dafür `BACKUP_CHAT_ID` setzen: dann schickt der Bot jede Sicherung zusätzlich still als Datei in diesen Telegram-Chat, z. B. in deinen privaten Chat mit dem Bot (deine ID verrät dir z. B. @userinfobot; du musst den Bot vorher einmal mit `/start` angeschrieben haben).
+
+Sicherungen ansehen und eine zurückspielen:
+
+```bash
+docker compose exec botzeps ls -l /data/backups
+docker compose stop botzeps
+docker compose run --rm --no-deps botzeps sh -c \
+  "cp /data/botzeps.db /data/vor-wiederherstellung.db; rm -f /data/botzeps.db-wal /data/botzeps.db-shm; cp /data/backups/botzeps-2026-10-05.db /data/botzeps.db"
+docker compose start botzeps
+```
+
+Eine Sicherung aus Telegram zurückspielen: die Datei auf den Server laden, mit `docker compose cp botzeps-2026-10-05.db botzeps:/data/backups/` in den Container kopieren, dann wie oben.
 
 **Der Bot-Token gehört nie ins Repo.** Er steht nur in `.env`, die von Git ignoriert wird.
 

@@ -7,6 +7,8 @@ import { log, setzeLogStufe } from "./log.js";
 import { starteZeitplan } from "./zeitplan.js";
 import { uhr } from "./bot/kontext.js";
 import { DEMO_BEFEHLE, aktiviereDemo } from "./demo/index.js";
+import { starteBackups } from "./backup.js";
+import { dirname, join } from "node:path";
 
 async function main(): Promise<void> {
   const config = ladeConfig();
@@ -69,12 +71,30 @@ async function main(): Promise<void> {
     () => uhr.jetzt(),
   );
 
+  // Tägliches Backup nach echter Uhrzeit (nicht nach der verstellbaren Demo-Uhr)
+  const backupVerzeichnis = config.BACKUP_VERZEICHNIS ?? join(dirname(config.DATABASE_PATH), "backups");
+  const backupChat = config.BACKUP_CHAT_ID;
+  const stoppeBackups =
+    config.BACKUP_BEHALTEN > 0 && config.DATABASE_PATH !== ":memory:"
+      ? starteBackups(
+          db,
+          { verzeichnis: backupVerzeichnis, uhrzeit: config.BACKUP_UHRZEIT, behalten: config.BACKUP_BEHALTEN, zeitzone: config.TZ },
+          backupChat === undefined
+            ? undefined
+            : (datei, name) => bot.api.sendDocument(backupChat, new InputFile(datei, name), { caption: `Botzeps-Backup ${name}`, disable_notification: true }),
+        )
+      : () => {};
+  if (config.BACKUP_BEHALTEN > 0) {
+    log.info(`Backup täglich ab ${config.BACKUP_UHRZEIT} nach ${backupVerzeichnis}, ${config.BACKUP_BEHALTEN} Stück${backupChat === undefined ? "" : `, Kopie an Chat ${backupChat}`}`);
+  } else log.warn("Tägliches Backup ist aus (BACKUP_BEHALTEN=0)");
+
   let beendet = false;
   const beenden = async (signal: string) => {
     if (beendet) return;
     beendet = true;
     log.info(`${signal} empfangen, fahre herunter`);
     stoppeZeitplan();
+    stoppeBackups();
     if (!webhook) await bot.stop();
     server.close();
     db.close();
