@@ -14,11 +14,12 @@ import {
   trageMitgliedEin,
 } from "../db/repo.js";
 import { GRENZEN, parseSport } from "../domain/eingabe.js";
-import { lokalesDatum, plusTage } from "../scoring/datum.js";
+import { nimmAnAktuellerSeasonTeil } from "../db/season-repo.js";
+import { plusTage } from "../scoring/datum.js";
 import { einheitsLast } from "../scoring/fleiss.js";
 import { fuelle, waehleSpruch } from "../texte/sprueche.js";
 import { log } from "../log.js";
-import { anzeigename, argumente, gruppenId } from "./kontext.js";
+import { anzeigename, argumente, gruppenId, gruppenZeitzone, heute } from "./kontext.js";
 
 const DAUERN = [15, 30, 45, 60, 90, 120];
 const TAG_TEXT = ["", " (gestern)", " (vorgestern)"];
@@ -65,6 +66,7 @@ export function sportModul(db: Db): Composer<Context> {
     const hier = gruppenId(db, ctx);
     if (hier !== null) {
       trageMitgliedEin(db, hier, nutzerId);
+      nimmAnAktuellerSeasonTeil(db, hier, nutzerId, heute(gruppenZeitzone()));
       return gruppeNachId(db, hier);
     }
     return gruppenDesNutzers(db, nutzerId)[0];
@@ -82,7 +84,7 @@ export function sportModul(db: Db): Composer<Context> {
       return { text: `${sportart.name}${TAG_TEXT[a.tage]}: wie lange?`, tastatur: dauerKnoepfe(sportart, a) };
     }
 
-    const datum = plusTage(lokalesDatum(new Date(), nutzer.zeitzone), -a.tage);
+    const datum = plusTage(heute(nutzer.zeitzone), -a.tage);
     const trainingId = speichereTraining(db, { nutzer: nutzer.id, datum, minuten: a.minuten, sportart });
     letzterSpruch = waehleSpruch("training_gepostet", letzterSpruch);
     const post = fuelle(letzterSpruch, { name: nutzer.name, minuten: a.minuten, sportart: sportart.name });

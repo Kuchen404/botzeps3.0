@@ -9,10 +9,11 @@ Befehle:
 /sport 45 Joggen – Training eintragen (wird in der Gruppe gepostet), auch „gestern“ oder „vorgestern“ am Ende
 /sport – dasselbe mit Knöpfen
 /waage 82,4 18,5 41,2 – Gewicht, Fett %, Muskel % (nur privat)
+/stand – dein Punktestand (privat mit Details)
+/rangliste – wer vorne liegt und wer die Couch wärmt
+/season Name – neue Season anlegen (in der Gruppe), /season zeigt die aktuelle
 /sportarten – welche Sportart wie zählt
-/hilfe – diese Hilfe
-
-Bald: /stand, /rangliste, /season`;
+/hilfe – diese Hilfe`;
 
 export const MITMACHEN_KNOPF = "Ich bin dabei 💪";
 
