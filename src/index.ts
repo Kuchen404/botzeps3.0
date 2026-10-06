@@ -30,9 +30,11 @@ async function main(): Promise<void> {
     void bot.start({ onStart: () => log.info("Polling läuft") });
   }
 
-  const stoppeZeitplan = starteZeitplan(db, async (chatId, text) => {
-    await bot.api.sendMessage(chatId, text);
-  }, config.TZ);
+  const stoppeZeitplan = starteZeitplan(
+    db,
+    async (chatId, text) => (await bot.api.sendMessage(chatId, text)).message_id,
+    config.TZ,
+  );
 
   let beendet = false;
   const beenden = async (signal: string) => {

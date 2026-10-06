@@ -11,6 +11,7 @@ Dieses Grundgerüst enthält:
 - **Datenbank** (SQLite, `src/db/`) mit Migrationen und dem Datenmodell aus Kapitel 9.
 - **Bot** (grammY, `src/bot/`): `/start` (privat anmelden, in der Gruppe mit „Ich bin dabei“-Knopf), `/sportarten`, `/hilfe`.
 - **Training** mit `/sport 45 Joggen` oder `/sport` mit Knöpfen (eigene letzte Sportarten zuerst), optional `gestern`/`vorgestern`. Jedes Training wird in der Gruppe gepostet.
+- **Neue Sportarten** per `/sportart Name` oder Knopf bei unbekannter Sportart: die Gruppe stimmt über die Stufe ab (Vorschlag laut Compendium), Mehrheit der Mitglieder oder nach 24 Stunden entscheidet; das wartende Training wird danach automatisch eingetragen.
 - **Messung** mit `/waage 82,4 18,5 41,2` nur im privaten Chat, mit Plausibilitätsprüfung und Rückfrage bei Sprüngen (> 3 kg oder > 3 Prozentpunkte Fett gegenüber dem 7-Tage-Mittel).
 - **Season** mit `/season Name` in der Gruppe: startet am nächsten Montag mit 10 Wochen und 50/50, alle Mitglieder sind dabei. Start, Dauer und Gewichtung lassen sich bis zum Start per Knopf ändern (Ersteller und Gruppenadmins). Wer später dazukommt, macht seine eigene Kalibrierwoche.
 - **Stand** mit `/rangliste` (Punkte, Wochenziel ✅, Serie 🔥, „Fleiß der Woche“, Sprüche) und `/stand` (in der Gruppe nur Punkte, privat mit Fett- und Muskelmasse).
@@ -21,7 +22,7 @@ Dieses Grundgerüst enthält:
 - **Sprüche** (`src/texte/sprueche.json`) mit Platzhaltern und Auswahl ohne direkte Wiederholung.
 - **Docker** und Webhook-Betrieb mit `/health`-Endpunkt.
 
-Als Nächstes: neue Sportarten per Umfrage, Diagramme, Teams, Mini App.
+Als Nächstes: Diagramme, Teams, Mini App.
 
 ## Lokal starten
 

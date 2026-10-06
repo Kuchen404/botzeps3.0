@@ -14,6 +14,7 @@ import {
   trageMitgliedEin,
 } from "../db/repo.js";
 import { GRENZEN, parseSport } from "../domain/eingabe.js";
+import { sportartName } from "../domain/neue-sportart.js";
 import { nimmAnAktuellerSeasonTeil } from "../db/season-repo.js";
 import { plusTage } from "../scoring/datum.js";
 import { einheitsLast } from "../scoring/fleiss.js";
@@ -25,6 +26,12 @@ const DAUERN = [15, 30, 45, 60, 90, 120];
 const TAG_TEXT = ["", " (gestern)", " (vorgestern)"];
 
 let letzterSpruch: string | undefined;
+
+/** Text des Gruppenposts zu einem Training, nie zweimal hintereinander derselbe Spruch. */
+export function trainingsPostText(name: string, minuten: number, sportart: string): string {
+  letzterSpruch = waehleSpruch("training_gepostet", letzterSpruch);
+  return fuelle(letzterSpruch, { name, minuten, sportart });
+}
 
 interface Auswahl {
   telegramId: number;
@@ -56,6 +63,14 @@ function dauerKnoepfe(sportart: SportartZeile, a: Auswahl): InlineKeyboard {
 }
 
 /** `postFuer`: Training, dessen Gruppenpost diese Antwort selbst ist. */
+/** Knopf „neue Sportart abstimmen“: `sn:<telegramId>:<tage>:<minuten>:<name>`, nur wenn er in 64 Byte passt. */
+function vorschlagKnopf(eingabe: string, a: Auswahl): { name: string; daten: string } | undefined {
+  const name = sportartName(eingabe);
+  if (!name) return undefined;
+  const daten = ["sn", a.telegramId, a.tage, a.minuten ?? 0, name].join(":");
+  return Buffer.byteLength(daten) <= 64 ? { name, daten } : undefined;
+}
+
 type Antwort = { text: string; tastatur?: InlineKeyboard; postFuer?: number };
 
 export function sportModul(db: Db): Composer<Context> {
@@ -86,8 +101,7 @@ export function sportModul(db: Db): Composer<Context> {
 
     const datum = plusTage(heute(nutzer.zeitzone), -a.tage);
     const trainingId = speichereTraining(db, { nutzer: nutzer.id, datum, minuten: a.minuten, sportart });
-    letzterSpruch = waehleSpruch("training_gepostet", letzterSpruch);
-    const post = fuelle(letzterSpruch, { name: nutzer.name, minuten: a.minuten, sportart: sportart.name });
+    const post = trainingsPostText(nutzer.name, a.minuten, sportart.name);
     const last = einheitsLast({ minuten: a.minuten, faktor: sportart.faktor });
 
     if (ctx.chat?.id === gruppe.telegram_chat_id) {
@@ -124,8 +138,11 @@ export function sportModul(db: Db): Composer<Context> {
       sportart = sportartNachName(db, gruppe.id, eingabe.wert.sportart);
       if (!sportart) {
         const liste = sportartenFuerAuswahl(db, gruppe.id, nutzer.id);
-        await ctx.reply(`„${eingabe.wert.sportart}“ kenne ich nicht. Such dir was aus der Liste aus (/sportarten zeigt alle):`, {
-          reply_markup: sportKnoepfe(liste, a),
+        const kb = sportKnoepfe(liste, a);
+        const neu = vorschlagKnopf(eingabe.wert.sportart, a);
+        if (neu) kb.row().text(`➕ „${neu.name}“ zur Abstimmung stellen`, neu.daten);
+        await ctx.reply(`„${eingabe.wert.sportart}“ kenne ich nicht. Such dir was aus der Liste aus (/sportarten zeigt alle) oder lass die Gruppe abstimmen:`, {
+          reply_markup: kb,
         });
         return;
       }

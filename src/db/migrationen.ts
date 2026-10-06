@@ -153,4 +153,33 @@ export const MIGRATIONEN: readonly { version: number; name: string; sql: string 
         ON termin (art, COALESCE(season, 0), COALESCE(nutzer, 0), faellig_am);
     `,
   },
+  {
+    version: 3,
+    name: "abstimmung_sportart",
+    sql: `
+      -- Abstimmung über die Stufe einer neuen Sportart (Konzept 3.2)
+      CREATE TABLE abstimmung (
+        id            INTEGER PRIMARY KEY,
+        gruppe        INTEGER NOT NULL REFERENCES gruppe(id) ON DELETE CASCADE,
+        name          TEXT    NOT NULL,
+        vorschlag     INTEGER CHECK (vorschlag IN (1, 2, 3)),
+        antragsteller INTEGER NOT NULL REFERENCES nutzer(id),
+        -- Training des Antragstellers, das nach der Entscheidung eingetragen wird
+        minuten       INTEGER,
+        datum         TEXT,
+        nachricht_id  INTEGER,
+        erstellt_am   TEXT    NOT NULL,
+        beendet_am    TEXT,
+        ergebnis      INTEGER CHECK (ergebnis IN (1, 2, 3))
+      );
+      CREATE UNIQUE INDEX abstimmung_offen ON abstimmung (gruppe, name COLLATE NOCASE) WHERE beendet_am IS NULL;
+
+      CREATE TABLE stimme (
+        abstimmung INTEGER NOT NULL REFERENCES abstimmung(id) ON DELETE CASCADE,
+        nutzer     INTEGER NOT NULL REFERENCES nutzer(id) ON DELETE CASCADE,
+        faktor     INTEGER NOT NULL CHECK (faktor IN (1, 2, 3)),
+        PRIMARY KEY (abstimmung, nutzer)
+      );
+    `,
+  },
 ];
