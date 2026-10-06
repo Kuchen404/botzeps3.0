@@ -8,7 +8,9 @@ import { DAUERN, aenderbar, korrekturText } from "../bot/verlauf.js";
 import { relevanteSeason } from "../bot/stand.js";
 import { gruppenZeitzone, heute, uhr } from "../bot/kontext.js";
 import { plusTage } from "../scoring/datum.js";
-import { seasonEnde, wocheVon } from "../scoring/season.js";
+import { type TeilnehmerStand, seasonEnde, wocheVon } from "../scoring/season.js";
+import { type Boss, bosseDerSeason } from "../db/season-repo.js";
+import { bossAnzeigename, bossEmoji, bossKampf } from "../scoring/boss.js";
 import type { MiniAppNutzer } from "./auth.js";
 
 /**
@@ -35,6 +37,33 @@ const runde = (x: number) => Math.round(x * 10) / 10;
 
 function name(n: MiniAppNutzer): string {
   return [n.first_name, n.last_name].filter(Boolean).join(" ") || n.username || String(n.id);
+}
+
+/**
+ * Der Boss der laufenden Woche, sonst der zuletzt besiegte oder überlebende.
+ * Kämpfer sind alle mit Schaden in der Boss-Woche, stärkste zuerst.
+ */
+function bossJson(bosse: readonly Boss[], staende: readonly TeilnehmerStand[], ich: string, woche: number | null, laeuft: boolean) {
+  const boss = bosse.filter((b) => woche !== null && b.woche <= woche).at(-1);
+  if (!boss) return null;
+  const k = bossKampf(boss, staende);
+  const last = (st: TeilnehmerStand) => st.wochen[boss.woche]?.last ?? 0;
+  return {
+    name: bossAnzeigename(boss.name, boss.stufe),
+    emoji: bossEmoji(boss.name),
+    stufe: boss.stufe,
+    woche: boss.woche + 1,
+    aktiv: laeuft && boss.woche === woche,
+    lebenspunkte: k.lebenspunkte,
+    schaden: k.schaden,
+    besiegt: k.besiegt,
+    bonus: k.bonus,
+    kaempfer: staende
+      .filter((st) => last(st) > 0)
+      .sort((a, b) => last(b) - last(a) || a.name.localeCompare(b.name))
+      .map((st) => ({ name: st.name, schaden: last(st), ich: st.id === ich })),
+    drueckeberger: staende.filter((st) => last(st) === 0).map((st) => st.name),
+  };
 }
 
 function ich(db: Db, nutzerId: number, telegramId: number) {
@@ -78,6 +107,7 @@ function ich(db: Db, nutzerId: number, telegramId: number) {
       rangliste: tag >= s.start ? staende.map((x) => ({ platz: x.platz, name: x.name, gesamt: runde(x.gesamt), ich: x.id === st.id })) : [],
       teams: tag >= s.start ? berechneTeams(db, s, staende).map((t) => ({ platz: t.platz, name: t.name, gesamt: runde(t.gesamt), bonus: t.bonus })) : [],
       verlauf: eigen ? { x: eigen.x, reihen: eigen.reihen } : null,
+      boss: tag >= s.start ? bossJson(bosseDerSeason(db, s), staende, st.id, woche, laeuft) : null,
     });
   }
   const n = db.prepare("SELECT erinnerungen, erinnerung_uhrzeit, zeitzone FROM nutzer WHERE id = ?").get(nutzerId) as {

@@ -28,6 +28,21 @@ export const BOSS_NAMEN = [
   "Graf Gemütlich",
 ] as const;
 
+const EMOJI: Record<(typeof BOSS_NAMEN)[number], string> = {
+  "Der innere Schweinehund": "🐷",
+  "Der Dönerteller XXL": "🥙",
+  "Das Sofa der Verdammnis": "🛋️",
+  "König Bierbauch": "🍺",
+  "Die Chipstüte des Grauens": "🍟",
+  "Der Lieferdienst-Lord": "🛵",
+  "Graf Gemütlich": "🦥",
+};
+
+/** Bild des Bosses für die Mini App; unbekannte Namen werden zum Drachen. */
+export function bossEmoji(name: string): string {
+  return EMOJI[name as keyof typeof EMOJI] ?? "🐉";
+}
+
 /** 0-basierte Boss-Woche einer Stufe, oder null, wenn die Season zu kurz ist. */
 export function bossWoche(stufe: BossStufe, wochen: number): number | null {
   return wochen >= BOSS_MIN_WOCHEN ? BOSS_STUFEN[stufe].woche(wochen) : null;

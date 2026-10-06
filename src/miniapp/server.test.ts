@@ -4,6 +4,7 @@ import { erstelleServer } from "../server.js";
 import { uhr } from "../bot/kontext.js";
 import { GRUPPE, KEVIN, PETER, PRIVAT, befehl, knopf, testBot } from "../bot/testhilfe.js";
 import { signiereInitData } from "./auth.js";
+import { kuendigeBossAn } from "../db/season-repo.js";
 
 const TOKEN = "test-token";
 const echteUhr = uhr.jetzt;
@@ -98,6 +99,39 @@ describe("Mini App", () => {
       const peter = await holen("/api/ich", PETER);
       expect(peter.json.messungen).toEqual([]);
       expect(JSON.stringify(peter.json)).not.toContain("24.3");
+    } finally {
+      server.close();
+    }
+  });
+
+  it("/api/ich: Boss mit Lebenspunkten und Kämpfern, stärkste zuerst", async () => {
+    const { server, holen, bot, db } = await aufbau();
+    try {
+      expect((await holen("/api/ich")).json.seasons[0].boss).toBeNull();
+      kuendigeBossAn(db, 1, 1, "König Bierbauch", 650);
+      tag("2026-10-20");
+      await bot.handleUpdate(befehl("/sport 30 Yoga", GRUPPE, PETER));
+      await bot.handleUpdate(befehl("/sport 100 Joggen"));
+      const boss = (await holen("/api/ich")).json.seasons[0].boss;
+      expect(boss).toEqual({
+        name: "König Bierbauch",
+        emoji: "🍺",
+        stufe: 1,
+        woche: 2,
+        aktiv: true,
+        lebenspunkte: 650,
+        schaden: 330,
+        besiegt: false,
+        bonus: 5,
+        kaempfer: [
+          { name: "Kevin", schaden: 300, ich: true },
+          { name: "Peter", schaden: 30, ich: false },
+        ],
+        drueckeberger: [],
+      });
+      // Nach der Boss-Woche bleibt er als Ergebnis sichtbar
+      tag("2026-10-27");
+      expect((await holen("/api/ich")).json.seasons[0].boss).toMatchObject({ aktiv: false, besiegt: false });
     } finally {
       server.close();
     }
