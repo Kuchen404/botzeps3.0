@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { eigenesDiagramm, gruppenDiagramm, punkteverlauf } from "../bericht/punkteverlauf.js";
+import { seasonNachId } from "../db/season-repo.js";
 import { uhr } from "./kontext.js";
 import { montagIn } from "./season.js";
 import { GRUPPE, PETER, PRIVAT, befehl, knoepfe, knopf, testBot } from "./testhilfe.js";
@@ -91,17 +93,18 @@ describe("/rangliste und /stand", () => {
   }
 
   it("vor dem Start: Kalibrierungsstand", async () => {
-    const { bot, letzterText } = await seasonMitDaten();
+    const { bot, aufrufe, letzterText } = await seasonMitDaten();
     await bot.handleUpdate(befehl("/rangliste"));
     expect(letzterText()).toContain("startet am 12.10.2026");
     expect(letzterText()).toContain("1 von 2 haben ihre 3 Messungen");
 
     await bot.handleUpdate(befehl("/stand", PETER_PRIVAT, PETER));
     expect(letzterText()).toContain("0 von 3 Messungen zwischen 05.10.2026 und 11.10.2026");
+    expect(aufrufe.some((a) => a.methode === "sendPhoto")).toBe(false);
   });
 
   it("während der Season: Rangliste mit Punkten, Stand privat mit Details", async () => {
-    const { bot, letzterText } = await seasonMitDaten();
+    const { db, bot, aufrufe, letzterText } = await seasonMitDaten();
     tag("2026-10-13");
     await bot.handleUpdate(befehl("/waage 90 27 40", PRIVAT));
     tag("2026-10-14");
@@ -127,6 +130,20 @@ describe("/rangliste und /stand", () => {
     await bot.handleUpdate(befehl("/stand"));
     expect(letzterText()).toContain("Fortschritt: 100 Punkte");
     expect(letzterText()).not.toContain("kg");
+    // Nach jedem /stand der eigene Verlauf als Bild
+    expect(aufrufe.filter((a) => a.methode === "sendPhoto").map((a) => a.payload.chat_id)).toEqual([PRIVAT.id, GRUPPE.id]);
+
+    const s = seasonNachId(db, 1)!;
+    const verlauf = punkteverlauf(db, s, "2026-10-14")!;
+    expect(verlauf.x).toEqual(["Start", "W1"]);
+    expect(eigenesDiagramm(s, verlauf, verlauf.ende[0]!.id)?.reihen).toEqual([
+      { name: "Gesamt", werte: [0, 110] },
+      { name: "Fleiß", werte: [0, 10] },
+      { name: "Fortschritt", werte: [0, 100] },
+    ]);
+    expect(gruppenDiagramm(s, verlauf).reihen.map((r) => r.name)).toEqual(["1. Kevin", "2. Peter"]);
+    expect(punkteverlauf(db, s, "2026-10-21")!.x).toEqual(["Start", "W1", "W2"]);
+    expect(punkteverlauf(db, s, "2026-10-11")).toBeNull();
   });
 
   it("ohne Season: Hinweis", async () => {

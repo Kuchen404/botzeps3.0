@@ -2,6 +2,7 @@ import type { Db } from "./db/index.js";
 import { type SeasonZeile, einstellungen, seasonNachId } from "./db/season-repo.js";
 import { gruppeNachId } from "./db/repo.js";
 import { berechneStand } from "./bericht/stand.js";
+import { diagrammPng, gruppenDiagramm, punkteverlauf } from "./bericht/punkteverlauf.js";
 import { type Extras, type Vorwoche, finale, wochenbericht } from "./bericht/texte.js";
 import { lokalesDatum, plusTage, tageZwischen, zeitpunktIn } from "./scoring/datum.js";
 import { FORTSCHRITT } from "./scoring/fortschritt.js";
@@ -20,6 +21,8 @@ import { trainingsPostText } from "./bot/sport.js";
 
 /** Sendet eine Nachricht und gibt, wenn bekannt, ihre message_id zurück. */
 export type Sender = (chatId: number, text: string) => Promise<number | void>;
+/** Sendet ein PNG als Foto. */
+export type FotoSender = (chatId: number, png: Uint8Array) => Promise<unknown>;
 
 const ERINNERUNG_VERFALL_MS = 2 * 60 * 60 * 1000;
 export const ERINNERUNG = { tageOhneTraining: 3, tageOhneMessung: 4 } as const;
@@ -65,7 +68,7 @@ export function plane(db: Db, jetzt: Date, zeitzone: string): void {
   })();
 }
 
-export async function fuehreAus(db: Db, senden: Sender, jetzt: Date, zeitzone: string): Promise<number> {
+export async function fuehreAus(db: Db, senden: Sender, jetzt: Date, zeitzone: string, foto?: FotoSender): Promise<number> {
   const faellig = db
     .prepare("SELECT id, art, season, nutzer, faellig_am FROM termin WHERE erledigt_am IS NULL AND faellig_am <= ? ORDER BY faellig_am, id")
     .all(jetzt.toISOString()) as TerminZeile[];
@@ -78,7 +81,7 @@ export async function fuehreAus(db: Db, senden: Sender, jetzt: Date, zeitzone: s
       const gesendet =
         t.art === "erinnerung"
           ? await erinnere(db, senden, t, jetzt)
-          : await berichte(db, senden, t, zeitzone);
+          : await berichte(db, senden, t, zeitzone, foto);
       if (gesendet) ausgefuehrt++;
     } catch (err) {
       log.error(`Termin ${t.id} (${t.art}) fehlgeschlagen`, err);
@@ -87,7 +90,7 @@ export async function fuehreAus(db: Db, senden: Sender, jetzt: Date, zeitzone: s
   return ausgefuehrt;
 }
 
-async function berichte(db: Db, senden: Sender, t: TerminZeile, zeitzone: string): Promise<boolean> {
+async function berichte(db: Db, senden: Sender, t: TerminZeile, zeitzone: string, foto?: FotoSender): Promise<boolean> {
   const s = t.season === null ? undefined : seasonNachId(db, t.season);
   const gruppe = s ? gruppeNachId(db, s.gruppe) : undefined;
   if (!s || !gruppe) return false;
@@ -140,6 +143,15 @@ async function berichte(db: Db, senden: Sender, t: TerminZeile, zeitzone: string
     );
   }
   await senden(gruppe.telegram_chat_id, text);
+  if (foto) {
+    // Ein fehlendes Diagramm soll den Bericht nicht als fehlgeschlagen markieren
+    try {
+      const verlauf = punkteverlauf(db, s, stichtag);
+      if (verlauf) await foto(gruppe.telegram_chat_id, diagrammPng(gruppenDiagramm(s, verlauf)));
+    } catch (err) {
+      log.error(`Diagramm zum Bericht ${t.id} fehlgeschlagen`, err);
+    }
+  }
   return true;
 }
 
@@ -258,7 +270,7 @@ export async function beendeAbgelaufeneAbstimmungen(db: Db, senden: Sender, jetz
 }
 
 /** Startet die Zeitplanung; gibt eine Funktion zum Anhalten zurück. */
-export function starteZeitplan(db: Db, senden: Sender, zeitzone: string, intervallMs = 60_000): () => void {
+export function starteZeitplan(db: Db, senden: Sender, foto: FotoSender, zeitzone: string, intervallMs = 60_000): () => void {
   let laeuft = false;
   const tick = async () => {
     if (laeuft) return;
@@ -266,7 +278,7 @@ export function starteZeitplan(db: Db, senden: Sender, zeitzone: string, interva
     try {
       const jetzt = new Date();
       plane(db, jetzt, zeitzone);
-      await fuehreAus(db, senden, jetzt, zeitzone);
+      await fuehreAus(db, senden, jetzt, zeitzone, foto);
       await beendeAbgelaufeneAbstimmungen(db, senden, jetzt);
     } catch (err) {
       log.error("Zeitplan-Durchlauf fehlgeschlagen", err);

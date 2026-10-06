@@ -31,15 +31,19 @@ async function aufbau() {
   const senden = async (chatId: number, text: string) => {
     gesendet.push({ chatId, text });
   };
+  const fotos: { chatId: number; png: Uint8Array }[] = [];
+  const foto = async (chatId: number, png: Uint8Array) => {
+    fotos.push({ chatId, png });
+  };
   /** Plant und führt aus, als wäre es `iso` (UTC). */
   const lauf = async (iso: string) => {
     const jetzt = new Date(iso);
     plane(t.db, jetzt, TZ);
-    return fuehreAus(t.db, senden, jetzt, TZ);
+    return fuehreAus(t.db, senden, jetzt, TZ, foto);
   };
   /** Nur die Nachrichten an die Gruppe (Berichte), ohne private Erinnerungen. */
   const berichte = () => gesendet.filter((g) => g.chatId === GRUPPE.id).map((g) => g.text);
-  return { ...t, gesendet, berichte, lauf };
+  return { ...t, gesendet, berichte, fotos, lauf };
 }
 
 describe("Zeitplan", () => {
@@ -56,7 +60,7 @@ describe("Zeitplan", () => {
   });
 
   it("Wochenberichte genau einmal, mit Veränderung zur Vorwoche, dann das Finale", async () => {
-    const { db, bot, berichte, lauf } = await aufbau();
+    const { db, bot, berichte, fotos, lauf } = await aufbau();
     tag("2026-10-14");
     await bot.handleUpdate(befehl("/sport 100 Joggen"));
     await bot.handleUpdate(befehl("/sport 30 Yoga", GRUPPE, PETER));
@@ -74,6 +78,10 @@ describe("Zeitplan", () => {
     expect(woche1.text).not.toContain("Nächste Woche ist die letzte");
     expect(woche1.text).not.toContain("kg");
     expect(db.prepare("SELECT COUNT(*) AS n FROM wochenstand WHERE woche = 0").get()).toEqual({ n: 2 });
+    // Punkteverlauf als Bild direkt nach dem Bericht
+    expect(fotos).toHaveLength(1);
+    expect(fotos[0]!.chatId).toBe(GRUPPE.id);
+    expect(Buffer.from(fotos[0]!.png).subarray(1, 4).toString()).toBe("PNG");
 
     tag("2026-10-20");
     await bot.handleUpdate(befehl("/sport 120 Fußball", GRUPPE, PETER));
@@ -98,6 +106,7 @@ describe("Zeitplan", () => {
     expect(finale).toContain("Der Statistiker: Kevin (5 Messungen)");
     expect(finale).toContain("Rückblick: zusammen 4,7 Stunden Sport");
     expect(db.prepare("SELECT COUNT(*) AS n FROM auszeichnung").get()).toEqual({ n: 7 }); // Dauerbrenner doppelt
+    expect(fotos).toHaveLength(3);
   });
 
   it("verpasste Berichte werden nachgeholt, wenn der Bot wieder läuft", async () => {
