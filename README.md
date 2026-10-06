@@ -14,10 +14,13 @@ Dieses Grundgerüst enthält:
 - **Messung** mit `/waage 82,4 18,5 41,2` nur im privaten Chat, mit Plausibilitätsprüfung und Rückfrage bei Sprüngen (> 3 kg oder > 3 Prozentpunkte Fett gegenüber dem 7-Tage-Mittel).
 - **Season** mit `/season Name` in der Gruppe: startet am nächsten Montag mit 10 Wochen und 50/50, alle Mitglieder sind dabei. Start, Dauer und Gewichtung lassen sich bis zum Start per Knopf ändern (Ersteller und Gruppenadmins). Wer später dazukommt, macht seine eigene Kalibrierwoche.
 - **Stand** mit `/rangliste` (Punkte, Wochenziel ✅, Serie 🔥, „Fleiß der Woche“, Sprüche) und `/stand` (in der Gruppe nur Punkte, privat mit Fett- und Muskelmasse).
+- **Wochenbericht** jeden Sonntag um 20 Uhr (Ende jeder Season-Woche) in der Gruppe: Rangliste mit ⬆/⬇ zur Vorwoche, Wochenziel, Serien, Fleiß der Woche, ein Spruch pro Person (nie zweimal hintereinander derselbe). Am Ende das **Finale** mit Sonderpreisen und Rückblick.
+- **Erinnerungen** privat zur eigenen Uhrzeit (Standard 19:00): in der Kalibrierwoche, nach 3 Tagen ohne Training, nach 4 Tagen ohne Messung. `/erinnerungen an|aus|18:30`.
+- **Zeitplan** als Termine in der Datenbank: jeder Termin läuft genau einmal, verpasste Berichte werden nach einem Neustart nachgeholt, Erinnerungen nur bis 2 Stunden zu spät.
 - **Sprüche** (`src/texte/sprueche.json`) mit Platzhaltern und Auswahl ohne direkte Wiederholung.
 - **Docker** und Webhook-Betrieb mit `/health`-Endpunkt.
 
-Als Nächstes: Wochenbericht und Finale, Erinnerungen, danach `/verlauf`, Teams, Mini App.
+Als Nächstes: `/verlauf` zum Korrigieren, neue Sportarten per Umfrage, Diagramme, Teams, Mini App.
 
 ## Lokal starten
 

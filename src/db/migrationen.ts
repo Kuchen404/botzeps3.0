@@ -144,4 +144,13 @@ export const MIGRATIONEN: readonly { version: number; name: string; sql: string 
       );
     `,
   },
+  {
+    version: 2,
+    name: "termin_eindeutig",
+    // UNIQUE behandelt NULL als verschieden, deshalb ein Index über COALESCE
+    sql: `
+      CREATE UNIQUE INDEX termin_eindeutig
+        ON termin (art, COALESCE(season, 0), COALESCE(nutzer, 0), faellig_am);
+    `,
+  },
 ];

@@ -9,13 +9,16 @@ export interface SeasonZeile {
   name: string;
   start: string;
   wochen: number;
+  /** "HH:MM", Ortszeit der Gruppe */
+  berichtszeit: string;
   gewicht_fleiss: number;
   gewicht_fortschritt: number;
   wochenziel_last: number;
   erstellt_von: number | null;
 }
 
-const SPALTEN = "id, gruppe, name, start, wochen, gewicht_fleiss, gewicht_fortschritt, wochenziel_last, erstellt_von";
+const SPALTEN =
+  "id, gruppe, name, start, wochen, berichtszeit, gewicht_fleiss, gewicht_fortschritt, wochenziel_last, erstellt_von";
 
 export function einstellungen(s: SeasonZeile): SeasonEinstellungen {
   return {
