@@ -190,4 +190,26 @@ export const MIGRATIONEN: readonly { version: number; name: string; sql: string 
       CREATE UNIQUE INDEX team_name ON team (season, name COLLATE NOCASE);
     `,
   },
+  {
+    version: 5,
+    name: "gamification",
+    sql: `
+      -- Einmalige Erfolge über alle Seasons
+      CREATE TABLE erfolg (
+        nutzer      INTEGER NOT NULL REFERENCES nutzer(id) ON DELETE CASCADE,
+        art         TEXT    NOT NULL,
+        erreicht_am TEXT    NOT NULL,                     -- YYYY-MM-DD
+        PRIMARY KEY (nutzer, art)
+      );
+
+      -- Angekündigte Bosse: Stufe 1 in Woche 2, Stufe 2 (aufgepumpt) in der vorletzten Woche
+      CREATE TABLE boss (
+        season       INTEGER NOT NULL REFERENCES season(id) ON DELETE CASCADE,
+        stufe        INTEGER NOT NULL CHECK (stufe IN (1, 2)),
+        name         TEXT    NOT NULL,
+        lebenspunkte INTEGER NOT NULL CHECK (lebenspunkte > 0),
+        PRIMARY KEY (season, stufe)
+      );
+    `,
+  },
 ];

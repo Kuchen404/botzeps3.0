@@ -1,5 +1,5 @@
 {
-  "_info": "Spruchsammlung für Botzeps (derber Ton). Platzhalter: {name}, {platz}, {punkte}, {abstand} (Punkte zum Vordermann bzw. Verfolger), {minuten}, {sportart}, {serie} (Wochen in Folge mit erreichtem Ziel). Der Bot wählt pro Person zufällig einen Spruch aus der passenden Kategorie und nimmt nicht zweimal hintereinander denselben.",
+  "_info": "Spruchsammlung für Botzeps (derber Ton). Platzhalter: {name}, {platz}, {punkte}, {abstand} (Punkte zum Vordermann bzw. Verfolger), {minuten}, {sportart}, {serie} (Wochen in Folge mit erreichtem Ziel), {opfer} (wer überholt wurde), {rang} (neuer Rang), {boss} (Name des Bosses). Der Bot wählt pro Person zufällig einen Spruch aus der passenden Kategorie und nimmt nicht zweimal hintereinander denselben.",
   "platz1": [
     "{name} thront mit {punkte} Punkten ganz oben. Der Rest guckt nur auf seinen Hintern.",
     "Platz 1: {name}. Wer {name} einholen will, muss früher aufstehen. Viel früher.",
@@ -111,5 +111,43 @@
     "Den letzten Platz der Season holt sich {name}. Als Preis gibt's eine Jahresmitgliedschaft im Club der Couchkartoffeln.",
     "{name} beendet die Season als Letzter. Nächste Season wird alles besser, sagen sie alle.",
     "Schlusslicht der Season: {name}. Du warst konstant. Konstant schlecht, aber konstant."
+  ],
+  "ueberholt": [
+    "⚡ {name} zieht an {opfer} vorbei, jetzt Platz {platz}. {opfer}, das war gerade dein Rücklicht.",
+    "⚡ {name} überholt {opfer} und steht auf Platz {platz}. {opfer} hat wohl den Blinker vergessen.",
+    "⚡ Platz {platz} für {name}. {opfer} wurde eiskalt abgezogen, bitte Taschentücher bereithalten.",
+    "⚡ {name} rauscht an {opfer} vorbei auf Platz {platz}. {opfer}, beweg deinen Hintern, sonst bleibt der da hinten.",
+    "⚡ {opfer} wurde gerade von {name} überrundet. Neuer Platz für {name}: {platz}. Das tut weh, oder?"
+  ],
+  "spitze": [
+    "👑 {name} schnappt sich Platz 1! {opfer}, die Krone ist weg. War schön, solange es gedauert hat.",
+    "👑 Machtwechsel: {name} stößt {opfer} vom Thron. {opfer} darf jetzt den Staub vom Podest fressen.",
+    "👑 {name} ist neuer Tabellenführer. {opfer}, das kommt davon, wenn man sich auf seinen Lorbeeren ausruht."
+  ],
+  "rang_aufstieg": [
+    "🎖 {name} steigt auf zum {rang}. Weiter so, irgendwann wird aus dir noch was.",
+    "🎖 Beförderung! {name} ist jetzt {rang}. Die Couch hat Trauerflor angelegt.",
+    "🎖 {name} ist ab sofort {rang}. Wer hätte das gedacht, bestimmt nicht deine Waage.",
+    "🎖 Neuer Rang für {name}: {rang}. Stolz sein ist erlaubt, ausruhen nicht."
+  ],
+  "boss_start": [
+    "{boss} ist da und lacht über eure Waden. Prügelt ihn weg, sonst bleibt er.",
+    "{boss} hat sich in eurer Gruppe breitgemacht. Zeit, ihm die Fresse zu polieren.",
+    "{boss} glaubt, ihr seid ein Haufen Lauche. Beweist ihm das Gegenteil."
+  ],
+  "boss_besiegt": [
+    "💀 {boss} liegt am Boden! {name} hat den letzten Schlag gesetzt. Jeder, der mitgeprügelt hat, kassiert den Bonus.",
+    "💀 {boss} ist Geschichte. Den Todesstoß gab {name}. Alle, die mitgemacht haben, dürfen sich feiern.",
+    "💀 Erledigt! {name} schickt {boss} ins Grab. Bonus für alle, die nicht nur zugeguckt haben."
+  ],
+  "boss_ueberlebt": [
+    "{boss} hat überlebt und lacht euch aus. Peinliche Vorstellung, Leute.",
+    "{boss} steht noch. Ihr habt ihn höchstens gekitzelt. Kein Bonus, nur Schande.",
+    "{boss} zieht unbesiegt von dannen und nimmt eure Würde gleich mit."
+  ],
+  "drueckeberger": [
+    "{name} hat beim Kampf gegen {boss} keinen Finger gerührt. Feigling.",
+    "Während die anderen gegen {boss} gekämpft haben, lag {name} auf dem Sofa. Applaus, du Held.",
+    "{name} hat sich beim Boss versteckt. {boss} lässt schön grüßen."
   ]
 }

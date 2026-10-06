@@ -1,5 +1,5 @@
 import type { Db } from "../db/index.js";
-import { type SeasonZeile, einstellungen, ladeTeilnehmer } from "../db/season-repo.js";
+import { type SeasonZeile, bosseDerSeason, einstellungen, ladeTeilnehmer } from "../db/season-repo.js";
 import { type Liniendiagramm, alsPng, liniendiagramm } from "../diagramm/index.js";
 import { plusTage } from "../scoring/datum.js";
 import { type TeilnehmerStand, seasonEnde, seasonStand } from "../scoring/season.js";
@@ -19,7 +19,7 @@ export function punkteverlauf(db: Db, s: SeasonZeile, bisTag: string): Punktever
   if (bisTag < s.start) return null;
   const teilnehmer = ladeTeilnehmer(db, s);
   if (teilnehmer.length === 0) return null;
-  const e = einstellungen(s);
+  const e = einstellungen(s, bosseDerSeason(db, s));
   const bis = bisTag < seasonEnde(s) ? bisTag : seasonEnde(s);
   const x = ["Start"];
   const staende: TeilnehmerStand[][] = [[]];

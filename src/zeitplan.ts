@@ -1,5 +1,9 @@
 import type { Db } from "./db/index.js";
-import { type SeasonZeile, einstellungen, seasonNachId } from "./db/season-repo.js";
+import { type SeasonZeile, bosseDerSeason, einstellungen, kuendigeBossAn, seasonNachId } from "./db/season-repo.js";
+import { alleTrainings, vergebeErfolge } from "./db/erfolg-repo.js";
+import { BOSS_ANKUENDIGUNG, BOSS_NAMEN, BOSS_STUFEN, type BossStufe, STUFEN, bossAnzeigename, bossKampf, bossLebenspunkte, bossWoche } from "./scoring/boss.js";
+import { type ErfolgArt, finaleErfolge, trainingsErfolge, wochenErfolge } from "./scoring/erfolge.js";
+import { fuelle, waehleSpruch } from "./texte/sprueche.js";
 import { gruppeNachId } from "./db/repo.js";
 import { berechneStand, berechneTeams } from "./bericht/stand.js";
 import { diagrammPng, gruppenDiagramm, punkteverlauf } from "./bericht/punkteverlauf.js";
@@ -12,6 +16,7 @@ import { abgelaufeneAbstimmungen, beendeAbstimmung } from "./db/abstimmung-repo.
 import { setzeGruppenNachricht } from "./db/repo.js";
 import { ABSTIMMUNG_STUNDEN, ergebnisText } from "./bot/abstimmung.js";
 import { trainingsPostText } from "./bot/sport.js";
+import { meldungenNachTraining, mitMeldungen } from "./bericht/nach-training.js";
 
 /**
  * Berichte und Erinnerungen als fällige Termine in der Datenbank (Konzept 9):
@@ -29,7 +34,7 @@ export const ERINNERUNG = { tageOhneTraining: 3, tageOhneMessung: 4 } as const;
 
 interface TerminZeile {
   id: number;
-  art: "wochenbericht" | "finale" | "erinnerung";
+  art: "wochenbericht" | "finale" | "erinnerung" | "boss1" | "boss2";
   season: number | null;
   nutzer: number | null;
   faellig_am: string;
@@ -38,6 +43,12 @@ interface TerminZeile {
 /** Fälligkeit des Berichts zu Woche `woche` (letzter Tag der Woche, Berichtszeit). */
 export function berichtsZeitpunkt(s: SeasonZeile, woche: number, zeitzone: string): Date {
   return zeitpunktIn(plusTage(s.start, woche * 7 + 6), s.berichtszeit, zeitzone);
+}
+
+/** Ankündigung des Bosses einer Stufe am ersten Tag seiner Woche, oder null ohne Boss. */
+export function bossZeitpunkt(s: SeasonZeile, stufe: BossStufe, zeitzone: string): Date | null {
+  const woche = bossWoche(stufe, s.wochen);
+  return woche === null ? null : zeitpunktIn(plusTage(s.start, woche * 7), BOSS_ANKUENDIGUNG, zeitzone);
 }
 
 export function plane(db: Db, jetzt: Date, zeitzone: string): void {
@@ -52,6 +63,10 @@ export function plane(db: Db, jetzt: Date, zeitzone: string): void {
       for (let w = 0; w < s.wochen; w++) {
         const art = w === s.wochen - 1 ? "finale" : "wochenbericht";
         neu.run(art, s.id, null, berichtsZeitpunkt(s, w, zeitzone).toISOString());
+      }
+      for (const stufe of STUFEN) {
+        const zeitpunkt = bossZeitpunkt(s, stufe, zeitzone);
+        if (zeitpunkt) neu.run(`boss${stufe}`, s.id, null, zeitpunkt.toISOString());
       }
       if (heute < plusTage(s.start, -7) || heute > ende) continue;
       const teilnehmer = db
@@ -81,7 +96,9 @@ export async function fuehreAus(db: Db, senden: Sender, jetzt: Date, zeitzone: s
       const gesendet =
         t.art === "erinnerung"
           ? await erinnere(db, senden, t, jetzt)
-          : await berichte(db, senden, t, zeitzone, foto);
+          : t.art === "boss1" || t.art === "boss2"
+            ? await kuendigeAn(db, senden, t, t.art === "boss1" ? 1 : 2, zeitzone)
+            : await berichte(db, senden, t, zeitzone, foto);
       if (gesendet) ausgefuehrt++;
     } catch (err) {
       log.error(`Termin ${t.id} (${t.art}) fehlgeschlagen`, err);
@@ -113,15 +130,24 @@ async function berichte(db: Db, senden: Sender, t: TerminZeile, zeitzone: string
     ).map((z): [string, Vorwoche] => [String(z.nutzer), { platz: z.platz, vorlage: z.spruch }]),
   );
 
+  const kaempfe = bosseDerSeason(db, s)
+    .filter((b) => b.woche <= woche)
+    .map((b) => ({ name: bossAnzeigename(b.name, b.stufe), kampf: bossKampf(b, staende) }));
+  const bossSieger = new Set(kaempfe.filter((k) => k.kampf.besiegt).flatMap((k) => k.kampf.beteiligte));
+  const erfolge = neueErfolge(db, s, staende, bossSieger, stichtag, art === "finale");
+
   let text: string;
   const vorlagen = new Map<string, string>();
   if (art === "finale") {
-    const ergebnis = finale(s, staende, extras(db, s), teams);
+    const ergebnis = finale(s, staende, extras(db, s), teams, Math.random, erfolge);
     text = ergebnis.text;
     const preis = db.prepare("INSERT OR IGNORE INTO auszeichnung (season, nutzer, art) VALUES (?, ?, ?)");
     for (const p of ergebnis.preise) for (const id of p.gewinner) preis.run(s.id, Number(id), p.art);
   } else {
-    const bericht = wochenbericht({ name: s.name, wochen: s.wochen, wochenzielLast: s.wochenziel_last }, woche, staende, vorwoche, teams);
+    const bericht = wochenbericht({ name: s.name, wochen: s.wochen, wochenzielLast: s.wochenziel_last }, woche, staende, vorwoche, teams, Math.random, {
+      bosse: kaempfe.filter((k) => k.kampf.woche === woche),
+      erfolge,
+    });
     text = bericht.text;
     for (const z of bericht.sprueche) vorlagen.set(z.id, z.vorlage);
   }
@@ -154,6 +180,61 @@ async function berichte(db: Db, senden: Sender, t: TerminZeile, zeitzone: string
     }
   }
   return true;
+}
+
+/** Boss-Ankündigung in der Gruppe; legt Name und Lebenspunkte fest. */
+async function kuendigeAn(db: Db, senden: Sender, t: TerminZeile, stufe: BossStufe, zeitzone: string): Promise<boolean> {
+  const s = t.season === null ? undefined : seasonNachId(db, t.season);
+  const gruppe = s ? gruppeNachId(db, s.gruppe) : undefined;
+  // Termin verfällt, wenn Start oder Dauer der Season inzwischen geändert wurden
+  if (!s || !gruppe || bossZeitpunkt(s, stufe, zeitzone)?.toISOString() !== t.faellig_am) return false;
+  const teilnehmer = (db.prepare("SELECT COUNT(*) AS n FROM teilnahme WHERE season = ?").get(s.id) as { n: number }).n;
+  if (teilnehmer === 0) return false;
+  const frueher = bosseDerSeason(db, s).find((b) => b.stufe === 1);
+  const name = frueher?.name ?? BOSS_NAMEN[Math.floor(Math.random() * BOSS_NAMEN.length)]!;
+  const lebenspunkte = bossLebenspunkte(stufe, teilnehmer, s.wochenziel_last);
+  if (!kuendigeBossAn(db, s.id, stufe, name, lebenspunkte)) return false;
+  await senden(gruppe.telegram_chat_id, bossAnkuendigung(stufe, name, lebenspunkte, frueher !== undefined));
+  return true;
+}
+
+export function bossAnkuendigung(stufe: BossStufe, name: string, lebenspunkte: number, kamSchonMal: boolean): string {
+  const anzeige = bossAnzeigename(name, stufe);
+  const kopf =
+    stufe === 1
+      ? "🐉 BOSS-WOCHE!"
+      : kamSchonMal
+        ? `🐉💉 ${name.toUpperCase()} IST ZURÜCK, UND ER HAT GEPUMPT!`
+        : "🐉💉 BOSS-WOCHE, AUFGEPUMPT!";
+  return [
+    kopf,
+    fuelle(waehleSpruch("boss_start"), { boss: anzeige }),
+    "",
+    `${anzeige} hat ${lebenspunkte.toLocaleString("de-DE")} Lebenspunkte. Jeder Lastpunkt, den ihr bis Sonntag trainiert, ist ein Schlag in die Fresse.`,
+    `Fällt er, kassiert jeder, der mitgeprügelt hat, +${BOSS_STUFEN[stufe].bonus} Punkte. Wer nichts tut, wird namentlich erwähnt.`,
+  ].join("\n");
+}
+
+/** Prüft Erfolge aller Teilnehmer und gibt die neuen als Zeilen für den Bericht zurück. */
+function neueErfolge(
+  db: Db,
+  s: SeasonZeile,
+  staende: readonly { id: string; name: string; wochen: Parameters<typeof wochenErfolge>[0]; platz: number }[],
+  bossSieger: ReadonlySet<string>,
+  tag: string,
+  istFinale: boolean,
+): { name: string; arten: ErfolgArt[] }[] {
+  return staende
+    .map((st) => {
+      const arten: ErfolgArt[] = [
+        ...trainingsErfolge(alleTrainings(db, Number(st.id))),
+        ...wochenErfolge(st.wochen, s.wochenziel_last),
+        ...(bossSieger.has(st.id) ? (["bossbezwinger"] as const) : []),
+        ...(istFinale ? finaleErfolge(st.platz) : []),
+      ];
+      return { name: st.name, arten: vergebeErfolge(db, Number(st.id), arten, tag) };
+    })
+    .filter((e) => e.arten.length > 0);
 }
 
 function extras(db: Db, s: SeasonZeile): Map<string, Extras> {
@@ -253,7 +334,7 @@ export function erinnerungsText(
 }
 
 /** Beendet Abstimmungen über neue Sportarten, die länger als 24 Stunden offen sind. */
-export async function beendeAbgelaufeneAbstimmungen(db: Db, senden: Sender, jetzt: Date): Promise<void> {
+export async function beendeAbgelaufeneAbstimmungen(db: Db, senden: Sender, jetzt: Date, zeitzone = "Europe/Berlin"): Promise<void> {
   const grenze = new Date(jetzt.getTime() - ABSTIMMUNG_STUNDEN * 60 * 60 * 1000).toISOString();
   for (const a of abgelaufeneAbstimmungen(db, grenze)) {
     const e = beendeAbstimmung(db, a.id, jetzt.toISOString());
@@ -261,7 +342,9 @@ export async function beendeAbgelaufeneAbstimmungen(db: Db, senden: Sender, jetz
     try {
       await senden(e.gruppeChat, `${ergebnisText(e)} (Abstimmung nach ${ABSTIMMUNG_STUNDEN} Stunden beendet)`);
       if (e.training) {
-        const id = await senden(e.gruppeChat, trainingsPostText(e.training.nutzerName, e.training.minuten, e.sportart.name));
+        const text = trainingsPostText(e.training.nutzerName, e.training.minuten, e.sportart.name);
+        const meldungen = meldungenNachTraining(db, e.training.id, lokalesDatum(jetzt, zeitzone));
+        const id = await senden(e.gruppeChat, mitMeldungen(text, meldungen));
         if (id) setzeGruppenNachricht(db, e.training.id, id);
       }
     } catch (err) {
@@ -280,7 +363,7 @@ export function starteZeitplan(db: Db, senden: Sender, foto: FotoSender, zeitzon
       const jetzt = new Date();
       plane(db, jetzt, zeitzone);
       await fuehreAus(db, senden, jetzt, zeitzone, foto);
-      await beendeAbgelaufeneAbstimmungen(db, senden, jetzt);
+      await beendeAbgelaufeneAbstimmungen(db, senden, jetzt, zeitzone);
     } catch (err) {
       log.error("Zeitplan-Durchlauf fehlgeschlagen", err);
     } finally {

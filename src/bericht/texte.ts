@@ -1,5 +1,35 @@
 import { type TeamStand, type TeilnehmerStand, TEAM_BONUS_PRO_WOCHE } from "../scoring/season.js";
 import { type Kategorie, fuelle, platzKategorie, waehleSpruch } from "../texte/sprueche.js";
+import type { BossKampf } from "../scoring/boss.js";
+import { type ErfolgArt, erfolgText } from "../scoring/erfolge.js";
+
+export interface BerichtZusatz {
+  /** Bosse, deren Woche dieser Bericht abschließt */
+  bosse?: readonly { name: string; kampf: BossKampf }[];
+  /** Erfolge, die seit dem letzten Bericht neu dazugekommen sind */
+  erfolge?: readonly { name: string; arten: readonly ErfolgArt[] }[];
+}
+
+/** Ergebnis der Boss-Woche mit Lob für die Beteiligten und Schande für die Drückeberger. */
+export function bossZeilen(
+  bosse: BerichtZusatz["bosse"],
+  staende: readonly TeilnehmerStand[],
+  zufall: () => number = Math.random,
+): string[] {
+  const name = new Map(staende.map((st) => [st.id, st.name]));
+  return (bosse ?? []).flatMap(({ name: boss, kampf }) => {
+    const kopf = kampf.besiegt
+      ? `🐉 ${boss} besiegt (${kampf.schaden.toLocaleString("de-DE")} Schaden)! +${kampf.bonus} für: ${kampf.beteiligte.map((id) => name.get(id)).join(", ")}`
+      : `🐉 ${fuelle(waehleSpruch("boss_ueberlebt", undefined, zufall), { boss })} (${kampf.schaden.toLocaleString("de-DE")} von ${kampf.lebenspunkte.toLocaleString("de-DE")} Schaden)`;
+    const feiglinge = kampf.drueckeberger.map((id) => fuelle(waehleSpruch("drueckeberger", undefined, zufall), { name: name.get(id), boss }));
+    return [kopf, ...feiglinge];
+  });
+}
+
+export function erfolgZeilen(erfolge: BerichtZusatz["erfolge"]): string[] {
+  if (!erfolge?.length) return [];
+  return ["Neue Erfolge:", ...erfolge.flatMap((e) => e.arten.map((art) => `${e.name}: ${erfolgText(art)}`))];
+}
 
 export interface Vorwoche {
   platz: number;
@@ -56,6 +86,7 @@ export function wochenbericht(
   vorwoche: ReadonlyMap<string, Vorwoche>,
   teams: readonly TeamStand[] = [],
   zufall: () => number = Math.random,
+  zusatz: BerichtZusatz = {},
 ): Wochenbericht {
   const kopf = `📅 Wochenbericht „${season.name}“, Woche ${woche + 1} von ${season.wochen}`;
   if (staende.length === 0) return { text: `${kopf}\n\nKeiner dabei. Traurig.`, sprueche: [] };
@@ -113,6 +144,8 @@ export function wochenbericht(
       : [];
 
   const team = teamZeilen(teams);
+  const boss = bossZeilen(zusatz.bosse, staende, zufall);
+  const erfolge = erfolgZeilen(zusatz.erfolge);
   const text = [
     kopf,
     "",
@@ -120,9 +153,11 @@ export function wochenbericht(
     ...(team.length ? ["", ...team] : []),
     "",
     ...infos,
+    ...(boss.length ? ["", ...boss] : []),
     "",
     ...sprueche.map((s) => s.text),
     ...extra,
+    ...(erfolge.length ? ["", ...erfolge] : []),
     ...hinweis,
   ].join("\n");
   return { text, sprueche };
@@ -166,14 +201,17 @@ export function finale(
   extras: ReadonlyMap<string, Extras>,
   teams: readonly TeamStand[] = [],
   zufall: () => number = Math.random,
+  erfolge: BerichtZusatz["erfolge"] = [],
 ): { text: string; preise: Sonderpreis[] } {
   const kopf = `🏁 Finale „${season.name}“`;
   if (staende.length === 0) return { text: `${kopf}\n\nKeiner hat mitgemacht. Dann halt nächstes Mal.`, preise: [] };
   const name = new Map(staende.map((st) => [st.id, st.name]));
   const sieger = staende.filter((st) => st.platz === 1);
   const zeilen = staende.map(
-    (st) => `${st.platz}. ${st.name}: ${z(st.gesamt)} (Fleiß ${z(st.fleiss)} · Fortschritt ${st.fortschritt ? z(st.fortschritt.punkte) : "–"})`,
+    (st) =>
+      `${st.platz}. ${st.name}: ${z(st.gesamt)} (Fleiß ${z(st.fleiss)} · Fortschritt ${st.fortschritt ? z(st.fortschritt.punkte) : "–"}${st.bossBonus ? ` · Boss +${z(st.bossBonus)}` : ""})`,
   );
+  const neueErfolge = erfolgZeilen(erfolge);
   const preise = sonderpreise(staende, extras);
   const preisZeilen = preise.map((p) => `🏅 ${p.titel}: ${p.gewinner.map((id) => name.get(id)).join(", ")} (${p.wert})`);
   const minuten = [...extras.values()].reduce((s, e) => s + e.minuten, 0);
@@ -191,6 +229,7 @@ export function finale(
       ? ["", `🏆 Teamsieger: ${teams.filter((t) => t.platz === 1).map((t) => t.name).join(" und ")}`, ...teamZeilen(teams)]
       : []),
     ...(preisZeilen.length ? ["", "Sonderpreise:", ...preisZeilen] : []),
+    ...(neueErfolge.length ? ["", ...neueErfolge] : []),
     ...(staende.length >= 2 && letzter.platz > 1
       ? ["", fuelle(waehleSpruch("finale_letzter", undefined, zufall), { name: letzter.name, punkte: z(letzter.gesamt) })]
       : []),

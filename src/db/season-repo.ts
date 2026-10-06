@@ -3,6 +3,7 @@ import { teileKleinstemTeamZu } from "./team-repo.js";
 import type { Faktor } from "../scoring/fleiss.js";
 import type { Messung } from "../scoring/fortschritt.js";
 import { type SeasonEinstellungen, type Teilnehmer, kalibrierFenster, seasonEnde } from "../scoring/season.js";
+import { type BossEinstellung, type BossStufe, bossWoche } from "../scoring/boss.js";
 
 export interface SeasonZeile {
   id: number;
@@ -21,13 +22,37 @@ export interface SeasonZeile {
 const SPALTEN =
   "id, gruppe, name, start, wochen, berichtszeit, gewicht_fleiss, gewicht_fortschritt, wochenziel_last, erstellt_von";
 
-export function einstellungen(s: SeasonZeile): SeasonEinstellungen {
+export type Boss = BossEinstellung & { name: string };
+
+/** Bereits angekündigte Bosse der Season. */
+export function bosseDerSeason(db: Db, s: Pick<SeasonZeile, "id" | "wochen">): Boss[] {
+  const zeilen = db.prepare("SELECT stufe, name, lebenspunkte FROM boss WHERE season = ? ORDER BY stufe").all(s.id) as {
+    stufe: BossStufe;
+    name: string;
+    lebenspunkte: number;
+  }[];
+  return zeilen.flatMap((z) => {
+    const woche = bossWoche(z.stufe, s.wochen);
+    return woche === null ? [] : [{ ...z, woche }];
+  });
+}
+
+/** Kündigt einen Boss an (nur beim ersten Mal). Gibt false zurück, wenn er schon da war. */
+export function kuendigeBossAn(db: Db, seasonId: number, stufe: BossStufe, name: string, lebenspunkte: number): boolean {
+  return (
+    db.prepare("INSERT OR IGNORE INTO boss (season, stufe, name, lebenspunkte) VALUES (?, ?, ?, ?)").run(seasonId, stufe, name, lebenspunkte)
+      .changes > 0
+  );
+}
+
+export function einstellungen(s: SeasonZeile, bosse: readonly BossEinstellung[] = []): SeasonEinstellungen {
   return {
     start: s.start,
     wochen: s.wochen,
     gewichtFleiss: s.gewicht_fleiss,
     gewichtFortschritt: s.gewicht_fortschritt,
     wochenzielLast: s.wochenziel_last,
+    bosse,
   };
 }
 

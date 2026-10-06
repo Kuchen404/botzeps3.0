@@ -12,6 +12,7 @@ import { erinnerungsModul } from "./erinnerungen.js";
 import { verlaufModul } from "./verlauf.js";
 import { abstimmungsModul } from "./abstimmung.js";
 import { teamModul } from "./teams.js";
+import { ruhmModul } from "./ruhm.js";
 import { sportModul } from "./sport.js";
 import { WAAGE_ANLEITUNG, waageModul } from "./waage.js";
 import { HILFE, MITMACHEN_KNOPF, gruppenBegruessung, mitgliedNeu, mitgliedSchonDabei, willkommenPrivat } from "./texte.js";
@@ -26,6 +27,8 @@ export const BEFEHLE = [
   { command: "app", description: "Mini App mit Diagrammen und Einstellungen" },
   { command: "verlauf", description: "Einträge korrigieren oder löschen (privat)" },
   { command: "rangliste", description: "Rangliste der Season" },
+  { command: "erfolge", description: "Deine Erfolge und dein Rang" },
+  { command: "ruhmeshalle", description: "Sieger, Ränge und Rekorde der Gruppe" },
   { command: "season", description: "Season anzeigen oder anlegen" },
   { command: "teams", description: "Teams anzeigen oder auslosen" },
   { command: "team", description: "Team beitreten oder gründen, z. B. /team Bizeps-Brigade" },
@@ -103,6 +106,7 @@ export function erstelleBot(token: string, db: Db, botInfo?: UserFromGetMe, opti
   bot.use(verlaufModul(db));
   bot.use(abstimmungsModul(db));
   bot.use(teamModul(db));
+  bot.use(ruhmModul(db));
 
   bot.command(["hilfe", "help"], (ctx) => ctx.reply(HILFE));
 
