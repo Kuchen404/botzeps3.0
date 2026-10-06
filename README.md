@@ -12,10 +12,12 @@ Dieses Grundgerüst enthält:
 - **Bot** (grammY, `src/bot/`): `/start` (privat anmelden, in der Gruppe mit „Ich bin dabei“-Knopf), `/sportarten`, `/hilfe`.
 - **Training** mit `/sport 45 Joggen` oder `/sport` mit Knöpfen (eigene letzte Sportarten zuerst), optional `gestern`/`vorgestern`. Jedes Training wird in der Gruppe gepostet.
 - **Messung** mit `/waage 82,4 18,5 41,2` nur im privaten Chat, mit Plausibilitätsprüfung und Rückfrage bei Sprüngen (> 3 kg oder > 3 Prozentpunkte Fett gegenüber dem 7-Tage-Mittel).
+- **Season** mit `/season Name` in der Gruppe: startet am nächsten Montag mit 10 Wochen und 50/50, alle Mitglieder sind dabei. Start, Dauer und Gewichtung lassen sich bis zum Start per Knopf ändern (Ersteller und Gruppenadmins). Wer später dazukommt, macht seine eigene Kalibrierwoche.
+- **Stand** mit `/rangliste` (Punkte, Wochenziel ✅, Serie 🔥, „Fleiß der Woche“, Sprüche) und `/stand` (in der Gruppe nur Punkte, privat mit Fett- und Muskelmasse).
 - **Sprüche** (`src/texte/sprueche.json`) mit Platzhaltern und Auswahl ohne direkte Wiederholung.
 - **Docker** und Webhook-Betrieb mit `/health`-Endpunkt.
 
-Als Nächstes: `/season`, `/stand`, `/rangliste`, Wochenbericht und Erinnerungen, danach `/verlauf`, Teams, Mini App.
+Als Nächstes: Wochenbericht und Finale, Erinnerungen, danach `/verlauf`, Teams, Mini App.
 
 ## Lokal starten
 
@@ -53,7 +55,7 @@ Fleiß pro Woche = 10 × min(Last / 300, 1,5) + Serienbonus
 
 Fortschritt = 10 × Fettabbau % + 30 × Muskelaufbau %   (mindestens −50)
   Startwert = Mittel aus ≥ 3 Messungen der Kalibrierwoche
-  Aktuell   = Mittel der letzten 7 Tage (≥ 2 Messungen, sonst die letzten 2)
+  Aktuell   = Mittel der letzten 7 Tage nach der Kalibrierung (≥ 2 Messungen, sonst die letzten 2)
 ```
 
 Rangliste: mehr Gesamtpunkte vorne, bei Gleichstand gewinnt mehr Fleiß.

@@ -58,7 +58,8 @@ export function startwert(messungen: readonly Messung[], von: IsoDatum, bis: Iso
 }
 
 /**
- * Aktueller Wert: Mittelwert der Messungen der 7 Tage bis einschließlich `stichtag`.
+ * Aktueller Wert: Mittelwert der Messungen der 7 Tage bis einschließlich `stichtag`,
+ * aber nicht vor `fruehestens` (dem Tag nach der Kalibrierung).
  * Liegen dort weniger als 2 Messungen, zählen die letzten 2 Messungen ab `frühestens`,
  * damit Nicht-Messen eine schlechte Phase nicht versteckt.
  */
@@ -67,7 +68,9 @@ export function aktuellerWert(
   stichtag: IsoDatum,
   fruehestens: IsoDatum,
 ): Koerpermassen | null {
-  const fensterStart = plusTage(stichtag, -(FORTSCHRITT.fensterTage - 1));
+  // Nie in die Kalibrierung zurückgreifen, sonst verwässert sie den aktuellen Wert
+  const siebenTage = plusTage(stichtag, -(FORTSCHRITT.fensterTage - 1));
+  const fensterStart = siebenTage > fruehestens ? siebenTage : fruehestens;
   const imFenster = messungen.filter((m) => imZeitraum(m.datum, fensterStart, stichtag));
   if (imFenster.length >= FORTSCHRITT.minMessungenAktuell) return mittelwert(imFenster);
 

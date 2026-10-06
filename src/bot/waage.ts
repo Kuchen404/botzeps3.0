@@ -2,8 +2,8 @@ import { Composer, InlineKeyboard, type Context } from "grammy";
 import type { Db } from "../db/index.js";
 import { messMittel, speichereMessung, speichereNutzer } from "../db/repo.js";
 import { type WaageEingabe, istSprung, parseWaage } from "../domain/eingabe.js";
-import { lokalesDatum, plusTage } from "../scoring/datum.js";
-import { anzeigename, argumente, istGruppe, zahlDe } from "./kontext.js";
+import { plusTage } from "../scoring/datum.js";
+import { anzeigename, argumente, datumDe, heute, istGruppe, uhr, zahlDe } from "./kontext.js";
 
 export const MESSPROTOKOLL = "Messprotokoll: morgens, nach dem Klo, vor Essen und Trinken, immer dieselbe Waage.";
 
@@ -24,10 +24,10 @@ export function waageModul(db: Db): Composer<Context> {
 
   function speichere(ctx: Context, e: WaageEingabe, markiert: boolean): string {
     const nutzer = speichereNutzer(db, ctx.from!.id, anzeigename(ctx));
-    const datum = plusTage(lokalesDatum(new Date(), nutzer.zeitzone), -e.tageZurueck);
+    const datum = plusTage(heute(nutzer.zeitzone), -e.tageZurueck);
     speichereMessung(db, {
       nutzer: nutzer.id,
-      zeitpunkt: new Date().toISOString(),
+      zeitpunkt: uhr.jetzt().toISOString(),
       datum,
       gewichtKg: e.gewichtKg,
       fettPct: e.fettPct,
@@ -37,7 +37,7 @@ export function waageModul(db: Db): Composer<Context> {
     const fettKg = (e.gewichtKg * e.fettPct) / 100;
     const muskelKg = (e.gewichtKg * e.muskelPct) / 100;
     return [
-      `Gespeichert${e.tageZurueck ? ` für ${datum.split("-").reverse().join(".")}` : ""}: ${zahlDe(e.gewichtKg)} kg`,
+      `Gespeichert${e.tageZurueck ? ` für ${datumDe(datum)}` : ""}: ${zahlDe(e.gewichtKg)} kg`,
       `Fett ${zahlDe(e.fettPct)} % = ${zahlDe(fettKg)} kg`,
       `Muskel ${zahlDe(e.muskelPct)} % = ${zahlDe(muskelKg)} kg`,
     ].join("\n");
@@ -63,7 +63,7 @@ export function waageModul(db: Db): Composer<Context> {
     }
     const e = eingabe.wert;
     const nutzer = speichereNutzer(db, ctx.from.id, anzeigename(ctx));
-    const datum = plusTage(lokalesDatum(new Date(), nutzer.zeitzone), -e.tageZurueck);
+    const datum = plusTage(heute(nutzer.zeitzone), -e.tageZurueck);
     const mittel = messMittel(db, nutzer.id, plusTage(datum, -6), datum);
     if (istSprung(e, mittel)) {
       await ctx.reply(

@@ -90,6 +90,13 @@ describe("Fortschritt", () => {
     expect(r?.fettKg).toBeCloseTo(22, 9);
   });
 
+  it("Messungen aus der Kalibrierung zählen nicht als aktueller Wert", () => {
+    const messungen = [m("2026-10-10", 80, 30, 40), m("2026-10-11", 80, 30, 40), m("2026-10-12", 80, 20, 40), m("2026-10-13", 80, 20, 40)];
+    const r = aktuellerWert(messungen, "2026-10-14", "2026-10-12");
+    expect(r?.anzahlMessungen).toBe(2);
+    expect(r?.fettKg).toBeCloseTo(16, 9);
+  });
+
   it("ohne zwei Messungen nach der Kalibrierung gibt es keinen aktuellen Wert", () => {
     expect(aktuellerWert([m("2026-10-26", 80, 25, 40)], "2026-10-27", "2026-10-12")).toBeNull();
     expect(aktuellerWert([], "2026-10-27", "2026-10-12")).toBeNull();

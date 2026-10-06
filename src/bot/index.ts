@@ -4,7 +4,10 @@ import type { Db } from "../db/index.js";
 import { speichereNutzer, sportartenDerGruppe, trageMitgliedEin } from "../db/repo.js";
 import { STANDARD_SPORTARTEN, sportartenText } from "../domain/sportarten.js";
 import { log } from "../log.js";
-import { anzeigename, argumente, gruppenId, istGruppe } from "./kontext.js";
+import { anzeigename, argumente, gruppenId, gruppenZeitzone, heute, istGruppe } from "./kontext.js";
+import { nimmAnAktuellerSeasonTeil } from "../db/season-repo.js";
+import { seasonModul } from "./season.js";
+import { standModul } from "./stand.js";
 import { sportModul } from "./sport.js";
 import { WAAGE_ANLEITUNG, waageModul } from "./waage.js";
 import { HILFE, MITMACHEN_KNOPF, gruppenBegruessung, mitgliedNeu, mitgliedSchonDabei, willkommenPrivat } from "./texte.js";
@@ -15,6 +18,9 @@ export const BEFEHLE = [
   { command: "start", description: "Anmelden" },
   { command: "sport", description: "Training eintragen, z. B. /sport 45 Joggen" },
   { command: "waage", description: "Messung eintragen (nur privat)" },
+  { command: "stand", description: "Dein Punktestand" },
+  { command: "rangliste", description: "Rangliste der Season" },
+  { command: "season", description: "Season anzeigen oder anlegen" },
   { command: "sportarten", description: "Welche Sportart wie zählt" },
   { command: "hilfe", description: "So funktioniert Botzeps" },
 ];
@@ -43,6 +49,7 @@ export function erstelleBot(token: string, db: Db, botInfo?: UserFromGetMe): Bot
     }
     const nutzer = speichereNutzer(db, ctx.from.id, anzeigename(ctx));
     const neu = trageMitgliedEin(db, gruppe, nutzer.id);
+    nimmAnAktuellerSeasonTeil(db, gruppe, nutzer.id, heute(gruppenZeitzone()));
     if (neu) {
       await ctx.answerCallbackQuery({ text: "Angemeldet 💪" });
       await ctx.reply(mitgliedNeu(nutzer.name));
@@ -53,6 +60,8 @@ export function erstelleBot(token: string, db: Db, botInfo?: UserFromGetMe): Bot
 
   bot.use(sportModul(db));
   bot.use(waageModul(db));
+  bot.use(seasonModul(db));
+  bot.use(standModul(db));
 
   bot.command(["hilfe", "help"], (ctx) => ctx.reply(HILFE));
 
