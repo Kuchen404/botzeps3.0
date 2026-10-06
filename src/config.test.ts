@@ -27,4 +27,16 @@ describe("Konfiguration", () => {
     expect(ladeConfig({ BOT_TOKEN: "x", DEMO_MODUS: "1" }).DEMO_MODUS).toBe(true);
     expect(() => ladeConfig({ BOT_TOKEN: "x", DEMO_MODUS: "ja" })).toThrow(/DEMO_MODUS/);
   });
+
+  it("Backup: Standardwerte, leere Einträge zählen nicht", () => {
+    const c = ladeConfig({ BOT_TOKEN: "x", BACKUP_BEHALTEN: "", BACKUP_CHAT_ID: "", BACKUP_VERZEICHNIS: "" });
+    expect(c).toMatchObject({ BACKUP_UHRZEIT: "04:00", BACKUP_BEHALTEN: 30 });
+    expect(c.BACKUP_CHAT_ID).toBeUndefined();
+    expect(c.BACKUP_VERZEICHNIS).toBeUndefined();
+    expect(ladeConfig({ BOT_TOKEN: "x", BACKUP_BEHALTEN: "0", BACKUP_CHAT_ID: "-100123" })).toMatchObject({
+      BACKUP_BEHALTEN: 0,
+      BACKUP_CHAT_ID: -100123,
+    });
+    expect(() => ladeConfig({ BOT_TOKEN: "x", BACKUP_UHRZEIT: "25:00" })).toThrow(/BACKUP_UHRZEIT/);
+  });
 });

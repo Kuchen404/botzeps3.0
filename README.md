@@ -18,11 +18,13 @@ Dieses Grundgerüst enthält:
 - **Korrigieren** mit `/verlauf` (privat): letzte Einträge als Knöpfe, Trainingsdauer ändern oder Training/Messung löschen. Nur bis 2 Tage zurück, alles wird protokolliert, der Gruppenpost wird angepasst bzw. gelöscht.
 - **Teams** (optional): vor dem Start mit `/teams` auslosen (Ersteller oder Admins, 2 bis 4 Teams, ausbalanciert nach der letzten Season) oder mit `/team Name` selbst gründen und beitreten; Nachzügler kommen ins kleinste Team. Teampunkte = Schnitt der Mitglieder mit Startwert, +3 pro Woche, in der alle ihr Ziel schaffen. Teamwertung in `/rangliste`, `/teams`, Wochenbericht und Finale.
 - **Wochenbericht** jeden Sonntag um 20 Uhr (Ende jeder Season-Woche) in der Gruppe: Rangliste mit ⬆/⬇ zur Vorwoche, Wochenziel, Serien, Fleiß der Woche, ein Spruch pro Person (nie zweimal hintereinander derselbe), dazu der Punkteverlauf aller Teilnehmer als Diagramm (beliebig viele). Am Ende das **Finale** mit Sonderpreisen und Rückblick.
+- **Rote Laterne** 🏮: Wer in der Woche die niedrigste Last hat, bekommt im Wochenbericht den Schandtitel samt derbem Spruch und trägt 🏮 bis zum nächsten Bericht in `/rangliste`, `/stand` und der Mini App. Zählt nur, wer die ganze Woche dabei war; haben alle gleich viel, gibt's keine. Zähler pro Season, im Finale wird der „Laternenkönig“ gekürt.
 - **Erinnerungen** privat zur eigenen Uhrzeit (Standard 19:00): in der Kalibrierwoche, nach 3 Tagen ohne Training, nach 4 Tagen ohne Messung. `/erinnerungen an|aus|18:30`.
 - **Zeitplan** als Termine in der Datenbank: jeder Termin läuft genau einmal, verpasste Berichte werden nach einem Neustart nachgeholt, Erinnerungen nur bis 2 Stunden zu spät.
 - **Sprüche** (`src/texte/sprueche.json`) mit Platzhaltern und Auswahl ohne direkte Wiederholung.
-- **Mini App** (`src/miniapp/`) unter `/app`, geöffnet über den Menüknopf „Botzeps“ im privaten Chat oder `/app`: Stand mit interaktivem Punkteverlauf, Rangliste und Teams, eigene Waagenwerte als Diagramm, Einträge ändern und löschen, Erinnerungen einstellen. Anmeldung automatisch über die signierten Telegram-initData, keine PIN.
+- **Mini App** (`src/miniapp/`) unter `/app`, geöffnet über den Menüknopf „Botzeps“ im privaten Chat oder `/app`: Stand mit interaktivem Punkteverlauf, Rangliste und Teams, eigene Waagenwerte als Diagramm, Einträge ändern und löschen, Erinnerungen einstellen, im Reiter „Ruhm“ der eigene Rang mit Fortschrittsbalken, alle Erfolge und die Ruhmeshalle der Gruppe. Anmeldung automatisch über die signierten Telegram-initData, keine PIN.
 - **Docker** und Webhook-Betrieb mit `/health`-Endpunkt.
+- **Tägliches Backup** der Datenbank mit Prüfung, die letzten 30 werden aufgehoben, optional zusätzlich als Datei per Telegram (siehe „Backup und Wiederherstellen“).
 
 ## Lokal starten
 
@@ -70,7 +72,25 @@ docker compose up -d --build
 - Der Container hört auf Port 3000 (nur `127.0.0.1`). Für den Webhook braucht Telegram HTTPS: einen Reverse Proxy (z. B. Caddy, Traefik, nginx) davor setzen, der `https://<WEBHOOK_URL>/telegram` an den Container weiterreicht.
 - Die Mini App liegt unter `https://<WEBHOOK_URL>/app` und spricht mit `/api/…`; der Reverse Proxy muss diese Pfade ebenfalls weiterreichen. Eine andere Adresse geht über `MINIAPP_URL`. Beim Start setzt der Bot den Menüknopf „Botzeps“, bei BotFather ist nichts einzustellen.
 - Ohne öffentliche Adresse geht auch `BOT_MODE=polling`; dann ist kein Reverse Proxy nötig, aber auch keine Mini App (Telegram verlangt HTTPS).
-- Backup: `docker compose exec botzeps node -e "require('better-sqlite3')('/data/botzeps.db').backup('/data/backup.db')"` oder das Volume sichern.
+- Backups: siehe unten.
+
+### Backup und Wiederherstellen
+
+Der Bot sichert die Datenbank jeden Tag ab 4 Uhr (`BACKUP_UHRZEIT`) nach `/data/backups/botzeps-JJJJ-MM-TT.db` und behält die letzten 30 (`BACKUP_BEHALTEN`, `0` schaltet es ab). Jede Sicherung wird vorher auf Fehler geprüft; ein verpasstes Backup holt er nach dem Start nach.
+
+Weil die Sicherungen im selben Volume liegen, helfen sie nicht, wenn die Platte stirbt. Dafür `BACKUP_CHAT_ID` setzen: dann schickt der Bot jede Sicherung zusätzlich still als Datei in diesen Telegram-Chat, z. B. in deinen privaten Chat mit dem Bot (deine ID verrät dir z. B. @userinfobot; du musst den Bot vorher einmal mit `/start` angeschrieben haben).
+
+Sicherungen ansehen und eine zurückspielen:
+
+```bash
+docker compose exec botzeps ls -l /data/backups
+docker compose stop botzeps
+docker compose run --rm --no-deps botzeps sh -c \
+  "cp /data/botzeps.db /data/vor-wiederherstellung.db; rm -f /data/botzeps.db-wal /data/botzeps.db-shm; cp /data/backups/botzeps-2026-10-05.db /data/botzeps.db"
+docker compose start botzeps
+```
+
+Eine Sicherung aus Telegram zurückspielen: die Datei auf den Server laden, mit `docker compose cp botzeps-2026-10-05.db botzeps:/data/backups/` in den Container kopieren, dann wie oben.
 
 **Der Bot-Token gehört nie ins Repo.** Er steht nur in `.env`, die von Git ignoriert wird.
 

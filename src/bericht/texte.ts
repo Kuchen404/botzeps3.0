@@ -8,6 +8,22 @@ export interface BerichtZusatz {
   bosse?: readonly { name: string; kampf: BossKampf }[];
   /** Erfolge, die seit dem letzten Bericht neu dazugekommen sind */
   erfolge?: readonly { name: string; arten: readonly ErfolgArt[] }[];
+  /** Rote Laterne dieser Woche, mit Zähler über die Season (diese Woche eingerechnet) */
+  laterne?: readonly LaterneTraeger[];
+}
+
+export interface LaterneTraeger {
+  id: string;
+  name: string;
+  last: number;
+  anzahl: number;
+}
+
+/** „🏮 Rote Laterne: Name (3×) mit 40 Lastpunkten“, leer ohne Träger. */
+export function laternenZeile(traeger: readonly LaterneTraeger[] = []): string[] {
+  if (!traeger.length) return [];
+  const namen = traeger.map((t) => (t.anzahl > 1 ? `${t.name} (${t.anzahl}× diese Season)` : t.name)).join(", ");
+  return [`🏮 Rote Laterne: ${namen} mit ${z(traeger[0]!.last)} Lastpunkten`];
 }
 
 /** Ergebnis der Boss-Woche mit Lob für die Beteiligten und Schande für die Drückeberger. */
@@ -105,6 +121,7 @@ export function wochenbericht(
 
   const infos: string[] = [];
   if (fleissig.length) infos.push(`💪 Fleiß der Woche: ${fleissig.map((f) => f.name).join(", ")} mit ${maxLast} Lastpunkten`);
+  infos.push(...laternenZeile(zusatz.laterne));
   infos.push(
     geschafft.length
       ? `✅ Wochenziel (${season.wochenzielLast}) geschafft: ${geschafft.map((g) => g.name).join(", ")}`
@@ -132,6 +149,7 @@ export function wochenbericht(
     const opfer = verfehlt[Math.min(Math.floor(zufall() * verfehlt.length), verfehlt.length - 1)]!;
     extra.push(fuelle(waehleSpruch("wochenziel_verfehlt", undefined, zufall), { name: opfer.name }));
   }
+  for (const t of zusatz.laterne ?? []) extra.push(fuelle(waehleSpruch("rote_laterne", undefined, zufall), { name: t.name }));
   const besteSerie = [...staende].sort((a, b) => (b.wochen[woche]?.serie ?? 0) - (a.wochen[woche]?.serie ?? 0))[0];
   const serie = besteSerie?.wochen[woche]?.serie ?? 0;
   if (besteSerie && serie >= 3) {
@@ -202,6 +220,7 @@ export function finale(
   teams: readonly TeamStand[] = [],
   zufall: () => number = Math.random,
   erfolge: BerichtZusatz["erfolge"] = [],
+  laterne: { woche?: readonly LaterneTraeger[]; koenig?: { namen: string[]; anzahl: number } | null } = {},
 ): { text: string; preise: Sonderpreis[] } {
   const kopf = `🏁 Finale „${season.name}“`;
   if (staende.length === 0) return { text: `${kopf}\n\nKeiner hat mitgemacht. Dann halt nächstes Mal.`, preise: [] };
@@ -230,6 +249,7 @@ export function finale(
       : []),
     ...(preisZeilen.length ? ["", "Sonderpreise:", ...preisZeilen] : []),
     ...(neueErfolge.length ? ["", ...neueErfolge] : []),
+    ...laternenFinale(laterne.woche, laterne.koenig),
     ...(staende.length >= 2 && letzter.platz > 1
       ? ["", fuelle(waehleSpruch("finale_letzter", undefined, zufall), { name: letzter.name, punkte: z(letzter.gesamt) })]
       : []),
@@ -237,4 +257,12 @@ export function finale(
     `Rückblick: zusammen ${z(minuten / 60)} Stunden Sport. Nächste Season mit /season Name.`,
   ];
   return { text: texte.join("\n"), preise };
+}
+
+function laternenFinale(woche: readonly LaterneTraeger[] = [], koenig?: { namen: string[]; anzahl: number } | null): string[] {
+  const zeilen = laternenZeile(woche).map((l) => l.replace("Rote Laterne:", "Letzte Rote Laterne:"));
+  if (koenig && koenig.anzahl >= 2) {
+    zeilen.push(`🏮 Laternenkönig der Season: ${koenig.namen.join(" und ")} mit ${koenig.anzahl} Roten Laternen. Die Lampe darfst du behalten.`);
+  }
+  return zeilen.length ? ["", ...zeilen] : [];
 }

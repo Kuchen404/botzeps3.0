@@ -11,6 +11,10 @@ import { plusTage } from "../scoring/datum.js";
 import { type TeilnehmerStand, seasonEnde, wocheVon } from "../scoring/season.js";
 import { type Boss, bosseDerSeason } from "../db/season-repo.js";
 import { bossAnzeigename, bossEmoji, bossKampf } from "../scoring/boss.js";
+import { erfolgeDesNutzers, lebenslangeLast, ruhmeshalle } from "../db/erfolg-repo.js";
+import { ERFOLGE, ERFOLG_ARTEN } from "../scoring/erfolge.js";
+import { RAENGE, naechsterRang, rangFuer } from "../scoring/raenge.js";
+import { laternen } from "../db/laterne-repo.js";
 import type { MiniAppNutzer } from "./auth.js";
 
 /**
@@ -81,6 +85,7 @@ function ich(db: Db, nutzerId: number, telegramId: number) {
     const w = woche === null || tag < s.start ? undefined : st.wochen[woche];
     const verlauf = punkteverlauf(db, s, tag);
     const eigen = verlauf && eigenesDiagramm(s, verlauf, st.id);
+    const laterne = laternen(db, s);
     seasons.push({
       gruppe: gruppeNachId(db, s.gruppe)?.name ?? "",
       name: s.name,
@@ -100,11 +105,19 @@ function ich(db: Db, nutzerId: number, telegramId: number) {
         wochenziel: s.wochenziel_last,
         zielErreicht: w?.zielErreicht ?? false,
         serie: w?.serie ?? 0,
+        // Wie oft in dieser Season, wenn man die Rote Laterne gerade trägt
+        laterne: laterne.traeger.includes(st.id) ? (laterne.anzahl.get(st.id) ?? 1) : null,
         kalibrierMessungen: st.kalibrierMessungen,
         fettKg: st.start && st.aktuell ? { start: runde(st.start.fettKg), aktuell: runde(st.aktuell.fettKg) } : null,
         muskelKg: st.start && st.aktuell ? { start: runde(st.start.muskelKg), aktuell: runde(st.aktuell.muskelKg) } : null,
       },
-      rangliste: tag >= s.start ? staende.map((x) => ({ platz: x.platz, name: x.name, gesamt: runde(x.gesamt), ich: x.id === st.id })) : [],
+      rangliste: tag >= s.start ? staende.map((x) => ({
+              platz: x.platz,
+              name: x.name,
+              gesamt: runde(x.gesamt),
+              ich: x.id === st.id,
+              laterne: laterne.traeger.includes(x.id),
+            })) : [],
       teams: tag >= s.start ? berechneTeams(db, s, staende).map((t) => ({ platz: t.platz, name: t.name, gesamt: runde(t.gesamt), bonus: t.bonus })) : [],
       verlauf: eigen ? { x: eigen.x, reihen: eigen.reihen } : null,
       boss: tag >= s.start ? bossJson(bosseDerSeason(db, s), staende, st.id, woche, laeuft) : null,
@@ -125,6 +138,38 @@ function ich(db: Db, nutzerId: number, telegramId: number) {
     seasons,
     messungen,
     einstellungen: { erinnerungen: n.erinnerungen === 1, uhrzeit: n.erinnerung_uhrzeit },
+  };
+}
+
+/** Eigener Rang und Erfolge über alle Seasons, dazu die Ruhmeshalle jeder eigenen Gruppe. */
+function ruhm(db: Db, nutzerId: number) {
+  const last = lebenslangeLast(db, nutzerId);
+  const rang = rangFuer(last);
+  const naechster = naechsterRang(last);
+  const am = new Map(erfolgeDesNutzers(db, nutzerId).map((e) => [e.art, e.erreicht_am]));
+  return {
+    rang: {
+      name: rang.name,
+      emoji: rang.emoji,
+      ab: rang.ab,
+      last,
+      naechster: naechster ? { name: naechster.rang.name, emoji: naechster.rang.emoji, ab: naechster.rang.ab, fehlen: naechster.fehlen } : null,
+    },
+    raenge: RAENGE,
+    erfolge: ERFOLG_ARTEN.map((art) => ({ art, ...ERFOLGE[art], erreichtAm: am.get(art) ?? null })),
+    gruppen: gruppenDesNutzers(db, nutzerId).map((g) => {
+      const r = ruhmeshalle(db, g.id);
+      return {
+        name: g.name,
+        sieger: r.sieger,
+        mitglieder: r.mitglieder.map((m) => {
+          const mr = rangFuer(m.last);
+          return { name: m.name, rang: mr.name, emoji: mr.emoji, last: m.last, erfolge: m.erfolge, ich: m.nutzerId === nutzerId };
+        }),
+        hoechsteWochenlast: r.hoechsteWochenlast,
+        laengsteEinheit: r.laengsteEinheit,
+      };
+    }),
   };
 }
 
@@ -150,6 +195,9 @@ export async function bearbeiteApi(db: Db, a: Anfrage, gruppenpost: Gruppenpost)
 
   if (a.methode === "GET" && a.pfad === "/api/ich") {
     return { status: 200, json: { name: nutzer.name, ...ich(db, nutzer.id, a.nutzer.id) } };
+  }
+  if (a.methode === "GET" && a.pfad === "/api/ruhm") {
+    return { status: 200, json: ruhm(db, nutzer.id) };
   }
   if (a.methode === "GET" && a.pfad === "/api/eintraege") {
     return { status: 200, json: { eintraege: letzteEintraege(db, nutzer.id, 30).map((e) => eintragJson(e, tag)), dauern: DAUERN } };

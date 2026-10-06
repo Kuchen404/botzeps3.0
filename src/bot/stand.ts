@@ -1,3 +1,4 @@
+import { type Laternen, laternen } from "../db/laterne-repo.js";
 import { Composer, InputFile, type Context } from "grammy";
 import type { Db } from "../db/index.js";
 import { gruppenDesNutzers, speichereNutzer } from "../db/repo.js";
@@ -21,15 +22,31 @@ export function relevanteSeason(db: Db, gruppeId: number, tag: string): SeasonZe
 
 const p = (x: number) => zahlDe(x, 1);
 
-function abzeichen(st: Stand, woche: number | null): string {
+function abzeichen(st: Stand, woche: number | null, laterne?: Laternen): string {
   const w = woche === null ? undefined : st.wochen[woche];
   const teile = [];
   if (w?.zielErreicht) teile.push("✅");
   if (w && w.serie >= 2) teile.push(`🔥${w.serie}`);
+  if (laterne?.traeger.includes(st.id)) teile.push("🏮");
   return teile.length ? ` ${teile.join(" ")}` : "";
 }
 
-export function ranglisteText(s: SeasonZeile, staende: Stand[], tag: string, teams: readonly TeamStand[] = []): string {
+/** „🏮 Rote Laterne: Name (2× diese Season)“ für den aktuellen Träger, leer ohne. */
+export function laternenText(staende: readonly Stand[], l: Laternen): string[] {
+  const namen = l.traeger.map((id) => {
+    const n = l.anzahl.get(id) ?? 1;
+    return `${staende.find((st) => st.id === id)?.name ?? "?"}${n > 1 ? ` (${n}× diese Season)` : ""}`;
+  });
+  return namen.length ? [`🏮 Rote Laterne: ${namen.join(", ")}`] : [];
+}
+
+export function ranglisteText(
+  s: SeasonZeile,
+  staende: Stand[],
+  tag: string,
+  teams: readonly TeamStand[] = [],
+  laterne: Laternen = { traeger: [], anzahl: new Map() },
+): string {
   if (tag < s.start) {
     const fertig = staende.filter((st) => st.kalibrierMessungen >= FORTSCHRITT.minMessungenKalibrierung).length;
     return `„${s.name}“ startet am ${datumDe(s.start)}, Punkte gibt's danach.\nKalibrierung: ${fertig} von ${staende.length} haben ihre 3 Messungen.`;
@@ -41,7 +58,7 @@ export function ranglisteText(s: SeasonZeile, staende: Stand[], tag: string, tea
   const kopf = tag > ende ? `🏁 Endstand „${s.name}“` : `🏆 Rangliste „${s.name}“, Woche ${(woche ?? 0) + 1} von ${s.wochen}`;
   const zeilen = staende.map(
     (st) =>
-      `${st.platz}. ${st.name}: ${p(st.gesamt)} (Fleiß ${p(st.fleiss)} · Fortschritt ${st.fortschritt ? p(st.fortschritt.punkte) : "–"})${abzeichen(st, woche)}`,
+      `${st.platz}. ${st.name}: ${p(st.gesamt)} (Fleiß ${p(st.fleiss)} · Fortschritt ${st.fortschritt ? p(st.fortschritt.punkte) : "–"})${abzeichen(st, woche, laterne)}`,
   );
   const fuehrender = staende[0]!;
   const zweiter = staende[1];
@@ -67,10 +84,17 @@ export function ranglisteText(s: SeasonZeile, staende: Stand[], tag: string, tea
   const fleissig = woche === null ? [] : fleissDerWoche(staende, woche);
   const titel = fleissig.length ? [`💪 Fleiß der Woche bisher: ${fleissig.map((f) => f.name).join(", ")}`] : [];
   const team = teamZeilen(teams);
-  return [kopf, "", ...zeilen, ...(team.length ? ["", ...team] : []), "", ...titel, ...sprueche].join("\n");
+  return [kopf, "", ...zeilen, ...(team.length ? ["", ...team] : []), "", ...titel, ...laternenText(staende, laterne), ...sprueche].join("\n");
 }
 
-export function standText(s: SeasonZeile, st: Stand, anzahl: number, tag: string, privat: boolean): string {
+export function standText(
+  s: SeasonZeile,
+  st: Stand,
+  anzahl: number,
+  tag: string,
+  privat: boolean,
+  laterne: Laternen = { traeger: [], anzahl: new Map() },
+): string {
   const ende = seasonEnde(s);
   const zeilen = [`📊 ${st.name} in „${s.name}“`];
   if (tag >= s.start) zeilen.push(`Platz ${st.platz} von ${anzahl} mit ${p(st.gesamt)} Punkten`);
@@ -84,6 +108,10 @@ export function standText(s: SeasonZeile, st: Stand, anzahl: number, tag: string
     zeilen.push(`Fleiß: ${p(st.fleiss)} Punkte${serie >= 2 ? `, Serie ${serie} Wochen 🔥` : ""}`);
   }
   if (st.bossBonus) zeilen.push(`Boss-Bonus: +${p(st.bossBonus)} Punkte 🐉`);
+  if (laterne.traeger.includes(st.id)) {
+    const n = laterne.anzahl.get(st.id) ?? 1;
+    zeilen.push(`🏮 Du trägst die Rote Laterne${n > 1 ? ` (schon ${n}× diese Season)` : ""}. Weg ist sie erst, wenn diese Woche jemand fauler ist als du.`);
+  }
 
   if (!st.start) {
     const fenster = kalibrierFenster(s, st.beitritt);
@@ -117,7 +145,7 @@ export function standModul(db: Db): Composer<Context> {
       return;
     }
     const staende = berechneStand(db, s, tag);
-    await ctx.reply(ranglisteText(s, staende, tag, tag >= s.start ? berechneTeams(db, s, staende) : []));
+    await ctx.reply(ranglisteText(s, staende, tag, tag >= s.start ? berechneTeams(db, s, staende) : [], laternen(db, s)));
   });
 
   modul.command("stand", async (ctx) => {
@@ -135,7 +163,7 @@ export function standModul(db: Db): Composer<Context> {
       const staende = berechneStand(db, s, tag);
       const ich = staende.find((st) => st.telegramId === von.id);
       if (!ich) continue;
-      texte.push(standText(s, ich, staende.length, tag, hier === null));
+      texte.push(standText(s, ich, staende.length, tag, hier === null, laternen(db, s)));
       if (tag >= s.start) diagramme.push({ s, id: ich.id });
     }
     const rang = rangZeile(lebenslangeLast(db, nutzer.id));

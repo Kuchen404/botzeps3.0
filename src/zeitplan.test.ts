@@ -109,6 +109,41 @@ describe("Zeitplan", () => {
     expect(fotos).toHaveLength(3);
   });
 
+  it("Rote Laterne für die niedrigste Wochenlast, mit Zähler, in Rangliste und Stand bis zum nächsten Bericht", async () => {
+    const t = await aufbau();
+    const { bot, berichte, lauf } = t;
+    tag("2026-10-14");
+    await bot.handleUpdate(befehl("/sport 100 Joggen"));
+    await bot.handleUpdate(befehl("/sport 30 Yoga", GRUPPE, PETER));
+    await lauf("2026-10-18T18:00:30Z");
+    expect(berichte()[0]).toContain("🏮 Rote Laterne: Peter mit 30 Lastpunkten");
+    expect(berichte()[0]).toMatch(/🏮 .*Peter/); // Spruch dazu
+
+    tag("2026-10-20");
+    await bot.handleUpdate(befehl("/rangliste"));
+    expect(t.letzterText()).toMatch(/2\. Peter: .* 🏮/);
+    expect(t.letzterText()).toContain("🏮 Rote Laterne: Peter");
+    await bot.handleUpdate(befehl("/sport 60 Joggen"));
+    await lauf("2026-10-25T19:00:30Z");
+    expect(berichte().at(-1)).toContain("🏮 Rote Laterne: Peter (2× diese Season) mit 0 Lastpunkten");
+    tag("2026-10-26");
+    await bot.handleUpdate(befehl("/stand", PETER_PRIVAT, PETER));
+    expect(t.letzterText()).toContain("Du trägst die Rote Laterne (schon 2× diese Season)");
+
+    tag("2026-10-27");
+    await bot.handleUpdate(befehl("/sport 30 Joggen"));
+    await lauf("2026-11-01T19:00:30Z");
+    const finale = berichte().at(-1)!;
+    expect(finale).toContain("Letzte Rote Laterne: Peter (3× diese Season)");
+    expect(finale).toContain("Laternenkönig der Season: Peter mit 3 Roten Laternen");
+  });
+
+  it("keine Rote Laterne, wenn alle gleich faul waren", async () => {
+    const { berichte, lauf } = await aufbau();
+    await lauf("2026-10-18T18:00:30Z");
+    expect(berichte()[0]).not.toContain("Rote Laterne");
+  });
+
   it("mit Teams: Teamwertung, Team-Bonus und Teamsieger", async () => {
     const { bot, berichte, lauf } = await aufbau();
     tag("2026-10-08");

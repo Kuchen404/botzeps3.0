@@ -22,6 +22,7 @@ services:
       BOT_TOKEN: ${DEMO_BOT_TOKEN:-}
       BOT_MODE: polling
       DEMO_MODUS: "1"
+      BACKUP_BEHALTEN: "0"
       DATABASE_PATH: /data/demo.db
       MINIAPP_URL: ${DEMO_MINIAPP_URL:-}
       TZ: Europe/Berlin

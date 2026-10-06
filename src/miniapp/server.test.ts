@@ -89,8 +89,8 @@ describe("Mini App", () => {
       expect(s.ich).toMatchObject({ platz: 1, gesamt: 110, fleiss: 10, fortschritt: 100, wochenLast: 300, zielErreicht: true });
       expect(s.ich.fettKg).toEqual({ start: 27, aktuell: 24.3 });
       expect(s.rangliste).toEqual([
-        { platz: 1, name: "Kevin", gesamt: 110, ich: true },
-        { platz: 2, name: "Peter", gesamt: 1, ich: false },
+        { platz: 1, name: "Kevin", gesamt: 110, ich: true, laterne: false },
+        { platz: 2, name: "Peter", gesamt: 1, ich: false, laterne: false },
       ]);
       expect(s.verlauf.x).toEqual(["Start", "W1"]);
       expect(json.messungen).toHaveLength(5);
@@ -171,6 +171,33 @@ describe("Mini App", () => {
       expect((await holen("/api/ich")).json.einstellungen).toEqual({ erinnerungen: false, uhrzeit: "18:30" });
       expect((await holen("/api/einstellungen", KEVIN, { uhrzeit: "25:00" })).status).toBe(400);
       expect((await holen("/api/gibtsnicht")).status).toBe(404);
+    } finally {
+      server.close();
+    }
+  });
+
+  it("/api/ruhm: Rang mit Weg zum nächsten, alle Erfolge, Ruhmeshalle der Gruppe", async () => {
+    const { server, holen } = await aufbau();
+    try {
+      const r = await holen("/api/ruhm");
+      expect(r.status).toBe(200);
+      expect(r.json.rang).toMatchObject({ name: "Couchkartoffel", ab: 0, naechster: { name: "Lauch", ab: 1000 } });
+      expect(r.json.rang.last).toBeGreaterThan(0);
+      expect(r.json.rang.naechster.fehlen).toBe(1000 - r.json.rang.last);
+      expect(r.json.raenge).toHaveLength(7);
+      expect(r.json.erfolge).toHaveLength(14);
+      expect(r.json.erfolge.find((e: { art: string }) => e.art === "erste_einheit")).toMatchObject({
+        titel: "Erster Schweißtropfen",
+        erreichtAm: "2026-10-14",
+      });
+      expect(r.json.erfolge.find((e: { art: string }) => e.art === "champion").erreichtAm).toBeNull();
+      expect(r.json.gruppen).toHaveLength(1);
+      const mitglieder = r.json.gruppen[0].mitglieder as { name: string; ich: boolean; emoji: string }[];
+      expect(mitglieder.map((m) => m.name)).toEqual(["Kevin", "Peter"]);
+      expect(mitglieder[0]).toMatchObject({ ich: true, emoji: "🛋" });
+      expect(r.json.gruppen[0].laengsteEinheit).toMatchObject({ name: "Kevin", minuten: 100 });
+      // Keine Waagenwerte anderer Leute
+      expect(JSON.stringify(r.json)).not.toContain("fett");
     } finally {
       server.close();
     }

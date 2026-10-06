@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+/** Leere Einträge in .env zählen wie nicht gesetzt (sonst würde "" zu 0). */
+const leerIstNichts = (v: unknown) => (v === "" ? undefined : v);
+
 const schema = z
   .object({
     BOT_TOKEN: z.string().min(1, "BOT_TOKEN fehlt (siehe .env.example)"),
@@ -11,6 +14,15 @@ const schema = z
     DATABASE_PATH: z.string().min(1).default("./data/botzeps.db"),
     TZ: z.string().default("Europe/Berlin"),
     LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
+    // Tägliches Backup: Verzeichnis (leer = "backups" neben der Datenbank), Uhrzeit, Anzahl (0 = aus)
+    BACKUP_VERZEICHNIS: z.preprocess(leerIstNichts, z.string().optional()),
+    BACKUP_UHRZEIT: z
+      .string()
+      .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Format HH:MM")
+      .default("04:00"),
+    BACKUP_BEHALTEN: z.preprocess(leerIstNichts, z.coerce.number().int().min(0).default(30)),
+    // Optional: Telegram-Chat (z. B. deine eigene ID), an den jede Sicherung als Datei geht
+    BACKUP_CHAT_ID: z.preprocess(leerIstNichts, z.coerce.number().int().optional()),
     // Nur für einen Test-Bot: Fake-Teilnehmer und Zeitsprünge (/demo, /vorspulen)
     DEMO_MODUS: z
       .enum(["0", "1", "true", "false", ""])

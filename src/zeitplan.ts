@@ -10,7 +10,9 @@ import { diagrammPng, gruppenDiagramm, punkteverlauf } from "./bericht/punktever
 import { type Extras, type Vorwoche, finale, wochenbericht } from "./bericht/texte.js";
 import { lokalesDatum, plusTage, tageZwischen, zeitpunktIn } from "./scoring/datum.js";
 import { FORTSCHRITT } from "./scoring/fortschritt.js";
-import { kalibrierFenster, seasonEnde } from "./scoring/season.js";
+import { kalibrierFenster, roteLaterne, seasonEnde } from "./scoring/season.js";
+import { laternen } from "./db/laterne-repo.js";
+import type { LaterneTraeger } from "./bericht/texte.js";
 import { log } from "./log.js";
 import { abgelaufeneAbstimmungen, beendeAbstimmung } from "./db/abstimmung-repo.js";
 import { setzeGruppenNachricht } from "./db/repo.js";
@@ -136,10 +138,26 @@ async function berichte(db: Db, senden: Sender, t: TerminZeile, zeitzone: string
   const bossSieger = new Set(kaempfe.filter((k) => k.kampf.besiegt).flatMap((k) => k.kampf.beteiligte));
   const erfolge = neueErfolge(db, s, staende, bossSieger, stichtag, art === "finale");
 
+  // Rote Laterne dieser Woche; der Zähler kommt aus den früheren Berichten
+  const bisher = laternen(db, s, woche);
+  const wochenLast = (st: (typeof staende)[number]) => st.wochen[woche]?.last ?? 0;
+  const laterne: LaterneTraeger[] = roteLaterne(
+    s.start,
+    woche,
+    staende.map((st) => ({ id: st.id, beitritt: st.beitritt, last: wochenLast(st) })),
+  ).map((id) => {
+    const st = staende.find((x) => x.id === id)!;
+    return { id, name: st.name, last: wochenLast(st), anzahl: (bisher.anzahl.get(id) ?? 0) + 1 };
+  });
+
   let text: string;
   const vorlagen = new Map<string, string>();
   if (art === "finale") {
-    const ergebnis = finale(s, staende, extras(db, s), teams, Math.random, erfolge);
+    const anzahl = new Map(bisher.anzahl);
+    for (const t of laterne) anzahl.set(t.id, t.anzahl);
+    const meiste = Math.max(0, ...anzahl.values());
+    const koenig = { namen: staende.filter((st) => anzahl.get(st.id) === meiste).map((st) => st.name), anzahl: meiste };
+    const ergebnis = finale(s, staende, extras(db, s), teams, Math.random, erfolge, { woche: laterne, koenig });
     text = ergebnis.text;
     const preis = db.prepare("INSERT OR IGNORE INTO auszeichnung (season, nutzer, art) VALUES (?, ?, ?)");
     for (const p of ergebnis.preise) for (const id of p.gewinner) preis.run(s.id, Number(id), p.art);
@@ -147,6 +165,7 @@ async function berichte(db: Db, senden: Sender, t: TerminZeile, zeitzone: string
     const bericht = wochenbericht({ name: s.name, wochen: s.wochen, wochenzielLast: s.wochenziel_last }, woche, staende, vorwoche, teams, Math.random, {
       bosse: kaempfe.filter((k) => k.kampf.woche === woche),
       erfolge,
+      laterne,
     });
     text = bericht.text;
     for (const z of bericht.sprueche) vorlagen.set(z.id, z.vorlage);
