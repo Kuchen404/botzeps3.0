@@ -6,6 +6,7 @@ const schema = z
     BOT_MODE: z.enum(["polling", "webhook"]).default("polling"),
     WEBHOOK_URL: z.url().optional().or(z.literal("").transform(() => undefined)),
     WEBHOOK_SECRET: z.string().optional().or(z.literal("").transform(() => undefined)),
+    MINIAPP_URL: z.url().startsWith("https://", "Mini App braucht HTTPS").optional().or(z.literal("").transform(() => undefined)),
     PORT: z.coerce.number().int().positive().default(3000),
     DATABASE_PATH: z.string().min(1).default("./data/botzeps.db"),
     TZ: z.string().default("Europe/Berlin"),

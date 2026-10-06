@@ -23,6 +23,7 @@ export const BEFEHLE = [
   { command: "sport", description: "Training eintragen, z. B. /sport 45 Joggen" },
   { command: "waage", description: "Messung eintragen (nur privat)" },
   { command: "stand", description: "Dein Punktestand" },
+  { command: "app", description: "Mini App mit Diagrammen und Einstellungen" },
   { command: "verlauf", description: "Einträge korrigieren oder löschen (privat)" },
   { command: "rangliste", description: "Rangliste der Season" },
   { command: "season", description: "Season anzeigen oder anlegen" },
@@ -34,14 +35,37 @@ export const BEFEHLE = [
   { command: "hilfe", description: "So funktioniert Botzeps" },
 ];
 
-export function erstelleBot(token: string, db: Db, botInfo?: UserFromGetMe): Bot {
+export function erstelleBot(token: string, db: Db, botInfo?: UserFromGetMe, optionen: { miniAppUrl?: string } = {}): Bot {
   const bot = new Bot(token, botInfo ? { botInfo } : undefined);
+
+  bot.command("app", async (ctx) => {
+    if (!optionen.miniAppUrl) {
+      await ctx.reply("Die Mini App ist auf diesem Server noch nicht eingerichtet (MINIAPP_URL bzw. Webhook fehlt).");
+      return;
+    }
+    // Web-App-Knöpfe gehen nur im privaten Chat
+    if (istGruppe(ctx)) {
+      await ctx.reply("Die Mini App öffnest du privat beim Bot, unten links über „Botzeps“.", {
+        reply_markup: new InlineKeyboard().url("Zum Bot", `https://t.me/${ctx.me.username}?start=app`),
+      });
+      return;
+    }
+    await ctx.reply("Stand, Diagramme, Waage, Einträge und Einstellungen:", {
+      reply_markup: new InlineKeyboard().webApp("📊 Botzeps öffnen", optionen.miniAppUrl),
+    });
+  });
 
   bot.command("start", async (ctx) => {
     if (!ctx.from) return;
     const nutzer = speichereNutzer(db, ctx.from.id, anzeigename(ctx));
     const gruppe = gruppenId(db, ctx);
     if (gruppe === null) {
+      if (argumente(ctx) === "app" && optionen.miniAppUrl) {
+        await ctx.reply("Hier ist die Mini App:", {
+          reply_markup: new InlineKeyboard().webApp("📊 Botzeps öffnen", optionen.miniAppUrl),
+        });
+        return;
+      }
       if (argumente(ctx) === "verlauf") {
         await ctx.reply("Hier ist dein Verlauf: /verlauf");
         return;
