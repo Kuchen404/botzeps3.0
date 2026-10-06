@@ -9,6 +9,7 @@ import { nimmAnAktuellerSeasonTeil } from "../db/season-repo.js";
 import { seasonModul } from "./season.js";
 import { standModul } from "./stand.js";
 import { erinnerungsModul } from "./erinnerungen.js";
+import { verlaufModul } from "./verlauf.js";
 import { sportModul } from "./sport.js";
 import { WAAGE_ANLEITUNG, waageModul } from "./waage.js";
 import { HILFE, MITMACHEN_KNOPF, gruppenBegruessung, mitgliedNeu, mitgliedSchonDabei, willkommenPrivat } from "./texte.js";
@@ -20,6 +21,7 @@ export const BEFEHLE = [
   { command: "sport", description: "Training eintragen, z. B. /sport 45 Joggen" },
   { command: "waage", description: "Messung eintragen (nur privat)" },
   { command: "stand", description: "Dein Punktestand" },
+  { command: "verlauf", description: "Einträge korrigieren oder löschen (privat)" },
   { command: "rangliste", description: "Rangliste der Season" },
   { command: "season", description: "Season anzeigen oder anlegen" },
   { command: "sportarten", description: "Welche Sportart wie zählt" },
@@ -35,6 +37,10 @@ export function erstelleBot(token: string, db: Db, botInfo?: UserFromGetMe): Bot
     const nutzer = speichereNutzer(db, ctx.from.id, anzeigename(ctx));
     const gruppe = gruppenId(db, ctx);
     if (gruppe === null) {
+      if (argumente(ctx) === "verlauf") {
+        await ctx.reply("Hier ist dein Verlauf: /verlauf");
+        return;
+      }
       await ctx.reply(argumente(ctx) === "waage" ? WAAGE_ANLEITUNG : willkommenPrivat(nutzer.name));
       return;
     }
@@ -65,6 +71,7 @@ export function erstelleBot(token: string, db: Db, botInfo?: UserFromGetMe): Bot
   bot.use(seasonModul(db));
   bot.use(standModul(db));
   bot.use(erinnerungsModul(db));
+  bot.use(verlaufModul(db));
 
   bot.command(["hilfe", "help"], (ctx) => ctx.reply(HILFE));
 

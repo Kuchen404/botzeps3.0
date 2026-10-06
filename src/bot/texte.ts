@@ -11,6 +11,7 @@ Befehle:
 /sport – dasselbe mit Knöpfen
 /waage 82,4 18,5 41,2 – Gewicht, Fett %, Muskel % (nur privat)
 /stand – dein Punktestand (privat mit Details)
+/verlauf – letzte Einträge ändern oder löschen (bis 2 Tage zurück, nur privat)
 /rangliste – wer vorne liegt und wer die Couch wärmt
 /season Name – neue Season anlegen (in der Gruppe), /season zeigt die aktuelle
 /sportarten – welche Sportart wie zählt
