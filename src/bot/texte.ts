@@ -6,10 +6,13 @@ So läuft's:
 
 Befehle:
 /start – anmelden
+/sport 45 Joggen – Training eintragen (wird in der Gruppe gepostet), auch „gestern“ oder „vorgestern“ am Ende
+/sport – dasselbe mit Knöpfen
+/waage 82,4 18,5 41,2 – Gewicht, Fett %, Muskel % (nur privat)
 /sportarten – welche Sportart wie zählt
 /hilfe – diese Hilfe
 
-Bald: /sport, /waage, /stand, /rangliste, /season`;
+Bald: /stand, /rangliste, /season`;
 
 export const MITMACHEN_KNOPF = "Ich bin dabei 💪";
 

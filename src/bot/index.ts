@@ -1,34 +1,23 @@
-import { Bot, InlineKeyboard, type Context } from "grammy";
+import { Bot, InlineKeyboard } from "grammy";
 import type { UserFromGetMe } from "grammy/types";
 import type { Db } from "../db/index.js";
-import { speichereGruppe, speichereNutzer, sportartenDerGruppe, trageMitgliedEin } from "../db/repo.js";
+import { speichereNutzer, sportartenDerGruppe, trageMitgliedEin } from "../db/repo.js";
 import { STANDARD_SPORTARTEN, sportartenText } from "../domain/sportarten.js";
 import { log } from "../log.js";
+import { anzeigename, argumente, gruppenId, istGruppe } from "./kontext.js";
+import { sportModul } from "./sport.js";
+import { WAAGE_ANLEITUNG, waageModul } from "./waage.js";
 import { HILFE, MITMACHEN_KNOPF, gruppenBegruessung, mitgliedNeu, mitgliedSchonDabei, willkommenPrivat } from "./texte.js";
 
 const MITMACHEN = "mitmachen";
 
 export const BEFEHLE = [
   { command: "start", description: "Anmelden" },
+  { command: "sport", description: "Training eintragen, z. B. /sport 45 Joggen" },
+  { command: "waage", description: "Messung eintragen (nur privat)" },
   { command: "sportarten", description: "Welche Sportart wie zählt" },
   { command: "hilfe", description: "So funktioniert Botzeps" },
 ];
-
-function anzeigename(ctx: Context): string {
-  const u = ctx.from;
-  if (!u) return "Unbekannt";
-  return [u.first_name, u.last_name].filter(Boolean).join(" ") || u.username || String(u.id);
-}
-
-function istGruppe(ctx: Context): boolean {
-  return ctx.chat?.type === "group" || ctx.chat?.type === "supergroup";
-}
-
-function gruppenId(db: Db, ctx: Context): number | null {
-  const chat = ctx.chat;
-  if (!chat || (chat.type !== "group" && chat.type !== "supergroup")) return null;
-  return speichereGruppe(db, chat.id, chat.title);
-}
 
 export function erstelleBot(token: string, db: Db, botInfo?: UserFromGetMe): Bot {
   const bot = new Bot(token, botInfo ? { botInfo } : undefined);
@@ -38,7 +27,7 @@ export function erstelleBot(token: string, db: Db, botInfo?: UserFromGetMe): Bot
     const nutzer = speichereNutzer(db, ctx.from.id, anzeigename(ctx));
     const gruppe = gruppenId(db, ctx);
     if (gruppe === null) {
-      await ctx.reply(willkommenPrivat(nutzer.name));
+      await ctx.reply(argumente(ctx) === "waage" ? WAAGE_ANLEITUNG : willkommenPrivat(nutzer.name));
       return;
     }
     await ctx.reply(gruppenBegruessung(ctx.chat.title ?? "die Gruppe"), {
@@ -61,6 +50,9 @@ export function erstelleBot(token: string, db: Db, botInfo?: UserFromGetMe): Bot
       await ctx.answerCallbackQuery({ text: mitgliedSchonDabei(), show_alert: true });
     }
   });
+
+  bot.use(sportModul(db));
+  bot.use(waageModul(db));
 
   bot.command(["hilfe", "help"], (ctx) => ctx.reply(HILFE));
 
