@@ -51,6 +51,40 @@
   label.schalter { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; }
   input[type=time] { font-size: 16px; padding: 6px; border-radius: 8px; border: 1px solid var(--hint); background: var(--bg); color: var(--text); }
   .fehler { color: var(--danger); padding: 16px; }
+  /* Boss-Kampf */
+  .arena { position: relative; border-radius: 12px; padding: 12px 8px 10px; overflow: hidden; color: #fff;
+    background: radial-gradient(circle at 50% 35%, #5b2a86 0%, #26123d 70%); }
+  .arena.stufe2 { background: radial-gradient(circle at 50% 35%, #a3171d 0%, #3b0a0c 70%); }
+  .lp { position: relative; height: 16px; border-radius: 8px; background: rgba(255,255,255,.18); overflow: hidden; margin: 0 6px; }
+  .lp > .rest { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, #ff3b30, #ff9500); transition: width .35s ease-out; }
+  .lp > .text { position: absolute; inset: 0; text-align: center; font-size: 11px; line-height: 16px; font-weight: 700; text-shadow: 0 1px 2px #000; }
+  .bossplatz { position: relative; height: 150px; display: flex; align-items: center; justify-content: center; }
+  .bossbild { font-size: 92px; line-height: 1; animation: schweben 2.4s ease-in-out infinite; filter: drop-shadow(0 6px 10px rgba(0,0,0,.5)); }
+  .stufe2 .bossbild { font-size: 116px; animation: schweben 1.6s ease-in-out infinite, wut 0.8s ease-in-out infinite alternate;
+    filter: drop-shadow(0 0 14px #ff2d2d) drop-shadow(0 6px 10px rgba(0,0,0,.6)); }
+  .muckis { position: absolute; font-size: 34px; top: 58px; }
+  .muckis.l { left: 18%; transform: scaleX(-1); } .muckis.r { right: 18%; }
+  .bossplatz.tot .muckis { opacity: 0; transition: opacity .5s; }
+  .bossplatz.tot .bossbild { animation: none; transform: rotate(90deg) translateY(10px); opacity: .45; filter: grayscale(1); transition: all .8s ease-in; }
+  .stempel { position: absolute; top: 46%; left: 50%; transform: translate(-50%, -50%) rotate(-12deg); font-size: 26px; font-weight: 900;
+    padding: 2px 10px; border: 3px solid currentColor; border-radius: 6px; letter-spacing: .06em; animation: stempeln .4s ease-out; }
+  .stempel.sieg { color: #34c759; } .stempel.niederlage { color: #ffcc00; }
+  .zahl { position: absolute; left: 50%; top: 40%; font-weight: 900; font-size: 22px; color: #ffcc00; text-shadow: 0 2px 3px #000; pointer-events: none;
+    animation: aufsteigen .9s ease-out forwards; }
+  .faust { position: absolute; font-size: 22px; pointer-events: none; z-index: 2; }
+  .kaempfer { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 10px; margin-top: 6px; }
+  .kaempfer > div { width: 58px; text-align: center; font-size: 11px; line-height: 1.2; }
+  .avatar { width: 40px; height: 40px; margin: 0 auto 3px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 15px; border: 2px solid rgba(255,255,255,.7); }
+  .kaempfer .ich .avatar { border-color: #ffcc00; box-shadow: 0 0 8px #ffcc00; }
+  .kaempfer .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .kaempfer .schaden { opacity: .8; }
+  .bossinfo { margin-top: 8px; }
+  @keyframes schweben { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+  @keyframes wut { from { scale: 1; } to { scale: 1.06; } }
+  @keyframes aufsteigen { from { opacity: 1; transform: translate(-50%, 0); } to { opacity: 0; transform: translate(-50%, -46px); } }
+  @keyframes stempeln { from { transform: translate(-50%, -50%) rotate(-12deg) scale(2.2); opacity: 0; } to { transform: translate(-50%, -50%) rotate(-12deg) scale(1); opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { .bossbild, .stufe2 .bossbild, .stempel, .zahl { animation: none !important; } }
 </style>
 </head>
 <body>
@@ -151,6 +185,104 @@ function diagramm(x, reihen, einheit) {
   return el("div", {}, [legende, svg, tipp]);
 }
 
+var bossGezeigt = {};
+var BEWEGUNG = !(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+var FARBEN = ["#ff6b6b", "#4dabf7", "#51cf66", "#fcc419", "#cc5de8", "#ff922b", "#20c997", "#f06595"];
+
+function initialen(name) {
+  var t = name.trim().split(/\s+/);
+  return ((t[0] || "?").charAt(0) + (t.length > 1 ? t[t.length - 1].charAt(0) : "")).toUpperCase();
+}
+function farbe(name) {
+  var h = 0;
+  for (var i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return FARBEN[h % FARBEN.length];
+}
+
+/** Boss mit Lebensbalken und den Kämpfern davor; beim ersten Anzeigen schlagen sie nacheinander zu. */
+function bossKarte(b) {
+  var lpText = el("div", { class: "text" });
+  var rest = el("div", { class: "rest" });
+  var bild = el("div", { class: "bossbild", text: b.emoji });
+  var platz = el("div", { class: "bossplatz" }, [
+    b.stufe === 2 ? el("span", { class: "muckis l", text: "💪" }) : null,
+    bild,
+    b.stufe === 2 ? el("span", { class: "muckis r", text: "💪" }) : null
+  ]);
+  var reihe = el("div", { class: "kaempfer" }, b.kaempfer.map(function (k) {
+    return el("div", { class: k.ich ? "ich" : "" }, [
+      el("div", { class: "avatar", style: "background:" + farbe(k.name), text: initialen(k.name) }),
+      el("div", { class: "name", text: k.name }),
+      el("div", { class: "schaden", text: "−" + zahl(k.schaden, 0) })
+    ]);
+  }));
+  var arena = el("div", { class: "arena" + (b.stufe === 2 ? " stufe2" : "") }, [el("div", { class: "lp" }, [rest, lpText]), platz, reihe]);
+  if (!b.kaempfer.length) reihe.appendChild(el("div", { class: "hint", style: "width:auto;color:#ddd", text: "Noch keiner hat sich getraut." }));
+
+  var info = el("div", { class: "bossinfo" });
+  var nochmal = el("button", { class: "knopf leise", text: "↻ Nochmal kämpfen", onclick: function () { spiele(true); } });
+  nochmal.hidden = !b.kaempfer.length || !BEWEGUNG;
+
+  function setzeLp(schaden) {
+    var uebrig = Math.max(0, b.lebenspunkte - schaden);
+    rest.style.width = (uebrig / b.lebenspunkte * 100) + "%";
+    lpText.textContent = zahl(uebrig, 0) + " / " + zahl(b.lebenspunkte, 0) + " LP";
+  }
+  function ende() {
+    setzeLp(b.schaden);
+    platz.querySelectorAll(".stempel").forEach(function (x) { x.remove(); });
+    platz.classList.toggle("tot", b.besiegt);
+    if (b.besiegt) platz.appendChild(el("div", { class: "stempel sieg", text: "BESIEGT" }));
+    else if (!b.aktiv) platz.appendChild(el("div", { class: "stempel niederlage", text: "ÜBERLEBT" }));
+    var texte = [];
+    if (b.besiegt) texte.push(el("p", { text: "💀 Erledigt! +" + b.bonus + " Punkte für alle, die mitgeprügelt haben." }));
+    else if (b.aktiv) texte.push(el("p", { text: "Noch " + zahl(b.lebenspunkte - b.schaden, 0) + " Lebenspunkte. Hau rein, jeder Lastpunkt bis Sonntag ist Schaden. Fällt er, gibt's +" + b.bonus + " Punkte." }));
+    else texte.push(el("p", { text: "Er hat überlebt und lacht euch aus. Kein Bonus." }));
+    if (b.drueckeberger.length) texte.push(el("p", { class: "hint", text: "Versteckt sich hinter dem Sofa: " + b.drueckeberger.join(", ") }));
+    info.replaceChildren.apply(info, texte);
+  }
+  function spiele(erzwingen) {
+    var schluessel = b.name + ":" + b.woche + ":" + b.schaden;
+    if (!BEWEGUNG || !b.kaempfer.length || (bossGezeigt[schluessel] && !erzwingen)) { ende(); return; }
+    bossGezeigt[schluessel] = true;
+    platz.classList.remove("tot");
+    platz.querySelectorAll(".stempel").forEach(function (x) { x.remove(); });
+    info.replaceChildren();
+    setzeLp(0);
+    // Schwächste zuerst, der stärkste Schlag zum Schluss
+    var reihenfolge = b.kaempfer.map(function (k, i) { return i; }).reverse();
+    var takt = Math.max(320, Math.min(750, 4500 / reihenfolge.length));
+    var summe = 0;
+    reihenfolge.forEach(function (i, n) {
+      setTimeout(function () {
+        if (!arena.isConnected) return;
+        var k = b.kaempfer[i], kaempfer = reihe.children[i];
+        kaempfer.animate([{ transform: "translateY(0)" }, { transform: "translateY(-16px) scale(1.12)" }, { transform: "translateY(0)" }], { duration: takt * 0.8 });
+        var a = arena.getBoundingClientRect(), von = kaempfer.getBoundingClientRect(), ziel = bild.getBoundingClientRect();
+        var faust = el("span", { class: "faust", text: "👊" });
+        faust.style.left = (von.left - a.left + von.width / 2 - 11) + "px";
+        faust.style.top = (von.top - a.top) + "px";
+        arena.appendChild(faust);
+        var dx = ziel.left + ziel.width / 2 - von.left - von.width / 2, dy = ziel.top + ziel.height / 2 - von.top;
+        faust.animate([{ transform: "translate(0,0) scale(.8)" }, { transform: "translate(" + dx + "px," + dy + "px) scale(1.4)" }], { duration: takt * 0.45, easing: "ease-in" })
+          .onfinish = function () {
+            faust.remove();
+            summe += k.schaden;
+            setzeLp(summe);
+            bild.animate([{ transform: "translateX(0)", filter: "brightness(2.5)" }, { transform: "translateX(-9px)" }, { transform: "translateX(9px)" }, { transform: "translateX(0)", filter: "brightness(1)" }], { duration: 260 });
+            platz.appendChild(el("div", { class: "zahl", text: "−" + zahl(k.schaden, 0) }));
+            setTimeout(function () { platz.querySelectorAll(".zahl")[0] && platz.querySelectorAll(".zahl")[0].remove(); }, 950);
+            if (n === reihenfolge.length - 1) setTimeout(ende, 450);
+          };
+      }, 400 + n * takt);
+    });
+  }
+  setzeLp(0);
+  setTimeout(function () { spiele(false); }, 0);
+  var titel = (b.aktiv ? "🐉 Boss-Woche " : "🐉 Boss aus Woche ") + b.woche;
+  return karte(titel, [el("div", { class: "gross", style: "font-size:20px", text: b.name }), arena, info, nochmal]);
+}
+
 function standTab(s) {
   var kinder = [];
   if (!s) return [karte(null, [el("p", { text: "Du bist in keiner Season. In der Gruppe /season tippen oder trainieren, dann bist du dabei." })])];
@@ -163,6 +295,7 @@ function standTab(s) {
     ]));
     return kinder;
   }
+  if (s.boss && s.boss.aktiv) kinder.push(bossKarte(s.boss));
   kinder.push(karte(s.laeuft ? "Woche " + s.woche + " von " + s.wochen : "Endstand", [
     el("div", { class: "gross", text: zahl(ich.gesamt) + " Punkte" }),
     el("div", { text: "Platz " + ich.platz + " von " + s.anzahl }),
@@ -183,6 +316,7 @@ function standTab(s) {
       zeile("Muskelmasse", zahl(ich.muskelKg.start) + " → " + zahl(ich.muskelKg.aktuell) + " kg")
     ]));
   }
+  if (s.boss && !s.boss.aktiv) kinder.push(bossKarte(s.boss));
   if (s.verlauf) kinder.push(karte("Punkteverlauf", [diagramm(s.verlauf.x, s.verlauf.reihen, "Punkte")]));
   if (s.teams.length) kinder.push(karte("Teams", s.teams.map(function (t) {
     return zeile(t.platz + ". " + t.name, zahl(t.gesamt) + (t.bonus ? " (inkl. " + zahl(t.bonus) + " Bonus)" : ""));
