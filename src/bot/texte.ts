@@ -3,6 +3,7 @@ export const HILFE = `Botzeps 3.0 – Sport in der Gruppe, mit Punkten und ohne 
 So läuft's:
 • Fleiß: Jede Einheit zählt als Minuten × Faktor der Sportart (leicht ×1, mittel ×2, intensiv ×3). Wochenziel 300, das gibt 10 Punkte, maximal 15.
 • Fortschritt: Fett- und Muskelmasse von der Waage, relativ zum Startwert aus der Kalibrierwoche.
+• Jeden Sonntag um 20 Uhr kommt der Wochenbericht, am Ende das Finale mit Sonderpreisen.
 
 Befehle:
 /start – anmelden
@@ -13,6 +14,7 @@ Befehle:
 /rangliste – wer vorne liegt und wer die Couch wärmt
 /season Name – neue Season anlegen (in der Gruppe), /season zeigt die aktuelle
 /sportarten – welche Sportart wie zählt
+/erinnerungen – an, aus oder Uhrzeit (z. B. /erinnerungen 18:30)
 /hilfe – diese Hilfe`;
 
 export const MITMACHEN_KNOPF = "Ich bin dabei 💪";

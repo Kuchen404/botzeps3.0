@@ -3,6 +3,7 @@ import { oeffneDb } from "./db/index.js";
 import { BEFEHLE, erstelleBot } from "./bot/index.js";
 import { WEBHOOK_PFAD, erstelleServer } from "./server.js";
 import { log, setzeLogStufe } from "./log.js";
+import { starteZeitplan } from "./zeitplan.js";
 
 async function main(): Promise<void> {
   const config = ladeConfig();
@@ -29,11 +30,16 @@ async function main(): Promise<void> {
     void bot.start({ onStart: () => log.info("Polling läuft") });
   }
 
+  const stoppeZeitplan = starteZeitplan(db, async (chatId, text) => {
+    await bot.api.sendMessage(chatId, text);
+  }, config.TZ);
+
   let beendet = false;
   const beenden = async (signal: string) => {
     if (beendet) return;
     beendet = true;
     log.info(`${signal} empfangen, fahre herunter`);
+    stoppeZeitplan();
     if (!webhook) await bot.stop();
     server.close();
     db.close();

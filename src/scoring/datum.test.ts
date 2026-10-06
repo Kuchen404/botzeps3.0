@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { imZeitraum, lokalesDatum, plusTage, tageZwischen } from "./datum.js";
+import { imZeitraum, lokalesDatum, plusTage, tageZwischen, zeitpunktIn } from "./datum.js";
 
 describe("datum", () => {
   it("rechnet über Monats- und Jahresgrenzen", () => {
@@ -26,5 +26,14 @@ describe("datum", () => {
 
   it("lehnt ungültige Daten ab", () => {
     expect(() => plusTage("6.10.2026", 1)).toThrow();
+  });
+});
+
+describe("zeitpunktIn", () => {
+  it("rechnet Berliner Ortszeit in UTC um, Sommer- und Winterzeit", () => {
+    expect(zeitpunktIn("2026-10-18", "20:00", "Europe/Berlin").toISOString()).toBe("2026-10-18T18:00:00.000Z");
+    expect(zeitpunktIn("2026-11-01", "20:00", "Europe/Berlin").toISOString()).toBe("2026-11-01T19:00:00.000Z");
+    expect(zeitpunktIn("2026-10-25", "19:00", "Europe/Berlin").toISOString()).toBe("2026-10-25T18:00:00.000Z");
+    expect(zeitpunktIn("2026-10-18", "07:30", "UTC").toISOString()).toBe("2026-10-18T07:30:00.000Z");
   });
 });

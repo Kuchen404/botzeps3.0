@@ -8,6 +8,7 @@ import { anzeigename, argumente, gruppenId, gruppenZeitzone, heute, istGruppe } 
 import { nimmAnAktuellerSeasonTeil } from "../db/season-repo.js";
 import { seasonModul } from "./season.js";
 import { standModul } from "./stand.js";
+import { erinnerungsModul } from "./erinnerungen.js";
 import { sportModul } from "./sport.js";
 import { WAAGE_ANLEITUNG, waageModul } from "./waage.js";
 import { HILFE, MITMACHEN_KNOPF, gruppenBegruessung, mitgliedNeu, mitgliedSchonDabei, willkommenPrivat } from "./texte.js";
@@ -22,6 +23,7 @@ export const BEFEHLE = [
   { command: "rangliste", description: "Rangliste der Season" },
   { command: "season", description: "Season anzeigen oder anlegen" },
   { command: "sportarten", description: "Welche Sportart wie zählt" },
+  { command: "erinnerungen", description: "Erinnerungen an/aus, Uhrzeit" },
   { command: "hilfe", description: "So funktioniert Botzeps" },
 ];
 
@@ -62,6 +64,7 @@ export function erstelleBot(token: string, db: Db, botInfo?: UserFromGetMe): Bot
   bot.use(waageModul(db));
   bot.use(seasonModul(db));
   bot.use(standModul(db));
+  bot.use(erinnerungsModul(db));
 
   bot.command(["hilfe", "help"], (ctx) => ctx.reply(HILFE));
 

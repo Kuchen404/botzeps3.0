@@ -39,3 +39,34 @@ export function lokalesDatum(zeitpunkt: Date, zeitzone: string): IsoDatum {
     day: "2-digit",
   }).format(zeitpunkt);
 }
+
+/**
+ * UTC-Zeitpunkt für ein lokales Datum und eine Uhrzeit ("HH:MM") in einer Zeitzone,
+ * z. B. Sonntag 20:00 in Berlin. Berücksichtigt Sommer- und Winterzeit.
+ */
+export function zeitpunktIn(datum: IsoDatum, uhrzeit: string, zeitzone: string): Date {
+  const [stunde, minute] = uhrzeit.split(":").map(Number) as [number, number];
+  const alsUtc = Date.parse(`${datum}T00:00:00Z`) + (stunde * 60 + minute) * 60_000;
+  // Versatz der Zeitzone zu diesem Zeitpunkt bestimmen (zweimal, falls er dazwischen wechselt)
+  let ergebnis = alsUtc;
+  for (let i = 0; i < 2; i++) {
+    ergebnis = alsUtc - versatzMs(new Date(ergebnis), zeitzone);
+  }
+  return new Date(ergebnis);
+}
+
+function versatzMs(zeitpunkt: Date, zeitzone: string): number {
+  const teile = new Intl.DateTimeFormat("en-US", {
+    timeZone: zeitzone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).formatToParts(zeitpunkt);
+  const wert = (typ: string) => Number(teile.find((t) => t.type === typ)?.value);
+  const lokal = Date.UTC(wert("year"), wert("month") - 1, wert("day"), wert("hour"), wert("minute"), wert("second"));
+  return lokal - Math.floor(zeitpunkt.getTime() / 1000) * 1000;
+}

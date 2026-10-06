@@ -1,29 +1,17 @@
 import { Composer, type Context } from "grammy";
 import type { Db } from "../db/index.js";
 import { gruppenDesNutzers, speichereNutzer } from "../db/repo.js";
-import { type SeasonZeile, aktuelleSeason, einstellungen, ladeTeilnehmer, letzteSeason } from "../db/season-repo.js";
-import { type TeilnehmerStand, fleissDerWoche, kalibrierFenster, seasonEnde, seasonStand, wocheVon } from "../scoring/season.js";
+import { type SeasonZeile, aktuelleSeason, letzteSeason } from "../db/season-repo.js";
+import { type Stand, berechneStand } from "../bericht/stand.js";
+import { type TeilnehmerStand, fleissDerWoche, kalibrierFenster, seasonEnde, wocheVon } from "../scoring/season.js";
 import { FORTSCHRITT } from "../scoring/fortschritt.js";
 import { fuelle, waehleSpruch } from "../texte/sprueche.js";
 import { anzeigename, datumDe, gruppenId, gruppenZeitzone, heute, zahlDe } from "./kontext.js";
-
-type Stand = TeilnehmerStand & { telegramId: number; beitritt: string; kalibrierMessungen: number };
 
 /** Season, auf die sich /stand und /rangliste beziehen: die laufende, sonst die zuletzt gestartete. */
 function relevanteSeason(db: Db, gruppeId: number, tag: string): SeasonZeile | undefined {
   const aktuell = aktuelleSeason(db, gruppeId, tag);
   return aktuell && aktuell.start <= tag ? aktuell : (letzteSeason(db, gruppeId, tag) ?? aktuell);
-}
-
-export function berechneStand(db: Db, s: SeasonZeile, tag: string): Stand[] {
-  const teilnehmer = ladeTeilnehmer(db, s);
-  const staende = seasonStand(einstellungen(s), teilnehmer, tag);
-  return staende.map((st) => {
-    const t = teilnehmer.find((x) => x.id === st.id)!;
-    const fenster = kalibrierFenster(s, t.beitritt);
-    const kalibrierMessungen = t.messungen.filter((m) => m.datum >= fenster.von && m.datum <= fenster.bis).length;
-    return { ...st, telegramId: t.telegramId, beitritt: t.beitritt, kalibrierMessungen };
-  });
 }
 
 const p = (x: number) => zahlDe(x, 1);

@@ -1,0 +1,16 @@
+import type { Db } from "../db/index.js";
+import { type SeasonZeile, einstellungen, ladeTeilnehmer } from "../db/season-repo.js";
+import { type TeilnehmerStand, kalibrierFenster, seasonStand } from "../scoring/season.js";
+
+export type Stand = TeilnehmerStand & { telegramId: number; beitritt: string; kalibrierMessungen: number };
+
+export function berechneStand(db: Db, s: SeasonZeile, tag: string): Stand[] {
+  const teilnehmer = ladeTeilnehmer(db, s);
+  const staende = seasonStand(einstellungen(s), teilnehmer, tag);
+  return staende.map((st) => {
+    const t = teilnehmer.find((x) => x.id === st.id)!;
+    const fenster = kalibrierFenster(s, t.beitritt);
+    const kalibrierMessungen = t.messungen.filter((m) => m.datum >= fenster.von && m.datum <= fenster.bis).length;
+    return { ...st, telegramId: t.telegramId, beitritt: t.beitritt, kalibrierMessungen };
+  });
+}
