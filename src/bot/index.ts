@@ -16,6 +16,7 @@ import { ruhmModul } from "./ruhm.js";
 import { demoModul } from "../demo/index.js";
 import { sportModul } from "./sport.js";
 import { WAAGE_ANLEITUNG, waageModul } from "./waage.js";
+import { appKnopf } from "./app-knopf.js";
 import { HILFE, MITMACHEN_KNOPF, gruppenBegruessung, mitgliedNeu, mitgliedSchonDabei, willkommenPrivat } from "./texte.js";
 
 const MITMACHEN = "mitmachen";
@@ -47,15 +48,8 @@ export function erstelleBot(token: string, db: Db, botInfo?: UserFromGetMe, opti
       await ctx.reply("Die Mini App ist auf diesem Server noch nicht eingerichtet (MINIAPP_URL bzw. Webhook fehlt).");
       return;
     }
-    // Web-App-Knöpfe gehen nur im privaten Chat
-    if (istGruppe(ctx)) {
-      await ctx.reply("Die Mini App öffnest du privat beim Bot, unten links über „Botzeps“.", {
-        reply_markup: new InlineKeyboard().url("Zum Bot", `https://t.me/${ctx.me.username}?start=app`),
-      });
-      return;
-    }
     await ctx.reply("Stand, Diagramme, Waage, Einträge und Einstellungen:", {
-      reply_markup: new InlineKeyboard().webApp("📊 Botzeps öffnen", optionen.miniAppUrl),
+      reply_markup: appKnopf(ctx.me, ctx.chat, optionen.miniAppUrl),
     });
   });
 
@@ -64,21 +58,23 @@ export function erstelleBot(token: string, db: Db, botInfo?: UserFromGetMe, opti
     const nutzer = speichereNutzer(db, ctx.from.id, anzeigename(ctx));
     const gruppe = gruppenId(db, ctx);
     if (gruppe === null) {
-      if (argumente(ctx) === "app" && optionen.miniAppUrl) {
-        await ctx.reply("Hier ist die Mini App:", {
-          reply_markup: new InlineKeyboard().webApp("📊 Botzeps öffnen", optionen.miniAppUrl),
-        });
+      const app = appKnopf(ctx.me, ctx.chat, optionen.miniAppUrl);
+      if (argumente(ctx) === "app" && app) {
+        await ctx.reply("Hier ist die Mini App:", { reply_markup: app });
         return;
       }
       if (argumente(ctx) === "verlauf") {
         await ctx.reply("Hier ist dein Verlauf: /verlauf");
         return;
       }
-      await ctx.reply(argumente(ctx) === "waage" ? WAAGE_ANLEITUNG : willkommenPrivat(nutzer.name));
+      if (argumente(ctx) === "waage") await ctx.reply(WAAGE_ANLEITUNG);
+      else await ctx.reply(willkommenPrivat(nutzer.name), app ? { reply_markup: app } : {});
       return;
     }
+    const knoepfe = new InlineKeyboard().text(MITMACHEN_KNOPF, MITMACHEN);
+    const app = appKnopf(ctx.me, ctx.chat, optionen.miniAppUrl);
     await ctx.reply(gruppenBegruessung(ctx.chat.title ?? "die Gruppe"), {
-      reply_markup: new InlineKeyboard().text(MITMACHEN_KNOPF, MITMACHEN),
+      reply_markup: app ? knoepfe.row().append(app) : knoepfe,
     });
   });
 
@@ -102,13 +98,13 @@ export function erstelleBot(token: string, db: Db, botInfo?: UserFromGetMe, opti
   bot.use(sportModul(db));
   bot.use(waageModul(db));
   bot.use(seasonModul(db));
-  bot.use(standModul(db));
+  bot.use(standModul(db, optionen.miniAppUrl));
   bot.use(erinnerungsModul(db));
   bot.use(verlaufModul(db));
   bot.use(abstimmungsModul(db));
   bot.use(teamModul(db));
   bot.use(ruhmModul(db));
-  if (optionen.demo) bot.use(demoModul(db));
+  if (optionen.demo) bot.use(demoModul(db, optionen.miniAppUrl));
 
   bot.command(["hilfe", "help"], (ctx) => ctx.reply(HILFE));
 

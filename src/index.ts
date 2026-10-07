@@ -2,6 +2,7 @@ import { InputFile } from "grammy";
 import { ladeConfig } from "./config.js";
 import { oeffneDb } from "./db/index.js";
 import { BEFEHLE, erstelleBot } from "./bot/index.js";
+import { APP_KNOPF, appKnopf } from "./bot/app-knopf.js";
 import { MINIAPP_PFAD, WEBHOOK_PFAD, erstelleServer } from "./server.js";
 import { log, setzeLogStufe } from "./log.js";
 import { starteZeitplan } from "./zeitplan.js";
@@ -32,8 +33,14 @@ async function main(): Promise<void> {
   log.info(`Angemeldet als @${bot.botInfo.username}`);
   if (miniAppUrl) {
     try {
-      await bot.api.setChatMenuButton({ menu_button: { type: "web_app", text: "Botzeps", web_app: { url: miniAppUrl } } });
+      await bot.api.setChatMenuButton({ menu_button: { type: "web_app", text: APP_KNOPF, web_app: { url: miniAppUrl } } });
       log.info(`Mini App: ${miniAppUrl}`);
+      if (!bot.botInfo.has_main_web_app) {
+        log.warn(
+          "Keine Haupt-Mini-App beim BotFather: Der App-Knopf in Gruppen führt nur in den Privatchat. Einrichten: BotFather → /mybots → Bot Settings → Configure Mini App → Enable Mini App, URL " +
+            miniAppUrl,
+        );
+      }
     } catch (err) {
       log.warn(`Menüknopf für die Mini App nicht gesetzt (${miniAppUrl})`, err);
     }
@@ -66,7 +73,10 @@ async function main(): Promise<void> {
 
   const stoppeZeitplan = starteZeitplan(
     db,
-    async (chatId, text) => (await bot.api.sendMessage(chatId, text)).message_id,
+    async (chatId, text, o) => {
+      const app = o?.appKnopf ? appKnopf(bot.botInfo, { id: chatId, type: "group" }, miniAppUrl) : undefined;
+      return (await bot.api.sendMessage(chatId, text, app ? { reply_markup: app } : {})).message_id;
+    },
     (chatId, png) => bot.api.sendPhoto(chatId, new InputFile(png, "punkteverlauf.png")),
     config.TZ,
     60_000,

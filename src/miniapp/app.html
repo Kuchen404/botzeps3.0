@@ -501,6 +501,10 @@ if (!tg || !tg.initData) {
     if (j.seasons.length > 1) {
       auswahl.hidden = false;
       j.seasons.forEach(function (s, i) { auswahl.appendChild(el("option", { value: String(i), text: s.gruppe + ": " + s.name })); });
+      // Aus einer Gruppe geöffnet (startapp=g<chat>): deren Season zuerst zeigen
+      var start = (tg.initDataUnsafe && tg.initDataUnsafe.start_param) || "";
+      var aus = start.charAt(0) === "g" ? j.seasons.findIndex(function (s) { return String(s.chat) === start.slice(1); }) : -1;
+      if (aus >= 0) { seasonIndex = aus; auswahl.value = String(aus); }
     }
     zeichne();
   }).catch(function (f) { inhalt.replaceChildren(el("p", { class: "fehler", text: f.message })); });

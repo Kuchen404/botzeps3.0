@@ -12,6 +12,7 @@ import { log } from "../log.js";
 import { fuelle, waehleSpruch } from "../texte/sprueche.js";
 import { lebenslangeLast } from "../db/erfolg-repo.js";
 import { rangZeile } from "./ruhm.js";
+import { appKnopf } from "./app-knopf.js";
 import { anzeigename, datumDe, gruppenId, gruppenZeitzone, heute, zahlDe } from "./kontext.js";
 
 /** Season, auf die sich /stand und /rangliste beziehen: die laufende, sonst die zuletzt gestartete. */
@@ -133,7 +134,7 @@ export function standText(
   return zeilen.join("\n");
 }
 
-export function standModul(db: Db): Composer<Context> {
+export function standModul(db: Db, miniAppUrl?: string): Composer<Context> {
   const modul = new Composer<Context>();
 
   modul.command("rangliste", async (ctx) => {
@@ -145,7 +146,8 @@ export function standModul(db: Db): Composer<Context> {
       return;
     }
     const staende = berechneStand(db, s, tag);
-    await ctx.reply(ranglisteText(s, staende, tag, tag >= s.start ? berechneTeams(db, s, staende) : [], laternen(db, s)));
+    const app = appKnopf(ctx.me, ctx.chat, miniAppUrl);
+    await ctx.reply(ranglisteText(s, staende, tag, tag >= s.start ? berechneTeams(db, s, staende) : [], laternen(db, s)), app ? { reply_markup: app } : {});
   });
 
   modul.command("stand", async (ctx) => {
@@ -167,10 +169,12 @@ export function standModul(db: Db): Composer<Context> {
       if (tag >= s.start) diagramme.push({ s, id: ich.id });
     }
     const rang = rangZeile(lebenslangeLast(db, nutzer.id));
+    const app = texte.length ? appKnopf(ctx.me, ctx.chat, miniAppUrl) : undefined;
     await ctx.reply(
       texte.length
         ? `${texte.join("\n\n")}\n\n${rang}`
         : `Du bist in keiner Season. In der Gruppe /season tippen oder trainieren, dann bist du dabei.\n\n${rang}`,
+      app ? { reply_markup: app } : {},
     );
     for (const { s, id } of diagramme) {
       try {

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { Db } from "../db/index.js";
-import { gruppeNachId, gruppenDesNutzers, speichereNutzer } from "../db/repo.js";
+import { gruppenDesNutzers, speichereNutzer } from "../db/repo.js";
 import { type Eintrag, aendereTrainingsdauer, eintrag, letzteEintraege, loescheEintrag } from "../db/verlauf-repo.js";
 import { berechneStand, berechneTeams } from "../bericht/stand.js";
 import { eigenesDiagramm, punkteverlauf } from "../bericht/punkteverlauf.js";
@@ -87,7 +87,8 @@ function ich(db: Db, nutzerId: number, telegramId: number) {
     const eigen = verlauf && eigenesDiagramm(s, verlauf, st.id);
     const laterne = laternen(db, s);
     seasons.push({
-      gruppe: gruppeNachId(db, s.gruppe)?.name ?? "",
+      gruppe: g.name,
+      chat: g.telegram_chat_id,
       name: s.name,
       start: s.start,
       ende,
