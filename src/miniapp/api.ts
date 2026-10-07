@@ -144,7 +144,7 @@ function ich(db: Db, nutzerId: number, telegramId: number) {
   };
 }
 
-/** Eigener Rang und Erfolge über alle Seasons, dazu die Ruhmeshalle jeder eigenen Gruppe. */
+/** Eigener Rang und Erfolge über alle Seasons, dazu die Ruhmeshalle jeder eigenen Gruppe (für den Reiter „Halle“). */
 function ruhm(db: Db, nutzerId: number) {
   const last = lebenslangeLast(db, nutzerId);
   const rang = rangFuer(last);
@@ -163,6 +163,7 @@ function ruhm(db: Db, nutzerId: number) {
     gruppen: gruppenDesNutzers(db, nutzerId).map((g) => {
       const r = ruhmeshalle(db, g.id);
       return {
+        chat: g.telegram_chat_id,
         name: g.name,
         sieger: r.sieger,
         mitglieder: r.mitglieder.map((m) => {

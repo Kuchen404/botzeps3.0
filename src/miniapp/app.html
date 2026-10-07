@@ -22,8 +22,9 @@
   header { padding: 14px 16px 6px; }
   h1 { font-size: 20px; margin: 0; }
   select { margin-top: 6px; width: 100%; padding: 8px; border-radius: 10px; border: 0; background: var(--bg); color: var(--text); font-size: 15px; }
-  nav { display: flex; gap: 6px; padding: 8px 16px; position: sticky; top: 0; background: var(--bg2); z-index: 2; }
-  nav button { flex: 1; padding: 8px 4px; border: 0; border-radius: 10px; background: var(--bg); color: var(--text); font-size: 14px; }
+  nav { display: flex; gap: 4px; padding: 8px 16px; position: sticky; top: 0; background: var(--bg2); z-index: 2; overflow-x: auto; scrollbar-width: none; }
+  nav::-webkit-scrollbar { display: none; }
+  nav button { flex: 1 0 auto; padding: 8px 6px; white-space: nowrap; border: 0; border-radius: 10px; background: var(--bg); color: var(--text); font-size: 13px; }
   nav button.aktiv { background: var(--button); color: var(--button-text); }
   main { padding: 0 16px 24px; }
   .karte { background: var(--bg); border-radius: 14px; padding: 14px; margin-top: 12px; }
@@ -60,6 +61,11 @@
   .erfolg { background: var(--bg2); border-radius: 10px; padding: 8px 10px; font-size: 13px; line-height: 1.3; }
   .erfolg b { display: block; font-size: 14px; }
   .erfolg.zu { opacity: .45; }
+  /* Ruhmeshalle */
+  .halle-wahl { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+  .halle-wahl button { border: 1px solid var(--hint); background: none; color: var(--text); border-radius: 14px; padding: 4px 10px; font-size: 13px; }
+  .halle-wahl button.aktiv { background: var(--button); color: var(--button-text); border-color: var(--button); }
+  .mehr { border: 0; background: none; color: var(--link); padding: 8px 0 0; font-size: 14px; }
   /* Boss-Kampf */
   .arena { position: relative; border-radius: 12px; padding: 12px 8px 10px; overflow: hidden; color: #fff;
     background: radial-gradient(circle at 50% 35%, #5b2a86 0%, #26123d 70%); }
@@ -108,6 +114,7 @@
 <nav>
   <button data-tab="stand" class="aktiv">Stand</button>
   <button data-tab="ruhm">Ruhm</button>
+  <button data-tab="halle">Halle</button>
   <button data-tab="waage">Waage</button>
   <button data-tab="eintraege">Einträge</button>
   <button data-tab="einstellungen">Mehr</button>
@@ -120,6 +127,7 @@ var tg = window.Telegram && window.Telegram.WebApp;
 if (tg) { tg.ready(); tg.expand(); }
 var daten = null, eintraege = null, ruhmDaten = null, tab = "stand", seasonIndex = 0, waageReihe = "fettPct";
 var inhalt = document.getElementById("inhalt");
+var halle = { chat: null, alleRaenge: false, alleSieger: false };
 
 function api(pfad, body) {
   return fetch(pfad, {
@@ -370,27 +378,59 @@ function ruhmTab() {
       e.erreichtAm ? el("div", { class: "hint", text: datum(e.erreichtAm) + e.erreichtAm.slice(0, 4) }) : null
     ]);
   }))]));
+  return kinder;
+}
 
-  ruhmDaten.gruppen.forEach(function (g) {
-    var h = [];
-    if (g.sieger.length) {
-      h.push(el("h2", { text: "Season-Sieger", style: "margin-top:4px" }));
-      g.sieger.forEach(function (x) { h.push(zeile("👑 " + x.season, x.namen.join(" und "))); });
-    }
-    if (g.mitglieder.length) {
-      h.push(el("h2", { text: "Ränge", style: "margin-top:12px" }));
-      g.mitglieder.forEach(function (m) {
-        h.push(zeile(m.emoji + " " + m.name, zahl(m.last, 0) + " LP · " + m.erfolge + " 🏆", m.ich ? "ich" : ""));
-      });
-    }
-    var rek = [];
-    if (g.hoechsteWochenlast) { var w = g.hoechsteWochenlast; rek.push(zeile("Höchste Wochenlast", w.name + ", " + zahl(w.last, 0) + " (" + w.season + ", Woche " + w.woche + ")")); }
-    if (g.laengsteEinheit) { var e = g.laengsteEinheit; rek.push(zeile("Längste Einheit", e.name + ", " + e.minuten + " min " + e.sportart)); }
-    if (rek.length) h.push(el("h2", { text: "Rekorde", style: "margin-top:12px" }));
-    h = h.concat(rek);
-    if (!h.length) h.push(el("p", { class: "hint", text: "Noch leer. Trainiert halt mal was." }));
-    kinder.push(karte("🏛 Ruhmeshalle " + g.name, h));
-  });
+/** Ruhmeshalle: eine Gruppe auf einmal, Standard ist die Gruppe der oben gewählten Season. */
+function halleTab() {
+  if (!ruhmDaten) { api("/api/ruhm").then(function (j) { ruhmDaten = j; zeichne(); }).catch(zeigeFehler); return [el("p", { class: "hint", text: "Lädt …" })]; }
+  var gruppen = ruhmDaten.gruppen, kinder = [];
+  if (!gruppen.length) return [karte("🏛 Ruhmeshalle", [el("p", { class: "hint", text: "Du bist in keiner Botzeps-Gruppe." })])];
+  var s = daten.seasons[seasonIndex];
+  var g = gruppen.find(function (x) { return x.chat === halle.chat; }) ||
+    gruppen.find(function (x) { return s && x.chat === s.chat; }) || gruppen[0];
+  if (gruppen.length > 1) {
+    // Gleich heißende Gruppen durchnummerieren, sonst sind die Knöpfe nicht zu unterscheiden
+    var anzahl = {}, schon = {};
+    gruppen.forEach(function (x) { anzahl[x.name] = (anzahl[x.name] || 0) + 1; });
+    kinder.push(el("div", { class: "halle-wahl" }, gruppen.map(function (x) {
+      schon[x.name] = (schon[x.name] || 0) + 1;
+      var text = anzahl[x.name] > 1 ? x.name + " " + schon[x.name] : x.name;
+      return el("button", { type: "button", class: x === g ? "aktiv" : "", text: text, onclick: function () {
+        halle.chat = x.chat; halle.alleRaenge = false; halle.alleSieger = false; zeichne();
+      } });
+    })));
+  }
+
+  function mehrKnopf(n, offen, umschalten) {
+    return el("button", { type: "button", class: "mehr", text: offen ? "Weniger zeigen" : "Alle " + n + " zeigen", onclick: function () { umschalten(); zeichne(); } });
+  }
+
+  if (g.sieger.length) {
+    var sieger = g.sieger.slice().reverse(), zeigen = halle.alleSieger ? sieger : sieger.slice(0, 3);
+    var sk = zeigen.map(function (x) { return zeile("👑 " + x.season, x.namen.join(" und ")); });
+    if (sieger.length > 3) sk.push(mehrKnopf(sieger.length, halle.alleSieger, function () { halle.alleSieger = !halle.alleSieger; }));
+    kinder.push(karte("Season-Sieger", sk));
+  }
+
+  var rek = [];
+  if (g.hoechsteWochenlast) { var w = g.hoechsteWochenlast; rek.push(zeile("Höchste Wochenlast", w.name + ", " + zahl(w.last, 0) + " (" + w.season + ", Woche " + w.woche + ")")); }
+  if (g.laengsteEinheit) { var e = g.laengsteEinheit; rek.push(zeile("Längste Einheit", e.name + ", " + e.minuten + " min " + e.sportart)); }
+  if (rek.length) kinder.push(karte("Rekorde", rek));
+
+  if (g.mitglieder.length) {
+    // Oben die besten fünf, man selbst immer dabei
+    var rk = [];
+    g.mitglieder.forEach(function (m, i) {
+      if (!halle.alleRaenge && i >= 5 && !m.ich) return;
+      rk.push(zeile((i + 1) + ". " + m.emoji + " " + m.name, zahl(m.last, 0) + " LP · " + m.erfolge + " 🏆", m.ich ? "ich" : ""));
+    });
+    if (g.mitglieder.length > 5) rk.push(mehrKnopf(g.mitglieder.length, halle.alleRaenge, function () { halle.alleRaenge = !halle.alleRaenge; }));
+    kinder.push(karte("Ränge (Lastpunkte über alle Seasons)", rk));
+  }
+
+  if (!g.sieger.length && !rek.length && !g.mitglieder.length) kinder.push(karte(null, [el("p", { class: "hint", text: "Noch leer. Trainiert halt mal was." })]));
+  kinder.splice(gruppen.length > 1 ? 1 : 0, 0, el("h1", { style: "font-size:18px;margin:14px 2px 0", text: "🏛 " + g.name }));
   return kinder;
 }
 
@@ -483,7 +523,7 @@ function zeigeFehler(f) {
 
 function zeichne() {
   var s = daten.seasons[seasonIndex];
-  var kinder = tab === "stand" ? standTab(s) : tab === "ruhm" ? ruhmTab() : tab === "waage" ? waageTab() : tab === "eintraege" ? eintraegeTab() : einstellungenTab();
+  var kinder = tab === "stand" ? standTab(s) : tab === "ruhm" ? ruhmTab() : tab === "halle" ? halleTab() : tab === "waage" ? waageTab() : tab === "eintraege" ? eintraegeTab() : einstellungenTab();
   inhalt.replaceChildren.apply(inhalt, kinder.filter(Boolean));
 }
 
