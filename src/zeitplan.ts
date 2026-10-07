@@ -1,9 +1,12 @@
 import type { Db } from "./db/index.js";
-import { type SeasonZeile, bosseDerSeason, einstellungen, kuendigeBossAn, seasonNachId } from "./db/season-repo.js";
+import { type SeasonZeile, bossPin, bosseDerSeason, kuendigeBossAn, seasonNachId, setzeBossPin } from "./db/season-repo.js";
 import { alleTrainings, vergebeErfolge } from "./db/erfolg-repo.js";
-import { BOSS_ANKUENDIGUNG, BOSS_NAMEN, BOSS_STUFEN, type BossStufe, STUFEN, bossAnzeigename, bossKampf, bossLebenspunkte, bossWoche } from "./scoring/boss.js";
+import { BOSS_ANKUENDIGUNG, BOSS_NAMEN, BOSS_STUFEN, type BossStufe, STUFEN, bossAnzeigename, bossKampf, bossLebenspunkte, bossWoche, lebensbalken } from "./scoring/boss.js";
 import { type ErfolgArt, finaleErfolge, trainingsErfolge, wochenErfolge } from "./scoring/erfolge.js";
-import { fuelle, waehleSpruch } from "./texte/sprueche.js";
+import { fuelle } from "./texte/sprueche.js";
+import { BOSS_NERVOES, bossBeben, bossTeaser, bossTexte } from "./boss/texte.js";
+import { steckbriefSvg } from "./boss/plakat.js";
+import { alsPng } from "./diagramm/png.js";
 import { gruppeNachId } from "./db/repo.js";
 import { berechneStand, berechneTeams } from "./bericht/stand.js";
 import { diagrammPng, gruppenDiagramm, punkteverlauf } from "./bericht/punkteverlauf.js";
@@ -28,15 +31,43 @@ import { meldungenNachTraining, mitMeldungen } from "./bericht/nach-training.js"
 
 /** Sendet eine Nachricht (auf Wunsch mit Knopf zur Mini App) und gibt, wenn bekannt, ihre message_id zurück. */
 export type Sender = (chatId: number, text: string, optionen?: { appKnopf?: boolean }) => Promise<number | void>;
-/** Sendet ein PNG als Foto. */
-export type FotoSender = (chatId: number, png: Uint8Array) => Promise<unknown>;
+/** Sendet ein PNG als Foto, auf Wunsch mit Bildunterschrift, und gibt, wenn bekannt, die message_id zurück. */
+export type FotoSender = (chatId: number, png: Uint8Array, beschriftung?: string) => Promise<number | void>;
+
+/** Was der Zeitplan außer Senden noch kann; ohne Angabe passiert es eben nicht (Tests). */
+export interface ZeitplanExtras {
+  /** Pause zwischen den Etappen eines Boss-Auftritts */
+  pause?: () => Promise<void>;
+  anpinnen?: (chatId: number, nachrichtId: number) => Promise<unknown>;
+  loesen?: (chatId: number, nachrichtId: number) => Promise<unknown>;
+}
+
+/** Echte Extras für den Bot: Pausen, Anpinnen (still, ohne zweite Benachrichtigung) und Lösen. */
+export function zeitplanExtras(
+  api: {
+    pinChatMessage: (chatId: number, nachrichtId: number, o?: { disable_notification?: boolean }) => Promise<unknown>;
+    unpinChatMessage: (chatId: number, nachrichtId?: number) => Promise<unknown>;
+  },
+  etappeMs = BOSS_ETAPPE_MS,
+): ZeitplanExtras {
+  return {
+    pause: () => (etappeMs > 0 ? new Promise((fertig) => setTimeout(fertig, etappeMs)) : Promise.resolve()),
+    anpinnen: (chatId, nachrichtId) => api.pinChatMessage(chatId, nachrichtId, { disable_notification: true }),
+    loesen: (chatId, nachrichtId) => api.unpinChatMessage(chatId, nachrichtId),
+  };
+}
+
+/** Pause zwischen den Etappen des Boss-Auftritts. */
+export const BOSS_ETAPPE_MS = 4000;
+/** Spott des Bosses am Donnerstag der Boss-Woche. */
+export const BOSS_SPOTT = { tag: 3, uhrzeit: "18:00" } as const;
 
 const ERINNERUNG_VERFALL_MS = 2 * 60 * 60 * 1000;
 export const ERINNERUNG = { tageOhneTraining: 3, tageOhneMessung: 4 } as const;
 
 interface TerminZeile {
   id: number;
-  art: "wochenbericht" | "finale" | "erinnerung" | "boss1" | "boss2";
+  art: "wochenbericht" | "finale" | "erinnerung" | "boss1" | "boss2" | "boss1_spott" | "boss2_spott";
   season: number | null;
   nutzer: number | null;
   faellig_am: string;
@@ -51,6 +82,12 @@ export function berichtsZeitpunkt(s: SeasonZeile, woche: number, zeitzone: strin
 export function bossZeitpunkt(s: SeasonZeile, stufe: BossStufe, zeitzone: string): Date | null {
   const woche = bossWoche(stufe, s.wochen);
   return woche === null ? null : zeitpunktIn(plusTage(s.start, woche * 7), BOSS_ANKUENDIGUNG, zeitzone);
+}
+
+/** Spott des Bosses einer Stufe am Donnerstag seiner Woche, oder null ohne Boss. */
+export function bossSpottZeitpunkt(s: SeasonZeile, stufe: BossStufe, zeitzone: string): Date | null {
+  const woche = bossWoche(stufe, s.wochen);
+  return woche === null ? null : zeitpunktIn(plusTage(s.start, woche * 7 + BOSS_SPOTT.tag), BOSS_SPOTT.uhrzeit, zeitzone);
 }
 
 export function plane(db: Db, jetzt: Date, zeitzone: string): void {
@@ -69,6 +106,8 @@ export function plane(db: Db, jetzt: Date, zeitzone: string): void {
       for (const stufe of STUFEN) {
         const zeitpunkt = bossZeitpunkt(s, stufe, zeitzone);
         if (zeitpunkt) neu.run(`boss${stufe}`, s.id, null, zeitpunkt.toISOString());
+        const spott = bossSpottZeitpunkt(s, stufe, zeitzone);
+        if (spott) neu.run(`boss${stufe}_spott`, s.id, null, spott.toISOString());
       }
       if (heute < plusTage(s.start, -7) || heute > ende) continue;
       const teilnehmer = db
@@ -85,7 +124,14 @@ export function plane(db: Db, jetzt: Date, zeitzone: string): void {
   })();
 }
 
-export async function fuehreAus(db: Db, senden: Sender, jetzt: Date, zeitzone: string, foto?: FotoSender): Promise<number> {
+export async function fuehreAus(
+  db: Db,
+  senden: Sender,
+  jetzt: Date,
+  zeitzone: string,
+  foto?: FotoSender,
+  extras: ZeitplanExtras = {},
+): Promise<number> {
   const faellig = db
     .prepare("SELECT id, art, season, nutzer, faellig_am FROM termin WHERE erledigt_am IS NULL AND faellig_am <= ? ORDER BY faellig_am, id")
     .all(jetzt.toISOString()) as TerminZeile[];
@@ -99,8 +145,10 @@ export async function fuehreAus(db: Db, senden: Sender, jetzt: Date, zeitzone: s
         t.art === "erinnerung"
           ? await erinnere(db, senden, t, jetzt)
           : t.art === "boss1" || t.art === "boss2"
-            ? await kuendigeAn(db, senden, t, t.art === "boss1" ? 1 : 2, zeitzone)
-            : await berichte(db, senden, t, zeitzone, foto);
+            ? await kuendigeAn(db, senden, t, t.art === "boss1" ? 1 : 2, zeitzone, foto, extras)
+            : t.art === "boss1_spott" || t.art === "boss2_spott"
+              ? await spotte(db, senden, t, t.art === "boss1_spott" ? 1 : 2, zeitzone)
+              : await berichte(db, senden, t, zeitzone, foto, extras);
       if (gesendet) ausgefuehrt++;
     } catch (err) {
       log.error(`Termin ${t.id} (${t.art}) fehlgeschlagen`, err);
@@ -109,7 +157,7 @@ export async function fuehreAus(db: Db, senden: Sender, jetzt: Date, zeitzone: s
   return ausgefuehrt;
 }
 
-async function berichte(db: Db, senden: Sender, t: TerminZeile, zeitzone: string, foto?: FotoSender): Promise<boolean> {
+async function berichte(db: Db, senden: Sender, t: TerminZeile, zeitzone: string, foto?: FotoSender, zusatz: ZeitplanExtras = {}): Promise<boolean> {
   const s = t.season === null ? undefined : seasonNachId(db, t.season);
   const gruppe = s ? gruppeNachId(db, s.gruppe) : undefined;
   if (!s || !gruppe) return false;
@@ -199,11 +247,38 @@ async function berichte(db: Db, senden: Sender, t: TerminZeile, zeitzone: string
       log.error(`Diagramm zum Bericht ${t.id} fehlgeschlagen`, err);
     }
   }
+  // Boss-Woche vorbei: Ankündigung abpinnen
+  for (const b of bosseDerSeason(db, s).filter((b) => b.woche === woche)) {
+    const pin = bossPin(db, s.id, b.stufe);
+    if (pin === null) continue;
+    setzeBossPin(db, s.id, b.stufe, null);
+    try {
+      await zusatz.loesen?.(gruppe.telegram_chat_id, pin);
+    } catch (err) {
+      log.warn(`Boss-Ankündigung ${pin} nicht abgepinnt`, err);
+    }
+  }
+  // Teaser am Abend vor der Boss-Woche
+  const naechster = STUFEN.find((stufe) => bossWoche(stufe, s.wochen) === woche + 1);
+  if (naechster && art === "wochenbericht") {
+    await senden(gruppe.telegram_chat_id, bossTeaser(naechster, bosseDerSeason(db, s).some((b) => b.stufe === 1)));
+  }
   return true;
 }
 
-/** Boss-Ankündigung in der Gruppe; legt Name und Lebenspunkte fest. */
-async function kuendigeAn(db: Db, senden: Sender, t: TerminZeile, stufe: BossStufe, zeitzone: string): Promise<boolean> {
+/**
+ * Boss-Auftritt in der Gruppe in Etappen: Beben, Vorzeichen, dann der Steckbrief als Bild mit der
+ * Ansage des Bosses darunter, angepinnt bis zum Wochenbericht. Legt Name und Lebenspunkte fest.
+ */
+async function kuendigeAn(
+  db: Db,
+  senden: Sender,
+  t: TerminZeile,
+  stufe: BossStufe,
+  zeitzone: string,
+  foto: FotoSender | undefined,
+  extras: ZeitplanExtras,
+): Promise<boolean> {
   const s = t.season === null ? undefined : seasonNachId(db, t.season);
   const gruppe = s ? gruppeNachId(db, s.gruppe) : undefined;
   // Termin verfällt, wenn Start oder Dauer der Season inzwischen geändert wurden
@@ -214,25 +289,75 @@ async function kuendigeAn(db: Db, senden: Sender, t: TerminZeile, stufe: BossStu
   const name = frueher?.name ?? BOSS_NAMEN[Math.floor(Math.random() * BOSS_NAMEN.length)]!;
   const lebenspunkte = bossLebenspunkte(stufe, teilnehmer, s.wochenziel_last);
   if (!kuendigeBossAn(db, s.id, stufe, name, lebenspunkte)) return false;
-  await senden(gruppe.telegram_chat_id, bossAnkuendigung(stufe, name, lebenspunkte, frueher !== undefined));
+
+  // Der Boss nimmt sich den Letzten der Rangliste vor
+  const tag = lokalesDatum(new Date(t.faellig_am), zeitzone);
+  const opfer = berechneStand(db, s, plusTage(tag, -1)).at(-1)?.name ?? "du da";
+  const chat = gruppe.telegram_chat_id;
+  const pause = extras.pause ?? (async () => {});
+  await senden(chat, bossBeben(stufe, frueher !== undefined));
+  await pause();
+  await senden(chat, bossTexte(name).vorzeichen);
+  await pause();
+  const text = bossAnkuendigung(stufe, name, lebenspunkte, frueher !== undefined, opfer);
+  let nachricht: number | void = undefined;
+  if (foto) {
+    try {
+      nachricht = await foto(chat, alsPng(steckbriefSvg(name, stufe, lebenspunkte, opfer)), text);
+    } catch (err) {
+      log.error("Steckbrief des Bosses nicht gesendet", err);
+      nachricht = await senden(chat, text);
+    }
+  } else nachricht = await senden(chat, text);
+  if (nachricht && extras.anpinnen) {
+    try {
+      await extras.anpinnen(chat, nachricht);
+      setzeBossPin(db, s.id, stufe, nachricht);
+    } catch (err) {
+      log.warn("Boss-Ankündigung nicht angepinnt (Bot braucht Adminrechte zum Anpinnen)", err);
+    }
+  }
   return true;
 }
 
-export function bossAnkuendigung(stufe: BossStufe, name: string, lebenspunkte: number, kamSchonMal: boolean): string {
+export function bossAnkuendigung(stufe: BossStufe, name: string, lebenspunkte: number, kamSchonMal: boolean, opfer: string): string {
   const anzeige = bossAnzeigename(name, stufe);
   const kopf =
     stufe === 1
-      ? "🐉 BOSS-WOCHE!"
+      ? `🐉 BOSS-WOCHE: ${name.toUpperCase()} IST DA!`
       : kamSchonMal
         ? `🐉💉 ${name.toUpperCase()} IST ZURÜCK, UND ER HAT GEPUMPT!`
         : "🐉💉 BOSS-WOCHE, AUFGEPUMPT!";
   return [
     kopf,
-    fuelle(waehleSpruch("boss_start"), { boss: anzeige }),
+    "",
+    `🗣 „${fuelle(bossTexte(name).drohung, { opfer })}“`,
     "",
     `${anzeige} hat ${lebenspunkte.toLocaleString("de-DE")} Lebenspunkte. Jeder Lastpunkt, den ihr bis Sonntag trainiert, ist ein Schlag in die Fresse.`,
     `Fällt er, kassiert jeder, der mitgeprügelt hat, +${BOSS_STUFEN[stufe].bonus} Punkte. Wer nichts tut, wird namentlich erwähnt.`,
   ].join("\n");
+}
+
+/** Donnerstag der Boss-Woche: Spott, wenn noch nicht die Hälfte geschafft ist, sonst wird er nervös. */
+async function spotte(db: Db, senden: Sender, t: TerminZeile, stufe: BossStufe, zeitzone: string): Promise<boolean> {
+  const s = t.season === null ? undefined : seasonNachId(db, t.season);
+  const gruppe = s ? gruppeNachId(db, s.gruppe) : undefined;
+  if (!s || !gruppe || bossSpottZeitpunkt(s, stufe, zeitzone)?.toISOString() !== t.faellig_am) return false;
+  const boss = bosseDerSeason(db, s).find((b) => b.stufe === stufe);
+  if (!boss) return false;
+  const staende = berechneStand(db, s, lokalesDatum(new Date(t.faellig_am), zeitzone));
+  const kampf = bossKampf(boss, staende);
+  if (kampf.besiegt) return false;
+  const anzeige = bossAnzeigename(boss.name, stufe);
+  if (kampf.schaden * 2 >= kampf.lebenspunkte) {
+    await senden(gruppe.telegram_chat_id, fuelle(BOSS_NERVOES, { boss: anzeige }));
+    return true;
+  }
+  const name = new Map(staende.map((st) => [st.id, st.name]));
+  const namen = kampf.drueckeberger.map((id) => name.get(id)!);
+  const spott = fuelle(bossTexte(boss.name).spott, { namen: namen.length ? namen.join(", ") : "ihr alle" });
+  await senden(gruppe.telegram_chat_id, `🗣 ${anzeige}: „${spott}“\n🐉 ${lebensbalken(kampf)} noch ${(kampf.lebenspunkte - kampf.schaden).toLocaleString("de-DE")} von ${kampf.lebenspunkte.toLocaleString("de-DE")} Lebenspunkten`);
+  return true;
 }
 
 /** Prüft Erfolge aller Teilnehmer und gibt die neuen als Zeilen für den Bericht zurück. */
@@ -374,9 +499,9 @@ export async function beendeAbgelaufeneAbstimmungen(db: Db, senden: Sender, jetz
 }
 
 /** Ein Durchlauf: Termine planen, Fälliges ausführen, abgelaufene Abstimmungen beenden. */
-export async function zeitplanLauf(db: Db, senden: Sender, foto: FotoSender, jetzt: Date, zeitzone: string): Promise<void> {
+export async function zeitplanLauf(db: Db, senden: Sender, foto: FotoSender, jetzt: Date, zeitzone: string, extras: ZeitplanExtras = {}): Promise<void> {
   plane(db, jetzt, zeitzone);
-  await fuehreAus(db, senden, jetzt, zeitzone, foto);
+  await fuehreAus(db, senden, jetzt, zeitzone, foto, extras);
   await beendeAbgelaufeneAbstimmungen(db, senden, jetzt, zeitzone);
 }
 
@@ -388,13 +513,14 @@ export function starteZeitplan(
   zeitzone: string,
   intervallMs = 60_000,
   uhr: () => Date = () => new Date(),
+  extras: ZeitplanExtras = {},
 ): () => void {
   let laeuft = false;
   const tick = async () => {
     if (laeuft) return;
     laeuft = true;
     try {
-      await zeitplanLauf(db, senden, foto, uhr(), zeitzone);
+      await zeitplanLauf(db, senden, foto, uhr(), zeitzone, extras);
     } catch (err) {
       log.error("Zeitplan-Durchlauf fehlgeschlagen", err);
     } finally {

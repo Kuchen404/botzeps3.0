@@ -30,8 +30,8 @@ export function testBot(optionen: Parameters<typeof erstelleBot>[3] = {}) {
   bot.api.config.use(async (_prev, methode, payload) => {
     const p = payload as Record<string, unknown>;
     aufrufe.push({ methode, payload: p });
-    if (methode === "sendMessage") {
-      return { ok: true, result: { message_id: ++nachrichtId, date: 0, chat: { id: p.chat_id }, text: p.text } } as never;
+    if (methode === "sendMessage" || methode === "sendPhoto") {
+      return { ok: true, result: { message_id: ++nachrichtId, date: 0, chat: { id: p.chat_id }, text: p.text, caption: p.caption } } as never;
     }
     return { ok: true, result: true } as never;
   });

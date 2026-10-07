@@ -7,7 +7,7 @@ import { montagIn } from "../bot/season.js";
 import { lokalesDatum, plusTage } from "../scoring/datum.js";
 import { kalibrierFenster, seasonEnde, wocheVon } from "../scoring/season.js";
 import { STUFEN } from "../scoring/boss.js";
-import { berichtsZeitpunkt, bossZeitpunkt, zeitplanLauf } from "../zeitplan.js";
+import { berichtsZeitpunkt, bossSpottZeitpunkt, bossZeitpunkt, zeitplanExtras, zeitplanLauf } from "../zeitplan.js";
 import { log } from "../log.js";
 import { appKnopf } from "../bot/app-knopf.js";
 import { FAKE_PROFILE, type Profil, autopilotProfil, simuliereTag, tage } from "./simulation.js";
@@ -24,6 +24,8 @@ export const DEMO_BEFEHLE = [
 ];
 
 export const DEMO_STANDARD_WOCHEN = 6;
+/** Pause zwischen den Etappen des Boss-Auftritts beim Vorspulen (Tests setzen 0). */
+export const DEMO_TAKT = { etappeMs: 2500 };
 const MIN_WOCHEN = 4;
 const MAX_WOCHEN = 12;
 const MAX_TAGE = 100;
@@ -167,11 +169,12 @@ export function simuliereBis(db: Db, gruppe: number, s: SeasonZeile, bis: string
   return ergebnis;
 }
 
-/** Nächster Bericht oder Boss nach `jetzt`, oder null, wenn die Season durch ist. */
+/** Nächster Bericht, Boss oder Boss-Spott nach `jetzt`, oder null, wenn die Season durch ist. */
 export function naechstesEreignis(s: SeasonZeile, jetzt: Date, zeitzone: string): Date | null {
   const zeiten = [
     ...Array.from({ length: s.wochen }, (_, w) => berichtsZeitpunkt(s, w, zeitzone)),
     ...STUFEN.map((stufe) => bossZeitpunkt(s, stufe, zeitzone)).filter((z) => z !== null),
+    ...STUFEN.map((stufe) => bossSpottZeitpunkt(s, stufe, zeitzone)).filter((z) => z !== null),
   ].filter((z) => z > jetzt);
   return zeiten.length ? new Date(Math.min(...zeiten.map((z) => z.getTime()))) : null;
 }
@@ -308,9 +311,11 @@ export function demoModul(db: Db, miniAppUrl?: string): Composer<Context> {
           const app = o?.appKnopf ? appKnopf(ctx.me, { id: chatId, type: "group" }, miniAppUrl) : undefined;
           return (await ctx.api.sendMessage(chatId, text, app ? { reply_markup: app } : {})).message_id;
         },
-        (chatId, png) => ctx.api.sendPhoto(chatId, new InputFile(png, "punkteverlauf.png")),
+        async (chatId, png, beschriftung) =>
+          (await ctx.api.sendPhoto(chatId, new InputFile(png, beschriftung ? "boss.png" : "punkteverlauf.png"), beschriftung ? { caption: beschriftung } : {})).message_id,
         uhr.jetzt(),
         zeitzone,
+        zeitplanExtras(ctx.api, DEMO_TAKT.etappeMs),
       );
     } catch (err) {
       log.error("Zeitplan nach dem Vorspulen fehlgeschlagen", err);

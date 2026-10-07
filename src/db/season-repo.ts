@@ -45,6 +45,16 @@ export function kuendigeBossAn(db: Db, seasonId: number, stufe: BossStufe, name:
   );
 }
 
+/** Merkt sich die angepinnte Ankündigung eines Bosses (null: wieder gelöst). */
+export function setzeBossPin(db: Db, seasonId: number, stufe: BossStufe, nachricht: number | null): void {
+  db.prepare("UPDATE boss SET pin_nachricht = ? WHERE season = ? AND stufe = ?").run(nachricht, seasonId, stufe);
+}
+
+export function bossPin(db: Db, seasonId: number, stufe: BossStufe): number | null {
+  const z = db.prepare("SELECT pin_nachricht AS n FROM boss WHERE season = ? AND stufe = ?").get(seasonId, stufe) as { n: number | null } | undefined;
+  return z?.n ?? null;
+}
+
 export function einstellungen(s: SeasonZeile, bosse: readonly BossEinstellung[] = []): SeasonEinstellungen {
   return {
     start: s.start,

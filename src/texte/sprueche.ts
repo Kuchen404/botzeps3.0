@@ -3,7 +3,7 @@ import sammlung from "./sprueche.json" with { type: "json" };
 export type Kategorie = Exclude<keyof typeof sammlung, "_info">;
 
 export type Platzhalter = Partial<
-  Record<"name" | "platz" | "punkte" | "abstand" | "minuten" | "sportart" | "serie" | "opfer" | "rang" | "boss", string | number>
+  Record<"name" | "platz" | "punkte" | "abstand" | "minuten" | "sportart" | "serie" | "opfer" | "rang" | "boss" | "namen", string | number>
 >;
 
 export const SPRUECHE: Readonly<Record<Kategorie, readonly string[]>> = sammlung;

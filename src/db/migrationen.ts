@@ -212,4 +212,12 @@ export const MIGRATIONEN: readonly { version: number; name: string; sql: string 
       );
     `,
   },
+  {
+    version: 6,
+    name: "boss_pin",
+    sql: `
+      -- Angepinnte Ankündigung des Bosses, wird mit dem Wochenbericht wieder gelöst
+      ALTER TABLE boss ADD COLUMN pin_nachricht INTEGER;
+    `,
+  },
 ];
