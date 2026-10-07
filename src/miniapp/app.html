@@ -112,6 +112,14 @@
   .kaempfer .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .kaempfer .schaden { opacity: .8; }
   .bossinfo { margin-top: 8px; }
+  /* Minispiel der Woche */
+  .regel { margin: 0 0 8px; }
+  .spielstatus { font-weight: 700; margin-bottom: 8px; }
+  .berg { width: 100%; height: auto; display: block; margin-bottom: 8px; }
+  .seil { position: relative; height: 10px; border-radius: 5px; margin: 14px 4px 6px; background: repeating-linear-gradient(90deg, #a0742c 0 8px, #c8964a 8px 16px); }
+  .seil > .knoten { position: absolute; top: 50%; width: 20px; height: 20px; margin: -10px 0 0 -10px; border-radius: 50%; background: #ff3b30; box-shadow: 0 1px 3px rgba(0,0,0,.5); transition: left .6s ease-out; }
+  .seilteams { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px; }
+  .code { font: 800 34px/1.2 ui-monospace, Menlo, monospace; letter-spacing: .25em; text-align: center; margin: 4px 0 10px; }
   @keyframes schweben { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
   @keyframes wut { from { scale: 1; } to { scale: 1.06; } }
   @keyframes aufsteigen { from { opacity: 1; transform: translate(-50%, 0); } to { opacity: 0; transform: translate(-50%, -46px); } }
@@ -321,6 +329,51 @@ function bossKarte(b) {
   return karte(titel, [el("div", { class: "gross", style: "font-size:20px", text: b.name }), arena, info, nochmal]);
 }
 
+/** Mount Botzeps mit allen Kletterern, abwechselnd auf beiden Hängen, damit sie sich nicht verdecken. */
+function berg(kletterer) {
+  var NS = "http://www.w3.org/2000/svg", B = 340, H = 190, F = 176, G = 22, M = B / 2;
+  var svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("viewBox", "0 0 " + B + " " + H);
+  svg.setAttribute("class", "berg");
+  function neu(tag, a, text) {
+    var e = document.createElementNS(NS, tag);
+    for (var k in a) e.setAttribute(k, a[k]);
+    if (text != null) e.textContent = text;
+    svg.appendChild(e);
+    return e;
+  }
+  neu("polygon", { points: "14," + F + " " + M + "," + G + " " + (B - 14) + "," + F, fill: "#6b7a8f" });
+  neu("polygon", { points: (M - 34) + "," + (G + 34) + " " + M + "," + G + " " + (M + 34) + "," + (G + 34) + " " + (M + 12) + "," + (G + 28) + " " + (M - 10) + "," + (G + 38), fill: "#f4f6fa" });
+  neu("line", { x1: 0, y1: F, x2: B, y2: F, stroke: "currentColor", "stroke-opacity": ".3" });
+  neu("text", { x: M + 4, y: G - 4, "font-size": "18" }, "🚩");
+  neu("text", { x: 4, y: H - 2, "font-size": "11", fill: "currentColor", "fill-opacity": ".6" }, "⛺ Basislager");
+  kletterer.forEach(function (k, i) {
+    var links = i % 2 === 0, a = k.anteil;
+    var x = links ? 14 + a * (M - 14) : B - 14 - a * (M - 14), y = F - a * (F - G) - 8;
+    neu("circle", { cx: x, cy: y, r: 11, fill: farbe(k.name), stroke: k.ich ? "#ffcc00" : "#fff", "stroke-width": k.ich ? 3 : 1.5 });
+    neu("text", { x: x, y: y + 4, "text-anchor": "middle", "font-size": "10", "font-weight": "800", fill: "#fff" }, initialen(k.name));
+  });
+  return svg;
+}
+
+/** Minispiel der laufenden Woche: Regel, Stand und je nach Spiel Berg, Seil oder Code. */
+function minispielKarte(m) {
+  var kinder = [el("p", { class: "hint regel", text: m.regel })];
+  if (m.status) kinder.push(el("div", { class: "spielstatus", text: m.status }));
+  if (m.gipfel) kinder.push(berg(m.gipfel));
+  if (m.seil) {
+    var links = 50 - m.seil.zug * 50;
+    kinder.push(el("div", { class: "seil" }, [el("div", { class: "knoten", style: "left:" + links + "%" })]));
+    kinder.push(el("div", { class: "seilteams" }, [
+      el("span", { text: m.seil.links + " (" + zahl(m.seil.schnitt[0], 0) + ")" }),
+      el("span", { text: m.seil.rechts + " (" + zahl(m.seil.schnitt[1], 0) + ")" })
+    ]));
+  }
+  if (m.code) kinder.push(el("div", { class: "code", text: m.code }));
+  m.liste.forEach(function (x) { kinder.push(zeile(x.name, x.text, x.ich ? "ich" : "")); });
+  return karte(m.emoji + " " + m.name + " · Woche " + m.woche, kinder);
+}
+
 function standTab(s) {
   var kinder = [];
   if (!s) return [karte(null, [el("p", { text: "Du bist in keiner Season. In der Gruppe /season tippen oder trainieren, dann bist du dabei." })])];
@@ -334,6 +387,7 @@ function standTab(s) {
     return kinder;
   }
   if (s.boss && s.boss.aktiv) kinder.push(bossKarte(s.boss));
+  if (s.minispiel) kinder.push(minispielKarte(s.minispiel));
   kinder.push(karte(s.laeuft ? "Woche " + s.woche + " von " + s.wochen : "Endstand", [
     el("div", { class: "gross", text: zahl(ich.gesamt) + " Punkte" }),
     el("div", { text: "Platz " + ich.platz + " von " + s.anzahl }),
@@ -360,7 +414,7 @@ function standTab(s) {
   if (s.teams.length) kinder.push(karte("Teams", s.teams.map(function (t) {
     return zeile(t.platz + ". " + t.name, zahl(t.gesamt) + (t.bonus ? " (inkl. " + zahl(t.bonus) + " Bonus)" : ""));
   })));
-  kinder.push(karte("Rangliste", s.rangliste.map(function (r) { return zeile(r.platz + ". " + r.name + (r.laterne ? " 🏮" : ""), zahl(r.gesamt), r.ich ? "ich" : ""); })));
+  kinder.push(karte("Rangliste", s.rangliste.map(function (r) { return zeile(r.platz + ". " + r.name + (r.laterne ? " 🏮" : "") + (r.marke ? " " + r.marke : ""), zahl(r.gesamt), r.ich ? "ich" : ""); })));
   return kinder;
 }
 

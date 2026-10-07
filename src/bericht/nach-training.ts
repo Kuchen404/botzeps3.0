@@ -7,6 +7,7 @@ import { erfolgText, trainingsErfolge, wochenErfolge, type ErfolgArt } from "../
 import { rangIndex, rangText, RAENGE } from "../scoring/raenge.js";
 import { type Teilnehmer, type TeilnehmerStand, seasonEnde, seasonStand, wocheVon } from "../scoring/season.js";
 import { fuelle, waehleSpruch } from "../texte/sprueche.js";
+import { minispielMeldungen } from "../minispiel/ablauf.js";
 
 const z = (x: number) => x.toLocaleString("de-DE", { maximumFractionDigits: 0 });
 
@@ -40,7 +41,7 @@ function ueberholte(vorher: readonly TeilnehmerStand[], nachher: readonly Teilne
 
 /**
  * Meldungen, die an den Gruppenpost eines neuen Trainings angehängt werden:
- * Überholmanöver, Boss-Schaden, Rangaufstieg und neue Erfolge.
+ * Überholmanöver, Boss-Schaden, Minispiel, Rangaufstieg und neue Erfolge.
  */
 export function meldungenNachTraining(db: Db, trainingId: number, tag: string, zufall: () => number = Math.random): string[] {
   const t = db
@@ -94,6 +95,7 @@ export function meldungenNachTraining(db: Db, trainingId: number, tag: string, z
         }
       }
     }
+    zeilen.push(...minispielMeldungen(db, s, trainingId, t.nutzer, t.datum, tag));
     erfolge.push(...wochenErfolge(ich.wochen, s.wochenziel_last));
   }
 

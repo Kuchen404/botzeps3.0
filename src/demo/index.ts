@@ -7,6 +7,8 @@ import { montagIn } from "../bot/season.js";
 import { lokalesDatum, plusTage } from "../scoring/datum.js";
 import { kalibrierFenster, seasonEnde, wocheVon } from "../scoring/season.js";
 import { STUFEN } from "../scoring/boss.js";
+import { minispielWochen } from "../minispiel/spiele.js";
+import { minispielZeitpunkt } from "../minispiel/ablauf.js";
 import { berichtsZeitpunkt, bossSpottZeitpunkt, bossZeitpunkt, zeitplanExtras, zeitplanLauf } from "../zeitplan.js";
 import { log } from "../log.js";
 import { appKnopf } from "../bot/app-knopf.js";
@@ -169,12 +171,14 @@ export function simuliereBis(db: Db, gruppe: number, s: SeasonZeile, bis: string
   return ergebnis;
 }
 
-/** Nächster Bericht, Boss oder Boss-Spott nach `jetzt`, oder null, wenn die Season durch ist. */
+/** Nächster Bericht, Boss, Boss-Spott oder Minispiel nach `jetzt`, oder null, wenn die Season durch ist. */
 export function naechstesEreignis(s: SeasonZeile, jetzt: Date, zeitzone: string): Date | null {
   const zeiten = [
     ...Array.from({ length: s.wochen }, (_, w) => berichtsZeitpunkt(s, w, zeitzone)),
     ...STUFEN.map((stufe) => bossZeitpunkt(s, stufe, zeitzone)).filter((z) => z !== null),
     ...STUFEN.map((stufe) => bossSpottZeitpunkt(s, stufe, zeitzone)).filter((z) => z !== null),
+    // Minispiel: Ankündigung und Halbzeit (Donnerstag); die anderen Lagemeldungen kommen beim Vorspulen über Tage
+    ...minispielWochen(s.wochen).flatMap((w) => [minispielZeitpunkt(s, w, 0, zeitzone), minispielZeitpunkt(s, w, 3, zeitzone)]),
   ].filter((z) => z > jetzt);
   return zeiten.length ? new Date(Math.min(...zeiten.map((z) => z.getTime()))) : null;
 }

@@ -5,6 +5,7 @@ So läuft's:
 • Fortschritt: Fett- und Muskelmasse von der Waage, relativ zum Startwert aus der Kalibrierwoche.
 • Jeden Sonntag um 20 Uhr kommt der Wochenbericht, am Ende das Finale mit Sonderpreisen.
 • Boss-Wochen: In der 2. und der vorletzten Woche greift ein Boss an. Prügelt ihn mit euren Trainings weg, dann gibt's Bonuspunkte für alle, die mitgemacht haben.
+• Minispiele: In den anderen Wochen läuft jeweils ein Spiel (Zombies, Bombe, Kopfgeldjagd, Gipfelsturm, Tauziehen, Tresor, Losduell). Keine Punkte, nur Ruhm und Schande.
 • Ränge und Erfolge zählen über alle Seasons. Wer jemanden überholt, wird sofort gefeiert.
 
 Befehle:

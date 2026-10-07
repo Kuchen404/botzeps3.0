@@ -22,6 +22,7 @@ import { setzeGruppenNachricht } from "./db/repo.js";
 import { ABSTIMMUNG_STUNDEN, ergebnisText } from "./bot/abstimmung.js";
 import { trainingsPostText } from "./bot/sport.js";
 import { meldungenNachTraining, mitMeldungen } from "./bericht/nach-training.js";
+import { kuendigeMinispielAn, loeseMinispielAuf, meldeMinispielLage, minispielTeaserFuer, minispielTermine } from "./minispiel/ablauf.js";
 
 /**
  * Berichte und Erinnerungen als fällige Termine in der Datenbank (Konzept 9):
@@ -67,7 +68,7 @@ export const ERINNERUNG = { tageOhneTraining: 3, tageOhneMessung: 4 } as const;
 
 interface TerminZeile {
   id: number;
-  art: "wochenbericht" | "finale" | "erinnerung" | "boss1" | "boss2" | "boss1_spott" | "boss2_spott";
+  art: "wochenbericht" | "finale" | "erinnerung" | "boss1" | "boss2" | "boss1_spott" | "boss2_spott" | "minispiel" | "minispiel_lage";
   season: number | null;
   nutzer: number | null;
   faellig_am: string;
@@ -109,6 +110,7 @@ export function plane(db: Db, jetzt: Date, zeitzone: string): void {
         const spott = bossSpottZeitpunkt(s, stufe, zeitzone);
         if (spott) neu.run(`boss${stufe}_spott`, s.id, null, spott.toISOString());
       }
+      for (const m of minispielTermine(s, zeitzone)) neu.run(m.art, s.id, null, m.zeitpunkt.toISOString());
       if (heute < plusTage(s.start, -7) || heute > ende) continue;
       const teilnehmer = db
         .prepare(
@@ -148,7 +150,11 @@ export async function fuehreAus(
             ? await kuendigeAn(db, senden, t, t.art === "boss1" ? 1 : 2, zeitzone, foto, extras)
             : t.art === "boss1_spott" || t.art === "boss2_spott"
               ? await spotte(db, senden, t, t.art === "boss1_spott" ? 1 : 2, zeitzone)
-              : await berichte(db, senden, t, zeitzone, foto, extras);
+              : t.art === "minispiel"
+                ? await kuendigeMinispielAn(db, senden, t, jetzt, zeitzone, extras)
+                : t.art === "minispiel_lage"
+                  ? await meldeMinispielLage(db, senden, t, jetzt, zeitzone)
+                  : await berichte(db, senden, t, zeitzone, foto, extras);
       if (gesendet) ausgefuehrt++;
     } catch (err) {
       log.error(`Termin ${t.id} (${t.art}) fehlgeschlagen`, err);
@@ -258,10 +264,19 @@ async function berichte(db: Db, senden: Sender, t: TerminZeile, zeitzone: string
       log.warn(`Boss-Ankündigung ${pin} nicht abgepinnt`, err);
     }
   }
-  // Teaser am Abend vor der Boss-Woche
+  // Minispiel der Woche auflösen; ein Fehler dabei soll den Teaser nicht verhindern
+  try {
+    await loeseMinispielAuf(db, senden, s, woche, gruppe.telegram_chat_id, zusatz);
+  } catch (err) {
+    log.error(`Auflösung des Minispiels zu Bericht ${t.id} fehlgeschlagen`, err);
+  }
+  // Teaser am Abend vor der Boss- oder Minispiel-Woche
   const naechster = STUFEN.find((stufe) => bossWoche(stufe, s.wochen) === woche + 1);
   if (naechster && art === "wochenbericht") {
     await senden(gruppe.telegram_chat_id, bossTeaser(naechster, bosseDerSeason(db, s).some((b) => b.stufe === 1)));
+  } else if (art === "wochenbericht") {
+    const teaser = minispielTeaserFuer(db, s, woche + 1);
+    if (teaser) await senden(gruppe.telegram_chat_id, teaser);
   }
   return true;
 }
