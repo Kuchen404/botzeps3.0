@@ -6,8 +6,6 @@ import { type ErfolgArt, erfolgText } from "../scoring/erfolge.js";
 export interface BerichtZusatz {
   /** Bosse, deren Woche dieser Bericht abschließt */
   bosse?: readonly { name: string; kampf: BossKampf }[];
-  /** Erfolge, die seit dem letzten Bericht neu dazugekommen sind */
-  erfolge?: readonly { name: string; arten: readonly ErfolgArt[] }[];
   /** Rote Laterne dieser Woche, mit Zähler über die Season (diese Woche eingerechnet) */
   laterne?: readonly LaterneTraeger[];
 }
@@ -37,12 +35,21 @@ export function bossZeilen(
     const kopf = kampf.besiegt
       ? `🐉 ${boss} besiegt (${kampf.schaden.toLocaleString("de-DE")} Schaden)! +${kampf.bonus} für: ${kampf.beteiligte.map((id) => name.get(id)).join(", ")}`
       : `🐉 ${fuelle(waehleSpruch("boss_ueberlebt", undefined, zufall), { boss })} (${kampf.schaden.toLocaleString("de-DE")} von ${kampf.lebenspunkte.toLocaleString("de-DE")} Schaden)`;
-    const feiglinge = kampf.drueckeberger.map((id) => fuelle(waehleSpruch("drueckeberger", undefined, zufall), { name: name.get(id), boss }));
+    // Eine Zeile für alle Drückeberger statt einer pro Kopf
+    const namen = kampf.drueckeberger.map((id) => name.get(id)!);
+    const feiglinge =
+      namen.length === 1
+        ? [fuelle(waehleSpruch("drueckeberger", undefined, zufall), { name: namen[0], boss })]
+        : namen.length > 1
+          ? [`🐔 Drückeberger: ${namen.join(", ")}. Haben gegen ${boss} keinen Finger gerührt. Feige Säcke.`]
+          : [];
     return [kopf, ...feiglinge];
   });
 }
 
-export function erfolgZeilen(erfolge: BerichtZusatz["erfolge"]): string[] {
+export type NeueErfolge = readonly { name: string; arten: readonly ErfolgArt[] }[];
+
+export function erfolgZeilen(erfolge: NeueErfolge | undefined): string[] {
   if (!erfolge?.length) return [];
   return ["Neue Erfolge:", ...erfolge.flatMap((e) => e.arten.map((art) => `${e.name}: ${erfolgText(art)}`))];
 }
@@ -91,8 +98,10 @@ export interface Wochenbericht {
 }
 
 /**
- * Wochenbericht für die Gruppe (Konzept 6): Rangliste mit Veränderung zur Vorwoche,
- * Wochenziel, Serien, Fleiß der Woche und je ein derber Spruch pro Person.
+ * Wochenbericht für die Gruppe (Konzept 6), bewusst kurz: Rangliste mit Veränderung
+ * zur Vorwoche, Wochenziel (✅) und Serien (🔥) direkt an den Namen, Fleiß und Rote
+ * Laterne, Boss-Ergebnis und derbe Sprüche nur für ganz oben und ganz unten.
+ * Erfolge stehen nicht drin, die kommen schon direkt beim Trainingspost.
  * Keine Rohwerte, nur Punkte.
  */
 export function wochenbericht(
@@ -122,17 +131,17 @@ export function wochenbericht(
   const infos: string[] = [];
   if (fleissig.length) infos.push(`💪 Fleiß der Woche: ${fleissig.map((f) => f.name).join(", ")} mit ${maxLast} Lastpunkten`);
   infos.push(...laternenZeile(zusatz.laterne));
-  infos.push(
-    geschafft.length
-      ? `✅ Wochenziel (${season.wochenzielLast}) geschafft: ${geschafft.map((g) => g.name).join(", ")}`
-      : `✅ Wochenziel (${season.wochenzielLast}) geschafft: niemand. Peinlich.`,
-  );
+  // Wer das Ziel geschafft hat, sieht man am ✅ in der Rangliste
+  if (!geschafft.length) infos.push(`✅ Wochenziel (${season.wochenzielLast}) geschafft: niemand. Peinlich.`);
   const bonusTeams = teams.filter((t) => t.bonusWochen.includes(woche));
   if (bonusTeams.length) {
     infos.push(`🎯 Team-Bonus +${TEAM_BONUS_PRO_WOCHE}: ${bonusTeams.map((t) => t.name).join(", ")}, alle haben ihr Ziel geschafft`);
   }
 
-  const sprueche: BerichtZeile[] = staende.map((st, i) => {
+  // Sprüche nur für den Ersten und den Letzten
+  const ziele = staende.length >= 2 ? [0, staende.length - 1] : [0];
+  const sprueche: BerichtZeile[] = ziele.map((i) => {
+    const st = staende[i]!;
     const vorher = vorwoche.get(st.id);
     let kategorie: Kategorie = platzKategorie(st.platz, staende.length);
     if (vorher && vorher.platz - st.platz >= 2) kategorie = "aufsteiger";
@@ -143,17 +152,16 @@ export function wochenbericht(
     return { id: st.id, vorlage, text };
   });
 
+  // Höchstens ein Zusatzspruch: lange Serie vor verfehltem Ziel
   const extra: string[] = [];
-  const verfehlt = staende.filter((st) => !st.wochen[woche]?.zielErreicht);
-  if (verfehlt.length > 0 && verfehlt.length < staende.length) {
-    const opfer = verfehlt[Math.min(Math.floor(zufall() * verfehlt.length), verfehlt.length - 1)]!;
-    extra.push(fuelle(waehleSpruch("wochenziel_verfehlt", undefined, zufall), { name: opfer.name }));
-  }
-  for (const t of zusatz.laterne ?? []) extra.push(fuelle(waehleSpruch("rote_laterne", undefined, zufall), { name: t.name }));
   const besteSerie = [...staende].sort((a, b) => (b.wochen[woche]?.serie ?? 0) - (a.wochen[woche]?.serie ?? 0))[0];
   const serie = besteSerie?.wochen[woche]?.serie ?? 0;
+  const verfehlt = staende.filter((st) => !st.wochen[woche]?.zielErreicht);
   if (besteSerie && serie >= 3) {
     extra.push(fuelle(waehleSpruch("serie", undefined, zufall), { name: besteSerie.name, serie }));
+  } else if (verfehlt.length > 0 && verfehlt.length < staende.length) {
+    const opfer = verfehlt[Math.min(Math.floor(zufall() * verfehlt.length), verfehlt.length - 1)]!;
+    extra.push(fuelle(waehleSpruch("wochenziel_verfehlt", undefined, zufall), { name: opfer.name }));
   }
 
   const hinweis =
@@ -163,7 +171,6 @@ export function wochenbericht(
 
   const team = teamZeilen(teams);
   const boss = bossZeilen(zusatz.bosse, staende, zufall);
-  const erfolge = erfolgZeilen(zusatz.erfolge);
   const text = [
     kopf,
     "",
@@ -175,7 +182,6 @@ export function wochenbericht(
     "",
     ...sprueche.map((s) => s.text),
     ...extra,
-    ...(erfolge.length ? ["", ...erfolge] : []),
     ...hinweis,
   ].join("\n");
   return { text, sprueche };
@@ -219,7 +225,7 @@ export function finale(
   extras: ReadonlyMap<string, Extras>,
   teams: readonly TeamStand[] = [],
   zufall: () => number = Math.random,
-  erfolge: BerichtZusatz["erfolge"] = [],
+  erfolge: NeueErfolge = [],
   laterne: { woche?: readonly LaterneTraeger[]; koenig?: { namen: string[]; anzahl: number } | null } = {},
 ): { text: string; preise: Sonderpreis[] } {
   const kopf = `🏁 Finale „${season.name}“`;
