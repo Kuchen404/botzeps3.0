@@ -24,6 +24,8 @@ WORKDIR /app
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY package.json ./
+# Bricht den Build ab, wenn resvg keine Schrift findet (sonst Diagramme ohne Namen und Achsen)
+RUN node -e "import('./dist/diagramm/png.js').then(m=>{if(!m.schriftVorhanden()){console.error('Keine Schrift fuer die Diagramme gefunden');process.exit(1)}})"
 RUN mkdir -p /data && chown node:node /data
 USER node
 VOLUME ["/data"]
