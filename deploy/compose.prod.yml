@@ -1,0 +1,26 @@
+# Echter Bot für Portainer (Stack „botzeps“ aus dem Git-Repo, siehe README „Automatisches Deployment“).
+# Nutzt das fertige Image aus GHCR; BOT_TOKEN, WEBHOOK_SECRET und optional BACKUP_CHAT_ID setzt Portainer als Stack-Variablen.
+# Die Mini App ergibt sich aus WEBHOOK_URL + /app.
+services:
+  botzeps:
+    image: ghcr.io/kuchen404/botzeps3.0:latest
+    restart: unless-stopped
+    environment:
+      BOT_TOKEN: ${BOT_TOKEN:?BOT_TOKEN fehlt}
+      BOT_MODE: webhook
+      WEBHOOK_URL: https://botzeps.uklmuckl.com
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET:?WEBHOOK_SECRET fehlt}
+      DATABASE_PATH: /data/botzeps.db
+      TZ: Europe/Berlin
+      LOG_LEVEL: info
+      BACKUP_UHRZEIT: "04:00"
+      BACKUP_BEHALTEN: "30"
+      BACKUP_CHAT_ID: ${BACKUP_CHAT_ID:-}
+    volumes:
+      - botzeps-daten:/data
+    ports:
+      # nginx reicht botzeps.uklmuckl.com/telegram, /app und /api/ hierhin weiter (Port 3000 belegt Grafana)
+      - "127.0.0.1:3002:3000"
+
+volumes:
+  botzeps-daten:
