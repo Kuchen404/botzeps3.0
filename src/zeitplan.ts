@@ -1,7 +1,7 @@
 import type { Db } from "./db/index.js";
 import { type SeasonZeile, bossPin, bosseDerSeason, kuendigeBossAn, seasonNachId, setzeBossPin } from "./db/season-repo.js";
 import { alleTrainings, vergebeErfolge } from "./db/erfolg-repo.js";
-import { BOSS_ANKUENDIGUNG, BOSS_NAMEN, BOSS_STUFEN, type BossStufe, STUFEN, bossAnzeigename, bossKampf, bossLebenspunkte, bossWoche, lebensbalken } from "./scoring/boss.js";
+import { BOSS_ANKUENDIGUNG, BOSS_NAMEN, BOSS_STUFEN, type BossStufe, STUFEN, bossAnzeigename, bossKampf, bossLebenspunkte, bossWoche, lebensbalken, SCHWAECHE_FAKTOR } from "./scoring/boss.js";
 import { type ErfolgArt, finaleErfolge, trainingsErfolge, wochenErfolge } from "./scoring/erfolge.js";
 import { fuelle } from "./texte/sprueche.js";
 import { BOSS_NERVOES, bossBeben, bossTeaser, bossTexte } from "./boss/texte.js";
@@ -288,7 +288,11 @@ async function kuendigeAn(
   const frueher = bosseDerSeason(db, s).find((b) => b.stufe === 1);
   const name = frueher?.name ?? BOSS_NAMEN[Math.floor(Math.random() * BOSS_NAMEN.length)]!;
   const lebenspunkte = bossLebenspunkte(stufe, teilnehmer, s.wochenziel_last);
-  if (!kuendigeBossAn(db, s.id, stufe, name, lebenspunkte)) return false;
+  // Zufällige Schwäche aus den Sportarten der Gruppe, beim zweiten Auftritt möglichst eine andere
+  const sportarten = db.prepare("SELECT id, name FROM sportart WHERE gruppe = ? ORDER BY id").all(s.gruppe) as { id: number; name: string }[];
+  const auswahl = sportarten.length > 1 ? sportarten.filter((sp) => sp.id !== frueher?.schwaeche) : sportarten;
+  const schwaeche = auswahl.length ? auswahl[Math.floor(Math.random() * auswahl.length)]! : null;
+  if (!kuendigeBossAn(db, s.id, stufe, name, lebenspunkte, schwaeche?.id ?? null)) return false;
 
   // Der Boss nimmt sich den Letzten der Rangliste vor
   const tag = lokalesDatum(new Date(t.faellig_am), zeitzone);
@@ -299,11 +303,11 @@ async function kuendigeAn(
   await pause();
   await senden(chat, bossTexte(name).vorzeichen);
   await pause();
-  const text = bossAnkuendigung(stufe, name, lebenspunkte, frueher !== undefined, opfer);
+  const text = bossAnkuendigung(stufe, name, lebenspunkte, frueher !== undefined, opfer, schwaeche?.name ?? null);
   let nachricht: number | void = undefined;
   if (foto) {
     try {
-      nachricht = await foto(chat, alsPng(steckbriefSvg(name, stufe, lebenspunkte, opfer)), text);
+      nachricht = await foto(chat, alsPng(steckbriefSvg(name, stufe, lebenspunkte, opfer, schwaeche?.name ?? null)), text);
     } catch (err) {
       log.error("Steckbrief des Bosses nicht gesendet", err);
       nachricht = await senden(chat, text);
@@ -320,7 +324,14 @@ async function kuendigeAn(
   return true;
 }
 
-export function bossAnkuendigung(stufe: BossStufe, name: string, lebenspunkte: number, kamSchonMal: boolean, opfer: string): string {
+export function bossAnkuendigung(
+  stufe: BossStufe,
+  name: string,
+  lebenspunkte: number,
+  kamSchonMal: boolean,
+  opfer: string,
+  schwaeche: string | null = null,
+): string {
   const anzeige = bossAnzeigename(name, stufe);
   const kopf =
     stufe === 1
@@ -335,6 +346,7 @@ export function bossAnkuendigung(stufe: BossStufe, name: string, lebenspunkte: n
     "",
     `${anzeige} hat ${lebenspunkte.toLocaleString("de-DE")} Lebenspunkte. Jeder Lastpunkt, den ihr bis Sonntag trainiert, ist ein Schlag in die Fresse.`,
     `Fällt er, kassiert jeder, der mitgeprügelt hat, +${BOSS_STUFEN[stufe].bonus} Punkte. Wer nichts tut, wird namentlich erwähnt.`,
+    ...(schwaeche ? [`💥 Seine Schwäche: ${schwaeche}! Jede Einheit ${schwaeche} macht diese Woche ${SCHWAECHE_FAKTOR}× Schaden.`] : []),
   ].join("\n");
 }
 

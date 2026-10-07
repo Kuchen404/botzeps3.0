@@ -25,6 +25,8 @@ export interface Training {
   minuten: number;
   /** Faktor der Sportart zum Zeitpunkt des Eintrags (1 leicht, 2 mittel, 3 intensiv). */
   faktor: Faktor;
+  /** id der Sportart, für die Schwäche eines Bosses */
+  sportartId?: number;
 }
 
 /** Last einer einzelnen Einheit: Minuten (gedeckelt) × Faktor. */

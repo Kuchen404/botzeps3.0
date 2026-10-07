@@ -274,6 +274,7 @@ function bossKarte(b) {
     var texte = [];
     if (b.besiegt) texte.push(el("p", { text: "💀 Erledigt! +" + b.bonus + " Punkte für alle, die mitgeprügelt haben." }));
     else if (b.aktiv) texte.push(el("p", { text: "Noch " + zahl(b.lebenspunkte - b.schaden, 0) + " Lebenspunkte. Hau rein, jeder Lastpunkt bis Sonntag ist Schaden. Fällt er, gibt's +" + b.bonus + " Punkte." }));
+    if (b.aktiv && b.schwaeche) texte.push(el("p", { text: "💥 Schwäche: " + b.schwaeche + ". Jede Einheit davon macht doppelten Schaden." }));
     else texte.push(el("p", { text: "Er hat überlebt und lacht euch aus. Kein Bonus." }));
     if (b.drueckeberger.length) texte.push(el("p", { class: "hint", text: "Versteckt sich hinter dem Sofa: " + b.drueckeberger.join(", ") }));
     info.replaceChildren.apply(info, texte);

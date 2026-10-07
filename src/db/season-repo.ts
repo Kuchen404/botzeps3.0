@@ -22,14 +22,21 @@ export interface SeasonZeile {
 const SPALTEN =
   "id, gruppe, name, start, wochen, berichtszeit, gewicht_fleiss, gewicht_fortschritt, wochenziel_last, erstellt_von";
 
-export type Boss = BossEinstellung & { name: string };
+export type Boss = BossEinstellung & { name: string; schwaecheName?: string | null };
 
 /** Bereits angekündigte Bosse der Season. */
 export function bosseDerSeason(db: Db, s: Pick<SeasonZeile, "id" | "wochen">): Boss[] {
-  const zeilen = db.prepare("SELECT stufe, name, lebenspunkte FROM boss WHERE season = ? ORDER BY stufe").all(s.id) as {
+  const zeilen = db
+    .prepare(
+      `SELECT b.stufe, b.name, b.lebenspunkte, b.schwaeche, sp.name AS schwaecheName FROM boss b
+       LEFT JOIN sportart sp ON sp.id = b.schwaeche WHERE b.season = ? ORDER BY b.stufe`,
+    )
+    .all(s.id) as {
     stufe: BossStufe;
     name: string;
     lebenspunkte: number;
+    schwaeche: number | null;
+    schwaecheName: string | null;
   }[];
   return zeilen.flatMap((z) => {
     const woche = bossWoche(z.stufe, s.wochen);
@@ -38,10 +45,18 @@ export function bosseDerSeason(db: Db, s: Pick<SeasonZeile, "id" | "wochen">): B
 }
 
 /** Kündigt einen Boss an (nur beim ersten Mal). Gibt false zurück, wenn er schon da war. */
-export function kuendigeBossAn(db: Db, seasonId: number, stufe: BossStufe, name: string, lebenspunkte: number): boolean {
+export function kuendigeBossAn(
+  db: Db,
+  seasonId: number,
+  stufe: BossStufe,
+  name: string,
+  lebenspunkte: number,
+  schwaeche: number | null = null,
+): boolean {
   return (
-    db.prepare("INSERT OR IGNORE INTO boss (season, stufe, name, lebenspunkte) VALUES (?, ?, ?, ?)").run(seasonId, stufe, name, lebenspunkte)
-      .changes > 0
+    db
+      .prepare("INSERT OR IGNORE INTO boss (season, stufe, name, lebenspunkte, schwaeche) VALUES (?, ?, ?, ?, ?)")
+      .run(seasonId, stufe, name, lebenspunkte, schwaeche).changes > 0
   );
 }
 
@@ -132,7 +147,7 @@ export function ladeTeilnehmer(db: Db, s: SeasonZeile): (Teilnehmer & { nutzerId
     )
     .all(s.id) as { id: number; telegram_id: number; name: string; beitritt: string }[];
   const trainings = db.prepare(
-    `SELECT datum, minuten, faktor FROM training
+    `SELECT datum, minuten, faktor, sportart AS sportartId FROM training
      WHERE nutzer = ? AND geloescht_am IS NULL AND datum BETWEEN ? AND ?`,
   );
   const messungen = db.prepare(
@@ -145,7 +160,7 @@ export function ladeTeilnehmer(db: Db, s: SeasonZeile): (Teilnehmer & { nutzerId
     telegramId: t.telegram_id,
     name: t.name,
     beitritt: t.beitritt,
-    trainings: trainings.all(t.id, s.start, ende) as { datum: string; minuten: number; faktor: Faktor }[],
+    trainings: trainings.all(t.id, s.start, ende) as { datum: string; minuten: number; faktor: Faktor; sportartId: number }[],
     messungen: messungen.all(t.id, kalibrierFenster(s, t.beitritt).von, ende) as Messung[],
   }));
 }

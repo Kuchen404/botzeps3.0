@@ -16,7 +16,7 @@ import { log } from "../log.js";
 import { plusTage } from "../scoring/datum.js";
 import { type TeilnehmerStand, seasonEnde, wocheVon } from "../scoring/season.js";
 import { type Boss, bosseDerSeason } from "../db/season-repo.js";
-import { bossAnzeigename, bossEmoji, bossKampf } from "../scoring/boss.js";
+import { bossAnzeigename, bossEmoji, bossKampf, bossSchadenVon } from "../scoring/boss.js";
 import { erfolgeDesNutzers, lebenslangeLast, ruhmeshalle } from "../db/erfolg-repo.js";
 import { ERFOLGE, ERFOLG_ARTEN } from "../scoring/erfolge.js";
 import { RAENGE, naechsterRang, rangFuer } from "../scoring/raenge.js";
@@ -60,7 +60,7 @@ function bossJson(bosse: readonly Boss[], staende: readonly TeilnehmerStand[], i
   const boss = bosse.filter((b) => woche !== null && b.woche <= woche).at(-1);
   if (!boss) return null;
   const k = bossKampf(boss, staende);
-  const last = (st: TeilnehmerStand) => st.wochen[boss.woche]?.last ?? 0;
+  const last = (st: TeilnehmerStand) => bossSchadenVon(boss, st);
   return {
     name: bossAnzeigename(boss.name, boss.stufe),
     emoji: bossEmoji(boss.name),
@@ -72,6 +72,7 @@ function bossJson(bosse: readonly Boss[], staende: readonly TeilnehmerStand[], i
     schaden: k.schaden,
     besiegt: k.besiegt,
     bonus: k.bonus,
+    schwaeche: boss.schwaecheName ?? null,
     kaempfer: staende
       .filter((st) => last(st) > 0)
       .sort((a, b) => last(b) - last(a) || a.name.localeCompare(b.name))

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { aendereSeason } from "./db/season-repo.js";
 import { uhr } from "./bot/kontext.js";
 import { GRUPPE, PETER, PRIVAT, befehl, knopf, testBot } from "./bot/testhilfe.js";
@@ -6,8 +6,13 @@ import { fuehreAus, plane } from "./zeitplan.js";
 
 const TZ = "Europe/Berlin";
 const echteUhr = uhr.jetzt;
+beforeEach(() => {
+  // Feste Zufälle: erster Boss-Name, erste Sportart als Schwäche (Spazierengehen), erster Spruch
+  vi.spyOn(Math, "random").mockReturnValue(0);
+});
 afterEach(() => {
   uhr.jetzt = echteUhr;
+  vi.restoreAllMocks();
 });
 
 function tag(datum: string): void {
@@ -163,5 +168,17 @@ describe("Gamification", () => {
     expect(spott).toContain("noch 620 von 650 Lebenspunkten");
     await bot.handleUpdate(befehl("/sport 120 Joggen"));
     expect(letzterText()).toContain("blutet");
+  });
+  it("Schwäche des Bosses: eine zufällige Sportart macht doppelten Schaden", async () => {
+    const { bot, db, gesendet, lauf, letzterText } = await aufbau();
+    await lauf("2026-10-19T07:00:30Z");
+    expect(gesendet.at(-1)).toContain("💥 Seine Schwäche: Spazierengehen!");
+    db.prepare("UPDATE boss SET schwaeche = (SELECT id FROM sportart WHERE name = 'Joggen')").run();
+    tag("2026-10-20");
+    await bot.handleUpdate(befehl("/sport 120 Joggen"));
+    expect(letzterText()).toContain("💥 Volltreffer! Joggen ist die Schwäche");
+    expect(letzterText()).toContain("💀"); // 2 × 360 Schaden reicht für 650 Lebenspunkte
+    await bot.handleUpdate(befehl("/stand", PRIVAT));
+    expect(letzterText()).toContain("Boss-Bonus: +5 Punkte");
   });
 });
