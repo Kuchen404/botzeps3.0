@@ -136,6 +136,8 @@ async function berichte(db: Db, senden: Sender, t: TerminZeile, zeitzone: string
     .filter((b) => b.woche <= woche)
     .map((b) => ({ name: bossAnzeigename(b.name, b.stufe), kampf: bossKampf(b, staende) }));
   const bossSieger = new Set(kaempfe.filter((k) => k.kampf.besiegt).flatMap((k) => k.kampf.beteiligte));
+  // Erfolge werden hier nur noch nachgetragen (z. B. nach geänderten Trainings);
+  // gemeldet werden sie beim Trainingspost, im Bericht nur noch im Finale
   const erfolge = neueErfolge(db, s, staende, bossSieger, stichtag, art === "finale");
 
   // Rote Laterne dieser Woche; der Zähler kommt aus den früheren Berichten
@@ -164,7 +166,6 @@ async function berichte(db: Db, senden: Sender, t: TerminZeile, zeitzone: string
   } else {
     const bericht = wochenbericht({ name: s.name, wochen: s.wochen, wochenzielLast: s.wochenziel_last }, woche, staende, vorwoche, teams, Math.random, {
       bosse: kaempfe.filter((k) => k.kampf.woche === woche),
-      erfolge,
       laterne,
     });
     text = bericht.text;
