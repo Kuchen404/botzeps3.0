@@ -9,6 +9,7 @@ import { uhr } from "./bot/kontext.js";
 import { DEMO_BEFEHLE, aktiviereDemo } from "./demo/index.js";
 import { starteBackups } from "./backup.js";
 import { dirname, join } from "node:path";
+import { schriftVorhanden } from "./diagramm/index.js";
 
 async function main(): Promise<void> {
   const config = ladeConfig();
@@ -16,6 +17,7 @@ async function main(): Promise<void> {
 
   const db = oeffneDb(config.DATABASE_PATH);
   log.info(`Datenbank geöffnet: ${config.DATABASE_PATH}`);
+  if (!schriftVorhanden()) log.warn("Keine Schrift gefunden: Diagramme kommen ohne Text (Namen, Achsen). Schrift nach /usr/share/fonts legen, z. B. Paket fonts-dejavu-core.");
 
   // Mini App: eigene Adresse oder dieselbe wie der Webhook, Pfad /app
   const miniAppUrl =

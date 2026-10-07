@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { achse, alsPng, liniendiagramm, stil } from "./index.js";
+import { achse, alsPng, liniendiagramm, schriftVorhanden, stil } from "./index.js";
 
 describe("Liniendiagramm", () => {
   it("runde Achsenschritte, Null immer sichtbar", () => {
@@ -35,5 +35,13 @@ describe("Liniendiagramm", () => {
     const png = alsPng(liniendiagramm({ titel: "T", x: ["Start", "W1"], reihen: [{ name: "Kevin", werte: [0, 12.5] }] }));
     expect(png.subarray(1, 4).toString()).toBe("PNG");
     expect(png.readUInt32BE(16)).toBe(1000);
+  });
+
+  it("Text landet im Bild (Namen in der Legende, Achsen, Titel)", () => {
+    expect(schriftVorhanden()).toBe(true);
+    const svg = liniendiagramm({ titel: "T", x: ["Start", "W1"], reihen: [{ name: "Kevin", werte: [0, 12.5] }] });
+    const ohneName = svg.replace(">Kevin</text>", "></text>");
+    expect(ohneName).not.toBe(svg);
+    expect(alsPng(svg).equals(alsPng(ohneName))).toBe(false);
   });
 });
