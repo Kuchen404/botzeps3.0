@@ -10,8 +10,9 @@ import {
   seasonNachId,
 } from "../db/season-repo.js";
 import { plusTage, tageZwischen } from "../scoring/datum.js";
-import { kalibrierFenster, seasonEnde, wocheVon } from "../scoring/season.js";
+import { STANDARD_SEASON, kalibrierFenster, seasonEnde, wocheVon } from "../scoring/season.js";
 import { MESSPROTOKOLL } from "./waage.js";
+import { einfuehrung } from "./texte.js";
 import { anzeigename, argumente, datumDe, gruppenId, gruppenZeitzone, heute, istGruppenAdmin } from "./kontext.js";
 
 const STARTS = [1, 2, 3];
@@ -47,6 +48,15 @@ export function seasonText(db: Db, s: SeasonZeile, tag: string): string {
     "",
     status,
   ].join("\n");
+}
+
+/** Einführung zu einer Season, oder zur Standardwertung ohne Season. */
+export function einfuehrungText(s?: SeasonZeile): string {
+  if (!s) return einfuehrung({ gewichtFleiss: STANDARD_SEASON.gewichtFleiss, wochenzielLast: STANDARD_SEASON.wochenzielLast }, datumDe);
+  return einfuehrung(
+    { name: s.name, gewichtFleiss: s.gewicht_fleiss, wochenzielLast: s.wochenziel_last, kalibrierung: kalibrierFenster(s, s.start) },
+    datumDe,
+  );
 }
 
 function formular(s: SeasonZeile, tag: string): InlineKeyboard {
@@ -103,10 +113,26 @@ export function seasonModul(db: Db): Composer<Context> {
       return;
     }
     const s = legeSeasonAn(db, { gruppe, name, start: montagIn(tag, 1), erstelltVon: nutzer.id, heute: tag });
+    await ctx.reply(einfuehrungText(s));
     await ctx.reply(
       `${seasonText(db, s, tag)}\n\nAlle Mitglieder sind dabei, wer später „Ich bin dabei“ drückt oder trainiert, kommt dazu. Start, Dauer und Gewichtung lassen sich bis zum Start mit den Knöpfen ändern.\n\n${MESSPROTOKOLL}`,
       { reply_markup: formular(s, tag) },
     );
+  });
+
+  modul.command("einfuehrung", async (ctx) => {
+    const tag = heute(gruppenZeitzone());
+    const gruppe = gruppenId(db, ctx);
+    if (gruppe !== null) {
+      await ctx.reply(einfuehrungText(aktuelleSeason(db, gruppe, tag)));
+      return;
+    }
+    const seasons = ctx.from
+      ? gruppenDesNutzers(db, speichereNutzer(db, ctx.from.id, anzeigename(ctx)).id)
+          .map((g) => aktuelleSeason(db, g.id, tag))
+          .filter((s) => s !== undefined)
+      : [];
+    await ctx.reply(seasons.length ? seasons.map((s) => einfuehrungText(s)).join("\n\n") : einfuehrungText());
   });
 
   modul.callbackQuery(/^se:(\d+):([swg]):(\d+)$/, async (ctx) => {
