@@ -97,7 +97,9 @@ export interface TagesErgebnis {
 
 /**
  * Erzeugt Training und Messung eines Teilnehmers für einen Tag.
- * In der Kalibrierwoche wird jeden Tag gemessen, danach an gut der Hälfte der Tage.
+ * In der Kalibrierwoche wird jeden Tag gemessen, danach mindestens jeden zweiten Tag und sonst zufällig.
+ * Ohne die feste Messung konnte ein Pechvogel eine Woche lang kaum auf die Waage, dann gibt es
+ * keinen aktuellen Wert (mindestens 2 Messungen) und der Fortschritt bleibt leer.
  */
 export function simuliereTag(
   db: Db,
@@ -119,7 +121,7 @@ export function simuliereTag(
     }
   }
 
-  if (a.kalibrierung || zufall() < 0.55) {
+  if (a.kalibrierung || tag % 2 === 0 || zufall() < 0.55) {
     const rauschen = () => (zufall() - 0.5) * 0.6;
     const { start, proTag } = a.profil;
     speichereMessung(db, {
