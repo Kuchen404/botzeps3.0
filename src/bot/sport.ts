@@ -2,6 +2,7 @@ import { Composer, InlineKeyboard, type Context } from "grammy";
 import type { Db } from "../db/index.js";
 import {
   type GruppeZeile,
+  type NutzerZeile,
   type SportartZeile,
   gruppeNachId,
   gruppenDesNutzers,
@@ -24,7 +25,7 @@ import { meldungenNachTraining, mitMeldungen } from "../bericht/nach-training.js
 import { anzeigename, argumente, gruppenId, gruppenZeitzone, heute } from "./kontext.js";
 
 const DAUERN = [15, 30, 45, 60, 90, 120];
-const TAG_TEXT = ["", " (gestern)", " (vorgestern)"];
+export const TAG_TEXT = ["", " (gestern)", " (vorgestern)"];
 
 let letzterSpruch: string | undefined;
 
@@ -32,6 +33,24 @@ let letzterSpruch: string | undefined;
 export function trainingsPostText(name: string, minuten: number, sportart: string): string {
   letzterSpruch = waehleSpruch("training_gepostet", letzterSpruch);
   return fuelle(letzterSpruch, { name, minuten, sportart });
+}
+
+/**
+ * Speichert ein Training und baut den Gruppenpost samt Meldungen (Ziel, Boss, Erfolge).
+ * Posten muss der Aufrufer, die Nachricht-id dann mit `setzeGruppenNachricht` merken.
+ */
+export function trageTrainingEin(
+  db: Db,
+  nutzer: NutzerZeile,
+  sportart: SportartZeile,
+  minuten: number,
+  tage: number,
+): { trainingId: number; post: string; last: number } {
+  const datum = plusTage(heute(nutzer.zeitzone), -tage);
+  const trainingId = speichereTraining(db, { nutzer: nutzer.id, datum, minuten, sportart });
+  const meldungen = meldungenNachTraining(db, trainingId, heute(gruppenZeitzone()));
+  const post = mitMeldungen(`${trainingsPostText(nutzer.name, minuten, sportart.name)}${TAG_TEXT[tage]}`, meldungen);
+  return { trainingId, post, last: einheitsLast({ minuten, faktor: sportart.faktor }) };
 }
 
 interface Auswahl {
@@ -100,17 +119,13 @@ export function sportModul(db: Db): Composer<Context> {
       return { text: `${sportart.name}${TAG_TEXT[a.tage]}: wie lange?`, tastatur: dauerKnoepfe(sportart, a) };
     }
 
-    const datum = plusTage(heute(nutzer.zeitzone), -a.tage);
-    const trainingId = speichereTraining(db, { nutzer: nutzer.id, datum, minuten: a.minuten, sportart });
-    const meldungen = meldungenNachTraining(db, trainingId, heute(gruppenZeitzone()));
-    const post = trainingsPostText(nutzer.name, a.minuten, sportart.name);
-    const last = einheitsLast({ minuten: a.minuten, faktor: sportart.faktor });
+    const { trainingId, post, last } = trageTrainingEin(db, nutzer, sportart, a.minuten, a.tage);
 
     if (ctx.chat?.id === gruppe.telegram_chat_id) {
-      return { text: mitMeldungen(`${post}${TAG_TEXT[a.tage]}`, meldungen), postFuer: trainingId };
+      return { text: post, postFuer: trainingId };
     }
     try {
-      const gesendet = await ctx.api.sendMessage(gruppe.telegram_chat_id, mitMeldungen(`${post}${TAG_TEXT[a.tage]}`, meldungen));
+      const gesendet = await ctx.api.sendMessage(gruppe.telegram_chat_id, post);
       setzeGruppenNachricht(db, trainingId, gesendet.message_id);
       return { text: `Eingetragen: ${a.minuten} min ${sportart.name}${TAG_TEXT[a.tage]}, ${last} Lastpunkte. In „${gruppe.name}“ gepostet.` };
     } catch (err) {

@@ -4,7 +4,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { webhookCallback, type Bot } from "grammy";
 import type { Db } from "./db/index.js";
 import { pruefeInitData } from "./miniapp/auth.js";
-import { type Gruppenpost, bearbeiteApi } from "./miniapp/api.js";
+import { type Gruppenpost, type Gruppensenden, bearbeiteApi } from "./miniapp/api.js";
 import { log } from "./log.js";
 
 export const WEBHOOK_PFAD = "/telegram";
@@ -17,6 +17,7 @@ export interface MiniAppOptionen {
   db: Db;
   botToken: string;
   gruppenpost: Gruppenpost;
+  gruppensenden: Gruppensenden;
 }
 
 function json(res: ServerResponse, status: number, daten: unknown): void {
@@ -70,7 +71,7 @@ async function api(req: IncomingMessage, res: ServerResponse, pfad: string, m: M
     json(res, 400, { fehler: "Ungültige Anfrage" });
     return;
   }
-  const antwort = await bearbeiteApi(m.db, { methode: req.method ?? "GET", pfad, nutzer, body }, m.gruppenpost);
+  const antwort = await bearbeiteApi(m.db, { methode: req.method ?? "GET", pfad, nutzer, body }, m.gruppenpost, m.gruppensenden);
   json(res, antwort.status, antwort.json);
 }
 

@@ -75,15 +75,21 @@ export function parseWaage(text: string): Ergebnis<WaageEingabe> | null {
     return { ok: false, fehler: "Bitte genau drei Zahlen: Gewicht, Fett %, Muskel %. Beispiel: /waage 82,4 18,5 41,2" };
   }
   const [gewichtKg, fettPct, muskelPct] = zahlen as [number, number, number];
-  const pruefe = (wert: number, g: { min: number; max: number }, was: string, einheit: string) =>
-    wert < g.min || wert > g.max ? `${was} ${wert} ${einheit} ist unplausibel (erlaubt ${g.min}–${g.max}).` : null;
-  const fehler =
-    pruefe(gewichtKg, GRENZEN.gewichtKg, "Gewicht", "kg") ??
-    pruefe(fettPct, GRENZEN.fettPct, "Fett", "%") ??
-    pruefe(muskelPct, GRENZEN.muskelPct, "Muskel", "%") ??
-    (fettPct + muskelPct > 100 ? "Fett und Muskel zusammen über 100 %? Da stimmt was nicht." : null);
+  const fehler = pruefeWaage({ gewichtKg, fettPct, muskelPct });
   if (fehler) return { ok: false, fehler };
   return { ok: true, wert: { gewichtKg, fettPct, muskelPct, tageZurueck: tage } };
+}
+
+/** Plausibilität einer Messung, `null` wenn alles passt, sonst der Fehlertext. */
+export function pruefeWaage(m: { gewichtKg: number; fettPct: number; muskelPct: number }): string | null {
+  const pruefe = (wert: number, g: { min: number; max: number }, was: string, einheit: string) =>
+    !Number.isFinite(wert) || wert < g.min || wert > g.max ? `${was} ${wert} ${einheit} ist unplausibel (erlaubt ${g.min}–${g.max}).` : null;
+  return (
+    pruefe(m.gewichtKg, GRENZEN.gewichtKg, "Gewicht", "kg") ??
+    pruefe(m.fettPct, GRENZEN.fettPct, "Fett", "%") ??
+    pruefe(m.muskelPct, GRENZEN.muskelPct, "Muskel", "%") ??
+    (m.fettPct + m.muskelPct > 100 ? "Fett und Muskel zusammen über 100 %? Da stimmt was nicht." : null)
+  );
 }
 
 /** Ab diesen Sprüngen gegenüber dem 7-Tage-Mittel muss eine Messung bestätigt werden. */

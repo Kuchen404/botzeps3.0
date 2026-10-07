@@ -38,7 +38,15 @@ async function aufbau() {
 
   const posts: { chat: number; nachricht: number; text: string | null }[] = [];
   const server = erstelleServer({
-    miniApp: { db: t.db, botToken: TOKEN, gruppenpost: async (chat, nachricht, text) => void posts.push({ chat, nachricht, text }) },
+    miniApp: {
+      db: t.db,
+      botToken: TOKEN,
+      gruppenpost: async (chat, nachricht, text) => void posts.push({ chat, nachricht, text }),
+      gruppensenden: async (chat, text) => {
+        posts.push({ chat, nachricht: 0, text });
+        return 777;
+      },
+    },
   });
   await new Promise<void>((ok) => server.listen(0, "127.0.0.1", ok));
   const basis = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
@@ -160,6 +168,60 @@ describe("Mini App", () => {
       const alt = (await holen("/api/eintraege")).json.eintraege.find((e: { art: string }) => e.art === "m");
       expect(alt.aenderbar).toBe(false);
       expect((await holen("/api/eintrag/loeschen", KEVIN, { art: "m", id: alt.id })).status).toBe(403);
+    } finally {
+      server.close();
+    }
+  });
+
+  it("Training eintragen: in der eigenen Gruppe gepostet, fremde Sportart abgelehnt", async () => {
+    const { server, holen, posts, db } = await aufbau();
+    try {
+      const e = (await holen("/api/eingabe")).json;
+      expect(e.gruppen).toHaveLength(1);
+      expect(e.gruppen[0]).toMatchObject({ chat: GRUPPE.id, name: "Pumper" });
+      // Zuletzt benutzte Sportart zuerst
+      expect(e.gruppen[0].sportarten[0]).toMatchObject({ name: "Joggen", faktor: 3 });
+      expect(e.letzteMessung).toEqual({ gewichtKg: 90, fettPct: 27, muskelPct: 40 });
+      const yoga = e.gruppen[0].sportarten.find((s: { name: string }) => s.name === "Yoga");
+
+      const r = await holen("/api/training", KEVIN, { chat: GRUPPE.id, sportart: yoga.id, minuten: 40, tage: 1 });
+      expect(r.status).toBe(200);
+      expect(r.json.text).toBe("Eingetragen: 40 min Yoga (gestern), 40 Lastpunkte. In „Pumper“ gepostet.");
+      expect(posts.at(-1)).toMatchObject({ chat: GRUPPE.id, text: expect.stringContaining("(gestern)") });
+      const t = db.prepare("SELECT datum, minuten, gruppen_nachricht_id AS post FROM training ORDER BY id DESC LIMIT 1").get();
+      expect(t).toEqual({ datum: "2026-10-13", minuten: 40, post: 777 });
+
+      expect((await holen("/api/training", KEVIN, { chat: GRUPPE.id, sportart: yoga.id, minuten: 4, tage: 0 })).status).toBe(400);
+      expect((await holen("/api/training", KEVIN, { chat: GRUPPE.id, sportart: yoga.id, minuten: 30, tage: 3 })).status).toBe(400);
+      expect((await holen("/api/training", KEVIN, { chat: -1, sportart: yoga.id, minuten: 30, tage: 0 })).status).toBe(403);
+      // Wer nicht in der Gruppe ist, darf dort nichts eintragen
+      const fremd = { id: 99, first_name: "Fremd" };
+      expect((await holen("/api/training", fremd, { chat: GRUPPE.id, sportart: yoga.id, minuten: 30, tage: 0 })).status).toBe(403);
+      expect((await holen("/api/eingabe", fremd)).json.gruppen).toEqual([]);
+    } finally {
+      server.close();
+    }
+  });
+
+  it("Messung eintragen: Grenzen geprüft, großer Sprung erst nach Rückfrage", async () => {
+    const { server, holen, db } = await aufbau();
+    try {
+      const ok = await holen("/api/messung", KEVIN, { gewichtKg: 89.5, fettPct: 26.8, muskelPct: 40.1, tage: 0 });
+      expect(ok.json).toEqual({ ok: true, text: "Gespeichert: 89,5 kg\nFett 26,8 % = 24 kg\nMuskel 40,1 % = 35,9 kg" });
+
+      const unsinn = await holen("/api/messung", KEVIN, { gewichtKg: 300, fettPct: 20, muskelPct: 40, tage: 0 });
+      expect(unsinn.status).toBe(400);
+      expect(unsinn.json.fehler).toContain("Gewicht 300 kg ist unplausibel");
+
+      const sprung = await holen("/api/messung", KEVIN, { gewichtKg: 80, fettPct: 27, muskelPct: 40, tage: 0 });
+      expect(sprung.json).toEqual({ ok: false, sprung: { gewichtKg: 89.9, fettPct: 28.2 } });
+      const anzahl = () => (db.prepare("SELECT COUNT(*) AS n FROM messung").get() as { n: number }).n;
+      expect(anzahl()).toBe(6);
+
+      const trotzdem = await holen("/api/messung", KEVIN, { gewichtKg: 80, fettPct: 27, muskelPct: 40, tage: 0, trotzdem: true });
+      expect(trotzdem.json.ok).toBe(true);
+      expect(db.prepare("SELECT markiert FROM messung ORDER BY id DESC LIMIT 1").get()).toEqual({ markiert: 1 });
+      expect(anzahl()).toBe(7);
     } finally {
       server.close();
     }

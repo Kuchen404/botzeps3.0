@@ -1,6 +1,6 @@
 import { Composer, InlineKeyboard, type Context } from "grammy";
 import type { Db } from "../db/index.js";
-import { messMittel, speichereMessung, speichereNutzer } from "../db/repo.js";
+import { type NutzerZeile, messMittel, speichereMessung, speichereNutzer } from "../db/repo.js";
 import { type WaageEingabe, istSprung, parseWaage } from "../domain/eingabe.js";
 import { plusTage } from "../scoring/datum.js";
 import { anzeigename, argumente, datumDe, heute, istGruppe, uhr, zahlDe } from "./kontext.js";
@@ -19,28 +19,32 @@ function bestaetigenDaten(e: WaageEingabe): string {
   return ["wj", e.tageZurueck, e.gewichtKg, e.fettPct, e.muskelPct].join(":");
 }
 
+/** Speichert eine Messung und gibt die Bestätigung mit Fett- und Muskelmasse zurück. */
+export function speichereWaage(db: Db, nutzer: NutzerZeile, e: WaageEingabe, markiert: boolean): string {
+  const datum = plusTage(heute(nutzer.zeitzone), -e.tageZurueck);
+  speichereMessung(db, {
+    nutzer: nutzer.id,
+    zeitpunkt: uhr.jetzt().toISOString(),
+    datum,
+    gewichtKg: e.gewichtKg,
+    fettPct: e.fettPct,
+    muskelPct: e.muskelPct,
+    markiert,
+  });
+  const fettKg = (e.gewichtKg * e.fettPct) / 100;
+  const muskelKg = (e.gewichtKg * e.muskelPct) / 100;
+  return [
+    `Gespeichert${e.tageZurueck ? ` für ${datumDe(datum)}` : ""}: ${zahlDe(e.gewichtKg)} kg`,
+    `Fett ${zahlDe(e.fettPct)} % = ${zahlDe(fettKg)} kg`,
+    `Muskel ${zahlDe(e.muskelPct)} % = ${zahlDe(muskelKg)} kg`,
+  ].join("\n");
+}
+
 export function waageModul(db: Db): Composer<Context> {
   const modul = new Composer<Context>();
 
   function speichere(ctx: Context, e: WaageEingabe, markiert: boolean): string {
-    const nutzer = speichereNutzer(db, ctx.from!.id, anzeigename(ctx));
-    const datum = plusTage(heute(nutzer.zeitzone), -e.tageZurueck);
-    speichereMessung(db, {
-      nutzer: nutzer.id,
-      zeitpunkt: uhr.jetzt().toISOString(),
-      datum,
-      gewichtKg: e.gewichtKg,
-      fettPct: e.fettPct,
-      muskelPct: e.muskelPct,
-      markiert,
-    });
-    const fettKg = (e.gewichtKg * e.fettPct) / 100;
-    const muskelKg = (e.gewichtKg * e.muskelPct) / 100;
-    return [
-      `Gespeichert${e.tageZurueck ? ` für ${datumDe(datum)}` : ""}: ${zahlDe(e.gewichtKg)} kg`,
-      `Fett ${zahlDe(e.fettPct)} % = ${zahlDe(fettKg)} kg`,
-      `Muskel ${zahlDe(e.muskelPct)} % = ${zahlDe(muskelKg)} kg`,
-    ].join("\n");
+    return speichereWaage(db, speichereNutzer(db, ctx.from!.id, anzeigename(ctx)), e, markiert);
   }
 
   modul.command("waage", async (ctx) => {
