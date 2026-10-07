@@ -70,7 +70,9 @@ describe("Demo-Modus", () => {
     expect(texte.filter((x) => x.includes("Wochenbericht „Demo-Season“"))).toHaveLength(5);
     expect(texte.filter((x) => x.startsWith("🐉"))).toHaveLength(2);
     expect(texte.filter((x) => x.startsWith("⚠️ Achtung") || x.startsWith("⚠️ Aus dem Keller"))).toHaveLength(2);
-    expect(texte.at(-1)).toContain("Finale „Demo-Season“");
+    // Nach dem Finale noch die Auflösung des Minispiels der letzten Woche
+    expect(texte.at(-2)).toContain("Finale „Demo-Season“");
+    expect(t(db, "SELECT woche FROM minispiel WHERE daten IS NOT NULL")).toBe(5);
     expect(t(db, "SELECT MAX(datum) FROM training")).toBe("2026-11-22");
 
     await bot.handleUpdate(befehl("/vorspulen"));

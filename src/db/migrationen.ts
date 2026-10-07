@@ -228,4 +228,19 @@ export const MIGRATIONEN: readonly { version: number; name: string; sql: string 
       ALTER TABLE boss ADD COLUMN schwaeche INTEGER REFERENCES sportart(id) ON DELETE SET NULL;
     `,
   },
+  {
+    version: 8,
+    name: "minispiel",
+    sql: `
+      -- Minispiel der Woche (Zombies, Bombe, ...); daten (JSON) wird bei der Ankündigung festgelegt
+      CREATE TABLE minispiel (
+        season        INTEGER NOT NULL REFERENCES season(id) ON DELETE CASCADE,
+        woche         INTEGER NOT NULL,
+        art           TEXT    NOT NULL,
+        daten         TEXT,
+        pin_nachricht INTEGER,
+        PRIMARY KEY (season, woche)
+      );
+    `,
+  },
 ];

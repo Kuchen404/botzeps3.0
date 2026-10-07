@@ -12,6 +12,7 @@ import { log } from "../log.js";
 import { fuelle, waehleSpruch } from "../texte/sprueche.js";
 import { lebenslangeLast } from "../db/erfolg-repo.js";
 import { rangZeile } from "./ruhm.js";
+import { aktuelleMarken } from "../minispiel/ablauf.js";
 import { appKnopf } from "./app-knopf.js";
 import { anzeigename, datumDe, gruppenId, gruppenZeitzone, heute, zahlDe } from "./kontext.js";
 
@@ -23,12 +24,13 @@ export function relevanteSeason(db: Db, gruppeId: number, tag: string): SeasonZe
 
 const p = (x: number) => zahlDe(x, 1);
 
-function abzeichen(st: Stand, woche: number | null, laterne?: Laternen): string {
+function abzeichen(st: Stand, woche: number | null, laterne?: Laternen, marke?: string): string {
   const w = woche === null ? undefined : st.wochen[woche];
   const teile = [];
   if (w?.zielErreicht) teile.push("✅");
   if (w && w.serie >= 2) teile.push(`🔥${w.serie}`);
   if (laterne?.traeger.includes(st.id)) teile.push("🏮");
+  if (marke) teile.push(marke);
   return teile.length ? ` ${teile.join(" ")}` : "";
 }
 
@@ -47,6 +49,8 @@ export function ranglisteText(
   tag: string,
   teams: readonly TeamStand[] = [],
   laterne: Laternen = { traeger: [], anzahl: new Map() },
+  /** Zeichen aus dem Minispiel der Woche, z. B. 🧟 */
+  marken: ReadonlyMap<string, string> = new Map(),
 ): string {
   if (tag < s.start) {
     const fertig = staende.filter((st) => st.kalibrierMessungen >= FORTSCHRITT.minMessungenKalibrierung).length;
@@ -59,7 +63,7 @@ export function ranglisteText(
   const kopf = tag > ende ? `🏁 Endstand „${s.name}“` : `🏆 Rangliste „${s.name}“, Woche ${(woche ?? 0) + 1} von ${s.wochen}`;
   const zeilen = staende.map(
     (st) =>
-      `${st.platz}. ${st.name}: ${p(st.gesamt)} (Fleiß ${p(st.fleiss)} · Fortschritt ${st.fortschritt ? p(st.fortschritt.punkte) : "–"})${abzeichen(st, woche, laterne)}`,
+      `${st.platz}. ${st.name}: ${p(st.gesamt)} (Fleiß ${p(st.fleiss)} · Fortschritt ${st.fortschritt ? p(st.fortschritt.punkte) : "–"})${abzeichen(st, woche, laterne, marken.get(st.id))}`,
   );
   const fuehrender = staende[0]!;
   const zweiter = staende[1];
@@ -147,7 +151,7 @@ export function standModul(db: Db, miniAppUrl?: string): Composer<Context> {
     }
     const staende = berechneStand(db, s, tag);
     const app = appKnopf(ctx.me, ctx.chat, miniAppUrl);
-    await ctx.reply(ranglisteText(s, staende, tag, tag >= s.start ? berechneTeams(db, s, staende) : [], laternen(db, s)), app ? { reply_markup: app } : {});
+    await ctx.reply(ranglisteText(s, staende, tag, tag >= s.start ? berechneTeams(db, s, staende) : [], laternen(db, s), aktuelleMarken(db, s, tag)), app ? { reply_markup: app } : {});
   });
 
   modul.command("stand", async (ctx) => {

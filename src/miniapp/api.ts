@@ -21,6 +21,7 @@ import { erfolgeDesNutzers, lebenslangeLast, ruhmeshalle } from "../db/erfolg-re
 import { ERFOLGE, ERFOLG_ARTEN } from "../scoring/erfolge.js";
 import { RAENGE, naechsterRang, rangFuer } from "../scoring/raenge.js";
 import { laternen } from "../db/laterne-repo.js";
+import { aktuelleMarken, minispielFuerApp } from "../minispiel/ablauf.js";
 import type { MiniAppNutzer } from "./auth.js";
 
 /**
@@ -97,6 +98,7 @@ function ich(db: Db, nutzerId: number, telegramId: number) {
     const verlauf = punkteverlauf(db, s, tag);
     const eigen = verlauf && eigenesDiagramm(s, verlauf, st.id);
     const laterne = laternen(db, s);
+    const marken = laeuft ? aktuelleMarken(db, s, tag) : new Map<string, string>();
     seasons.push({
       gruppe: g.name,
       chat: g.telegram_chat_id,
@@ -129,10 +131,12 @@ function ich(db: Db, nutzerId: number, telegramId: number) {
               gesamt: runde(x.gesamt),
               ich: x.id === st.id,
               laterne: laterne.traeger.includes(x.id),
+              marke: marken.get(x.id) ?? null,
             })) : [],
       teams: tag >= s.start ? berechneTeams(db, s, staende).map((t) => ({ platz: t.platz, name: t.name, gesamt: runde(t.gesamt), bonus: t.bonus })) : [],
       verlauf: eigen ? { x: eigen.x, reihen: eigen.reihen } : null,
       boss: tag >= s.start ? bossJson(bosseDerSeason(db, s), staende, st.id, woche, laeuft) : null,
+      minispiel: laeuft ? minispielFuerApp(db, s, tag, st.id) : null,
     });
   }
   const n = db.prepare("SELECT erinnerungen, erinnerung_uhrzeit, zeitzone FROM nutzer WHERE id = ?").get(nutzerId) as {
