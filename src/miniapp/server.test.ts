@@ -255,6 +255,7 @@ describe("Mini App", () => {
       });
       expect(r.json.erfolge.find((e: { art: string }) => e.art === "champion").erreichtAm).toBeNull();
       expect(r.json.gruppen).toHaveLength(1);
+      expect(r.json.gruppen[0]).toMatchObject({ chat: GRUPPE.id, name: "Pumper" });
       const mitglieder = r.json.gruppen[0].mitglieder as { name: string; ich: boolean; emoji: string }[];
       expect(mitglieder.map((m) => m.name)).toEqual(["Kevin", "Peter"]);
       expect(mitglieder[0]).toMatchObject({ ich: true, emoji: "🛋" });
