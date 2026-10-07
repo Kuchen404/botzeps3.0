@@ -107,4 +107,61 @@ describe("Gamification", () => {
     expect(letzterText()).toContain("Kevin: 360 Lastpunkte");
     expect(letzterText()).toContain("Längste Einheit: Kevin, 120 min Joggen");
   });
+  it("epischer Auftritt: Teaser, Beben, Vorzeichen, Steckbrief mit Drohung, angepinnt bis zum Bericht", async () => {
+    const { bot, db } = await aufbau();
+    const log: string[] = [];
+    let id = 500;
+    const senden = async (_chat: number, text: string) => {
+      log.push(text);
+      return ++id;
+    };
+    const foto = async (_chat: number, png: Uint8Array, beschriftung?: string) => {
+      log.push(`FOTO ${Buffer.from(png).subarray(1, 4).toString()} ${beschriftung ?? ""}`);
+      return ++id;
+    };
+    const pins: string[] = [];
+    const extras = {
+      anpinnen: async (_c: number, n: number) => void pins.push(`an ${n}`),
+      loesen: async (_c: number, n: number) => void pins.push(`los ${n}`),
+    };
+    const lauf = async (iso: string) => {
+      plane(db, new Date(iso), TZ);
+      await fuehreAus(db, senden, new Date(iso), TZ, foto, extras);
+    };
+    tag("2026-10-13");
+    await bot.handleUpdate(befehl("/sport 60 Joggen"));
+    await lauf("2026-10-18T18:00:30Z"); // Bericht Woche 1
+    expect(log.at(-1)).toContain("Morgen früh um 9 kommt was");
+
+    await lauf("2026-10-19T07:00:30Z");
+    const auftritt = log.slice(-3);
+    expect(auftritt[0]).toContain("Der Boden bebt");
+    expect(auftritt[2]).toMatch(/^FOTO PNG 🐉 BOSS-WOCHE: .* IST DA!/);
+    expect(auftritt[2]).toContain("🗣 „");
+    expect(auftritt[2]).toContain("Peter"); // Letzter der Rangliste wird angepöbelt
+    expect(pins).toEqual([`an ${id}`]);
+
+    tag("2026-10-20");
+    await bot.handleUpdate(befehl("/sport 120 Joggen"));
+    await lauf("2026-10-22T16:00:30Z"); // Donnerstag 18 Uhr: 360 von 650, er wird nervös
+    expect(log.at(-1)).toContain("wird nervös");
+
+    await lauf("2026-10-25T19:00:30Z"); // Bericht Woche 2 löst den Pin
+    expect(pins.at(-1)).toBe(pins[0]!.replace("an", "los"));
+  });
+
+  it("Boss blutet bei der Hälfte, Spott am Donnerstag bei zu wenig Schaden", async () => {
+    const { bot, gesendet, lauf, letzterText } = await aufbau();
+    await lauf("2026-10-19T07:00:30Z");
+    tag("2026-10-20");
+    await bot.handleUpdate(befehl("/sport 30 Yoga"));
+    expect(letzterText()).not.toContain("blutet");
+    await lauf("2026-10-22T16:00:30Z");
+    const spott = gesendet.at(-1)!;
+    expect(spott).toMatch(/^🗣 .*: „/);
+    expect(spott).toContain("Peter");
+    expect(spott).toContain("noch 620 von 650 Lebenspunkten");
+    await bot.handleUpdate(befehl("/sport 120 Joggen"));
+    expect(letzterText()).toContain("blutet");
+  });
 });

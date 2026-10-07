@@ -1,11 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { uhr } from "../bot/kontext.js";
 import { GRUPPE, KEVIN, befehl, testBot } from "../bot/testhilfe.js";
-import { aktiviereDemo, parseSprung } from "./index.js";
+import { DEMO_TAKT, aktiviereDemo, parseSprung } from "./index.js";
 
 const echteUhr = uhr.jetzt;
 
 beforeEach(() => {
+  DEMO_TAKT.etappeMs = 0;
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-10-06T10:00:00Z")); // Dienstag
 });
@@ -18,7 +19,10 @@ function demoBot() {
   const t = testBot({ demo: true });
   aktiviereDemo(t.db);
   const gruppenTexte = () =>
-    t.aufrufe.filter((a) => a.methode === "sendMessage" && a.payload.chat_id === GRUPPE.id).map((a) => String(a.payload.text));
+    t.aufrufe
+      .filter((a) => (a.methode === "sendMessage" || a.methode === "sendPhoto") && a.payload.chat_id === GRUPPE.id)
+      .map((a) => String(a.payload.text ?? a.payload.caption ?? ""))
+      .filter((x) => x !== ""); // Punkteverlauf als Bild ohne Text
   return { ...t, gruppenTexte };
 }
 
@@ -49,9 +53,10 @@ describe("Demo-Modus", () => {
     await bot.handleUpdate(befehl("/vorspulen"));
     expect(uhr.jetzt().toISOString()).toBe("2026-10-18T18:01:00.000Z");
     const nachSprung1 = gruppenTexte();
-    expect(nachSprung1.at(-2)).toContain("Vorgespult auf Sonntag, 18.10.2026, 20:01 Uhr (Woche 1 von 6)");
-    expect(nachSprung1.at(-2)).toContain("Hantel-Hans:");
-    expect(nachSprung1.at(-1)).toContain("Wochenbericht „Demo-Season“, Woche 1 von 6");
+    expect(nachSprung1.at(-3)).toContain("Vorgespult auf Sonntag, 18.10.2026, 20:01 Uhr (Woche 1 von 6)");
+    expect(nachSprung1.at(-3)).toContain("Hantel-Hans:");
+    expect(nachSprung1.at(-2)).toContain("Wochenbericht „Demo-Season“, Woche 1 von 6");
+    expect(nachSprung1.at(-1)).toContain("Morgen früh um 9 kommt was");
     expect(t(db, "SELECT COUNT(*) FROM training")).toBeGreaterThan(5);
     expect(t(db, "SELECT COUNT(*) FROM training WHERE datum > '2026-10-18'")).toBe(0);
 
@@ -62,6 +67,7 @@ describe("Demo-Modus", () => {
     const texte = gruppenTexte();
     expect(texte.filter((x) => x.includes("Wochenbericht „Demo-Season“"))).toHaveLength(5);
     expect(texte.filter((x) => x.startsWith("🐉"))).toHaveLength(2);
+    expect(texte.filter((x) => x.startsWith("⚠️ Achtung") || x.startsWith("⚠️ Aus dem Keller"))).toHaveLength(2);
     expect(texte.at(-1)).toContain("Finale „Demo-Season“");
     expect(t(db, "SELECT MAX(datum) FROM training")).toBe("2026-11-22");
 

@@ -5,7 +5,7 @@ import { BEFEHLE, erstelleBot } from "./bot/index.js";
 import { APP_KNOPF, appKnopf } from "./bot/app-knopf.js";
 import { MINIAPP_PFAD, WEBHOOK_PFAD, erstelleServer } from "./server.js";
 import { log, setzeLogStufe } from "./log.js";
-import { starteZeitplan } from "./zeitplan.js";
+import { starteZeitplan, zeitplanExtras } from "./zeitplan.js";
 import { uhr } from "./bot/kontext.js";
 import { DEMO_BEFEHLE, aktiviereDemo } from "./demo/index.js";
 import { starteBackups } from "./backup.js";
@@ -77,10 +77,12 @@ async function main(): Promise<void> {
       const app = o?.appKnopf ? appKnopf(bot.botInfo, { id: chatId, type: "group" }, miniAppUrl) : undefined;
       return (await bot.api.sendMessage(chatId, text, app ? { reply_markup: app } : {})).message_id;
     },
-    (chatId, png) => bot.api.sendPhoto(chatId, new InputFile(png, "punkteverlauf.png")),
+    async (chatId, png, beschriftung) =>
+      (await bot.api.sendPhoto(chatId, new InputFile(png, beschriftung ? "boss.png" : "punkteverlauf.png"), beschriftung ? { caption: beschriftung } : {})).message_id,
     config.TZ,
     60_000,
     () => uhr.jetzt(),
+    zeitplanExtras(bot.api),
   );
 
   // Tägliches Backup nach echter Uhrzeit (nicht nach der verstellbaren Demo-Uhr)

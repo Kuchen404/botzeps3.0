@@ -2,6 +2,7 @@ import type { Db } from "../db/index.js";
 import { aktuelleSeason, bosseDerSeason, einstellungen, ladeTeilnehmer } from "../db/season-repo.js";
 import { alleTrainings, lebenslangeLast, vergebeErfolge } from "../db/erfolg-repo.js";
 import { bossAnzeigename, bossKampf, lebensbalken } from "../scoring/boss.js";
+import { BOSS_BLUTET } from "../boss/texte.js";
 import { erfolgText, trainingsErfolge, wochenErfolge, type ErfolgArt } from "../scoring/erfolge.js";
 import { rangIndex, rangText, RAENGE } from "../scoring/raenge.js";
 import { type Teilnehmer, type TeilnehmerStand, seasonEnde, seasonStand, wocheVon } from "../scoring/season.js";
@@ -83,6 +84,9 @@ export function meldungenNachTraining(db: Db, trainingId: number, tag: string, z
       } else {
         const uebrig = kNachher.lebenspunkte - kNachher.schaden;
         zeilen.push(`🐉 ${name}: ${lebensbalken(kNachher)} noch ${z(uebrig)} von ${z(kNachher.lebenspunkte)} Lebenspunkten`);
+        if (kVorher.schaden * 2 < kNachher.lebenspunkte && kNachher.schaden * 2 >= kNachher.lebenspunkte) {
+          zeilen.push(fuelle(BOSS_BLUTET, { boss: name }));
+        }
       }
     }
     erfolge.push(...wochenErfolge(ich.wochen, s.wochenziel_last));

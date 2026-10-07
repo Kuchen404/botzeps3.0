@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { bossSvg } from "../boss/figur.js";
 import type { Db } from "../db/index.js";
 import { gruppenDesNutzers, speichereNutzer } from "../db/repo.js";
 import { type Eintrag, aendereTrainingsdauer, eintrag, letzteEintraege, loescheEintrag } from "../db/verlauf-repo.js";
@@ -55,6 +56,7 @@ function bossJson(bosse: readonly Boss[], staende: readonly TeilnehmerStand[], i
   return {
     name: bossAnzeigename(boss.name, boss.stufe),
     emoji: bossEmoji(boss.name),
+    bild: bossSvg(boss.name, boss.stufe),
     stufe: boss.stufe,
     woche: boss.woche + 1,
     aktiv: laeuft && boss.woche === woche,

@@ -116,6 +116,7 @@ describe("Mini App", () => {
       expect(boss).toEqual({
         name: "König Bierbauch",
         emoji: "🍺",
+        bild: expect.stringContaining("<svg"),
         stufe: 1,
         woche: 2,
         aktiv: true,
