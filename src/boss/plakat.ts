@@ -61,7 +61,7 @@ export function steckbriefSvg(name: string, stufe: BossStufe, lebenspunkte: numb
   <text x="300" y="148" font-size="22" font-weight="700" text-anchor="middle" fill="${tinte}" letter-spacing="3">${stufe === 2 ? "AUFGEPUMPT UND GEFÄHRLICH" : "TOT ODER LEBENDIG"}</text>
   <rect x="120" y="170" width="360" height="360" fill="${stufe === 2 ? "#4a0d0f" : "#2d1846"}" stroke="${tinte}" stroke-width="4"/>
   <clipPath id="rahmen"><rect x="120" y="170" width="360" height="360"/></clipPath>
-  <g clip-path="url(#rahmen)"><g transform="translate(300 352) scale(1.45) translate(-120 -128)">${bossZeichnung(name, stufe)}</g></g>
+  <g clip-path="url(#rahmen)"><g transform="translate(288 356) scale(1.25) translate(-120 -128)">${bossZeichnung(name, stufe)}</g></g>
   ${titel.map((z, i) => `<text x="300" y="${590 + i * 40}" font-size="36" font-weight="900" text-anchor="middle" fill="${tinte}">${esc(z)}</text>`).join("")}
   <path d="M60 ${618 + (titel.length - 1) * 40} H540" stroke="${tinte}" stroke-width="2"/>
   ${infoZeilen}
