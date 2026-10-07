@@ -58,6 +58,7 @@ async function main(): Promise<void> {
         log.debug(`Gruppenpost ${nachrichtId} nicht angepasst`, err);
       }
     },
+    gruppensenden: async (chatId: number, text: string) => (await bot.api.sendMessage(chatId, text)).message_id,
   };
   const server = erstelleServer(webhook ? { bot, webhookSecret: config.WEBHOOK_SECRET, miniApp } : { miniApp });
   server.listen(config.PORT, () => log.info(`HTTP-Server auf Port ${config.PORT}`));

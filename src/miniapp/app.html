@@ -51,6 +51,19 @@
   label.schalter { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; }
   input[type=time] { font-size: 16px; padding: 6px; border-radius: 8px; border: 1px solid var(--hint); background: var(--bg); color: var(--text); }
   .fehler { color: var(--danger); padding: 16px; }
+  /* Eintragen */
+  .feld { margin-bottom: 4px; }
+  .feld > .hint { display: block; margin-bottom: 4px; }
+  .chips input, .werte input { font-size: 16px; padding: 4px 8px; border-radius: 14px; border: 1px solid var(--hint); background: var(--bg); color: var(--text); }
+  .chips input { width: 84px; }
+  .chips select { width: auto; margin: 0; padding: 4px 8px; border-radius: 14px; border: 1px solid var(--hint); font-size: 13px; }
+  .chips select.aktiv { background: var(--button); color: var(--button-text); border-color: var(--button); }
+  .werte { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px; }
+  .werte label { font-size: 13px; color: var(--hint); }
+  .werte input { width: 100%; border-radius: 10px; padding: 8px; margin-top: 2px; }
+  .senden { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .senden .knopf { padding: 10px 18px; font-size: 15px; }
+  .knopf:disabled { opacity: .45; }
   /* Ränge und Erfolge */
   .rangkopf { display: flex; align-items: center; gap: 12px; }
   .rangkopf .emoji { font-size: 52px; line-height: 1; }
@@ -109,7 +122,7 @@
   <button data-tab="stand" class="aktiv">Stand</button>
   <button data-tab="ruhm">Ruhm</button>
   <button data-tab="waage">Waage</button>
-  <button data-tab="eintraege">Einträge</button>
+  <button data-tab="eintraege">Eintragen</button>
   <button data-tab="einstellungen">Mehr</button>
 </nav>
 <main id="inhalt"><p class="hint">Lädt …</p></main>
@@ -118,7 +131,7 @@
 "use strict";
 var tg = window.Telegram && window.Telegram.WebApp;
 if (tg) { tg.ready(); tg.expand(); }
-var daten = null, eintraege = null, ruhmDaten = null, tab = "stand", seasonIndex = 0, waageReihe = "fettPct";
+var daten = null, eintraege = null, eingabeDaten = null, ruhmDaten = null, tab = "stand", seasonIndex = 0, waageReihe = "fettPct";
 var inhalt = document.getElementById("inhalt");
 
 function api(pfad, body) {
@@ -307,7 +320,7 @@ function standTab(s) {
     kinder.push(karte("Vor dem Start", [
       el("p", { text: "„" + s.name + "“ startet am " + datum(s.start) + "." }),
       el("p", { text: "Kalibrierung: " + ich.kalibrierMessungen + " von 3 Messungen." }),
-      el("p", { class: "hint", text: "Messen: im privaten Chat /waage" })
+      el("button", { class: "knopf", text: "⚖️ Jetzt messen", onclick: function () { zeigeTab("eintraege"); } })
     ]));
     return kinder;
   }
@@ -396,7 +409,7 @@ function ruhmTab() {
 
 function waageTab() {
   var m = daten.messungen;
-  if (!m.length) return [karte(null, [el("p", { text: "Noch keine Messungen. Im privaten Chat: /waage 82,4 18,5 41,2" })])];
+  if (!m.length) return [karte(null, [el("p", { text: "Noch keine Messungen." }), el("button", { class: "knopf", text: "Jetzt eintragen", onclick: function () { zeigeTab("eintraege"); } })])];
   var arten = { gewichtKg: "Gewicht (kg)", fettPct: "Fett (%)", muskelPct: "Muskel (%)" };
   var chips = el("div", { class: "chips" }, Object.keys(arten).map(function (k) {
     return el("button", { class: waageReihe === k ? "aktiv" : "", text: arten[k], onclick: function () { waageReihe = k; zeichne(); } });
@@ -410,9 +423,118 @@ function waageTab() {
   ];
 }
 
+var TAGE = [{ wert: 0, text: "Heute" }, { wert: 1, text: "Gestern" }, { wert: 2, text: "Vorgestern" }];
+var training = { chat: null, sportart: null, minuten: null, tage: 0, status: "" };
+var messung = { gewichtKg: "", fettPct: "", muskelPct: "", tage: 0, status: "" };
+
+function chips(optionen, aktiv, waehle) {
+  return el("div", { class: "chips" }, optionen.map(function (o) {
+    return el("button", { type: "button", class: o.wert === aktiv ? "aktiv" : "", text: o.text, onclick: function () { waehle(o.wert); zeichne(); } });
+  }));
+}
+function feld(titel, inhalt) { return el("div", { class: "feld" }, [el("span", { class: "hint", text: titel }), inhalt]); }
+function erfolg() { if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred("success"); }
+
+/** Nach dem Eintragen alles neu laden, was sich dadurch ändert (Stand, Liste, Reihenfolge der Sportarten). */
+function neuLaden() {
+  eintraege = null; ruhmDaten = null; eingabeDaten = null;
+  return api("/api/ich").then(function (j) { daten = j; zeichne(); });
+}
+
+function trainingKarte() {
+  var e = eingabeDaten;
+  if (!e.gruppen.length) return karte("Training", [el("p", { class: "hint", text: "Du bist in keiner Botzeps-Gruppe. Erst in der Gruppe /start und auf „Ich bin dabei“ drücken." })]);
+  // Standard: die Gruppe der oben gewählten Season
+  var s = daten.seasons[seasonIndex];
+  var gruppe = e.gruppen.find(function (g) { return g.chat === training.chat; }) ||
+    e.gruppen.find(function (g) { return s && g.chat === s.chat; }) || e.gruppen[0];
+  if (training.chat !== gruppe.chat) { training.chat = gruppe.chat; training.sportart = null; }
+  var kinder = [];
+  if (e.gruppen.length > 1) {
+    var gAuswahl = el("select", { "aria-label": "Gruppe" }, e.gruppen.map(function (g) { return el("option", { value: String(g.chat), text: g.name }); }));
+    gAuswahl.value = String(gruppe.chat);
+    gAuswahl.addEventListener("change", function () { training.chat = Number(gAuswahl.value); training.sportart = null; zeichne(); });
+    kinder.push(feld("Gruppe", gAuswahl));
+  }
+  // Die zuletzt benutzten als Knöpfe, der Rest in der Auswahl
+  var oben = gruppe.sportarten.slice(0, 6), rest = gruppe.sportarten.slice(6);
+  var sportChips = chips(oben.map(function (x) { return { wert: x.id, text: x.name }; }), training.sportart, function (w) { training.sportart = w; });
+  if (rest.length) {
+    var imRest = rest.some(function (x) { return x.id === training.sportart; });
+    var mehr = el("select", { "aria-label": "Andere Sportart", class: imRest ? "aktiv" : "" }, [el("option", { value: "", text: "Andere …" })].concat(
+      rest.map(function (x) { return el("option", { value: String(x.id), text: x.name }); })));
+    if (imRest) mehr.value = String(training.sportart);
+    mehr.addEventListener("change", function () { if (mehr.value) { training.sportart = Number(mehr.value); zeichne(); } });
+    sportChips.appendChild(mehr);
+  }
+  kinder.push(feld("Sportart", sportChips));
+
+  var dauerChips = chips(e.dauern.map(function (d) { return { wert: d, text: d + " min" }; }), training.minuten, function (w) { training.minuten = w; });
+  var eigene = el("input", { type: "number", inputmode: "numeric", min: String(e.minuten.min), max: String(e.minuten.max), placeholder: "andere", "aria-label": "Minuten" });
+  if (training.minuten && e.dauern.indexOf(training.minuten) < 0) eigene.value = String(training.minuten);
+  eigene.addEventListener("input", function () { training.minuten = eigene.value ? Number(eigene.value) : null; knopf.disabled = !bereit(); });
+  dauerChips.appendChild(eigene);
+  kinder.push(feld("Dauer", dauerChips));
+  kinder.push(feld("Wann", chips(TAGE, training.tage, function (w) { training.tage = w; })));
+
+  function bereit() { return training.sportart != null && training.minuten >= e.minuten.min && training.minuten <= e.minuten.max; }
+  var status = el("span", { class: "hint", text: training.status });
+  var knopf = el("button", { type: "button", class: "knopf", text: "Eintragen", onclick: function () {
+    if (!bereit()) { status.textContent = "Dauer bitte zwischen " + e.minuten.min + " und " + e.minuten.max + " Minuten."; return; }
+    knopf.disabled = true; status.textContent = "Trägt ein …";
+    api("/api/training", { chat: training.chat, sportart: training.sportart, minuten: training.minuten, tage: training.tage }).then(function (j) {
+      erfolg();
+      training.status = j.text; training.minuten = null; training.tage = 0;
+      return neuLaden();
+    }).catch(function (f) { knopf.disabled = false; status.textContent = f.message; });
+  } });
+  knopf.disabled = !bereit();
+  kinder.push(el("div", { class: "senden" }, [knopf, status]));
+  return karte("🏃 Training", kinder);
+}
+
+function messungKarte() {
+  var letzte = eingabeDaten.letzteMessung || {};
+  var felder = [["gewichtKg", "Gewicht kg"], ["fettPct", "Fett %"], ["muskelPct", "Muskel %"]].map(function (f) {
+    var eingabe = el("input", { type: "text", inputmode: "decimal", autocomplete: "off", placeholder: letzte[f[0]] != null ? zahl(letzte[f[0]]) : "" });
+    eingabe.value = messung[f[0]];
+    eingabe.addEventListener("input", function () { messung[f[0]] = eingabe.value; });
+    return el("label", {}, [f[1], eingabe]);
+  });
+  var status = el("span", { class: "hint", text: messung.status });
+  function wert(k) { var t = String(messung[k]).trim().replace(",", "."); return t === "" ? NaN : Number(t); }
+  function sende(trotzdem) {
+    var body = { gewichtKg: wert("gewichtKg"), fettPct: wert("fettPct"), muskelPct: wert("muskelPct"), tage: messung.tage };
+    if ([body.gewichtKg, body.fettPct, body.muskelPct].some(isNaN)) { status.textContent = "Bitte alle drei Werte eintragen."; return; }
+    if (trotzdem) body.trotzdem = true;
+    knopf.disabled = true; status.textContent = "Speichert …";
+    api("/api/messung", body).then(function (j) {
+      if (!j.ok) {
+        knopf.disabled = false; status.textContent = "";
+        bestaetige("Das weicht stark von deinem Schnitt der letzten 7 Tage ab (" + zahl(j.sprung.gewichtKg) + " kg, Fett " + zahl(j.sprung.fettPct) + " %). Stimmt das so?", function () { sende(true); });
+        return;
+      }
+      erfolg();
+      messung = { gewichtKg: "", fettPct: "", muskelPct: "", tage: 0, status: j.text.split("\n").join(" · ") };
+      return neuLaden();
+    }).catch(function (f) { knopf.disabled = false; status.textContent = f.message; });
+  }
+  var knopf = el("button", { type: "button", class: "knopf", text: "Speichern", onclick: function () { sende(false); } });
+  return karte("⚖️ Waage (nur für dich)", [
+    el("div", { class: "werte" }, felder),
+    feld("Wann", chips(TAGE, messung.tage, function (w) { messung.tage = w; })),
+    el("div", { class: "senden" }, [knopf, status]),
+    el("p", { class: "hint", text: "Morgens, nach dem Klo, vor Essen und Trinken, immer dieselbe Waage." })
+  ]);
+}
+
 function eintraegeTab() {
-  if (!eintraege) { api("/api/eintraege").then(function (j) { eintraege = j; zeichne(); }).catch(zeigeFehler); return [el("p", { class: "hint", text: "Lädt …" })]; }
-  if (!eintraege.eintraege.length) return [karte(null, [el("p", { text: "Noch nichts eingetragen." })])];
+  if (!eintraege || !eingabeDaten) {
+    Promise.all([api("/api/eintraege"), api("/api/eingabe")]).then(function (j) { eintraege = j[0]; eingabeDaten = j[1]; zeichne(); }).catch(zeigeFehler);
+    return [el("p", { class: "hint", text: "Lädt …" })];
+  }
+  var formulare = [trainingKarte(), messungKarte()];
+  if (!eintraege.eintraege.length) return formulare.concat([karte(null, [el("p", { text: "Noch nichts eingetragen." })])]);
   var liste = eintraege.eintraege.map(function (e) {
     var text = e.art === "t"
       ? "🏃 " + datum(e.datum) + " " + e.minuten + " min " + e.sportart
@@ -436,7 +558,7 @@ function eintraegeTab() {
     }
     return el("div", { class: "eintrag" }, [el("div", { text: text }), aktionen]);
   });
-  return [karte("Letzte Einträge", liste.concat([el("p", { class: "hint", text: "Ändern und löschen geht bis 2 Tage zurück." })]))];
+  return formulare.concat([karte("Letzte Einträge", liste.concat([el("p", { class: "hint", text: "Ändern und löschen geht bis 2 Tage zurück." })]))]);
 }
 
 function einstellungenTab() {
@@ -471,9 +593,8 @@ function bestaetige(frage, dann) {
 
 function aendere(pfad, body) {
   api(pfad, body).then(function () {
-    if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred("success");
-    eintraege = null; ruhmDaten = null;
-    return api("/api/ich").then(function (j) { daten = j; zeichne(); });
+    erfolg();
+    return neuLaden();
   }).catch(zeigeFehler);
 }
 
@@ -487,12 +608,13 @@ function zeichne() {
   inhalt.replaceChildren.apply(inhalt, kinder.filter(Boolean));
 }
 
+function zeigeTab(name) {
+  tab = name;
+  document.querySelectorAll("nav button").forEach(function (x) { x.classList.toggle("aktiv", x.getAttribute("data-tab") === name); });
+  if (daten) zeichne();
+}
 document.querySelectorAll("nav button").forEach(function (b) {
-  b.addEventListener("click", function () {
-    tab = b.getAttribute("data-tab");
-    document.querySelectorAll("nav button").forEach(function (x) { x.classList.toggle("aktiv", x === b); });
-    if (daten) zeichne();
-  });
+  b.addEventListener("click", function () { zeigeTab(b.getAttribute("data-tab")); });
 });
 
 document.getElementById("season").addEventListener("change", function (ev) { seasonIndex = Number(ev.target.value); zeichne(); });

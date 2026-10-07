@@ -1,13 +1,18 @@
 import { z } from "zod";
 import { bossSvg } from "../boss/figur.js";
 import type { Db } from "../db/index.js";
-import { gruppenDesNutzers, speichereNutzer } from "../db/repo.js";
+import { type NutzerZeile, gruppenDesNutzers, messMittel, setzeGruppenNachricht, speichereNutzer, sportartNachId, sportartenFuerAuswahl } from "../db/repo.js";
 import { type Eintrag, aendereTrainingsdauer, eintrag, letzteEintraege, loescheEintrag } from "../db/verlauf-repo.js";
 import { berechneStand, berechneTeams } from "../bericht/stand.js";
 import { eigenesDiagramm, punkteverlauf } from "../bericht/punkteverlauf.js";
 import { DAUERN, aenderbar, korrekturText } from "../bot/verlauf.js";
 import { relevanteSeason } from "../bot/stand.js";
 import { gruppenZeitzone, heute, uhr } from "../bot/kontext.js";
+import { TAG_TEXT, trageTrainingEin } from "../bot/sport.js";
+import { speichereWaage } from "../bot/waage.js";
+import { GRENZEN, istSprung, pruefeWaage } from "../domain/eingabe.js";
+import { nimmAnAktuellerSeasonTeil } from "../db/season-repo.js";
+import { log } from "../log.js";
 import { plusTage } from "../scoring/datum.js";
 import { type TeilnehmerStand, seasonEnde, wocheVon } from "../scoring/season.js";
 import { type Boss, bosseDerSeason } from "../db/season-repo.js";
@@ -37,6 +42,9 @@ export interface Antwort {
 
 /** Gruppenpost eines Trainings anpassen (Text) oder löschen (null). */
 export type Gruppenpost = (chatId: number, nachrichtId: number, text: string | null) => Promise<void>;
+
+/** Neuen Post in die Gruppe schicken, gibt die Nachricht-id zurück. */
+export type Gruppensenden = (chatId: number, text: string) => Promise<number>;
 
 const runde = (x: number) => Math.round(x * 10) / 10;
 
@@ -181,6 +189,42 @@ function eintragJson(e: Eintrag, tag: string) {
   return { ...rest, aenderbar: aenderbar(e, tag) };
 }
 
+/** Was das Eintragen-Formular braucht: Gruppen mit Sportarten (zuletzt benutzte zuerst) und die letzte Messung. */
+function eingabe(db: Db, nutzer: NutzerZeile) {
+  const letzte = db
+    .prepare(
+      `SELECT gewicht_kg AS gewichtKg, fett_pct AS fettPct, muskel_pct AS muskelPct FROM messung
+       WHERE nutzer = ? AND geloescht_am IS NULL ORDER BY datum DESC, zeitpunkt DESC LIMIT 1`,
+    )
+    .get(nutzer.id);
+  return {
+    gruppen: gruppenDesNutzers(db, nutzer.id).map((g) => ({
+      chat: g.telegram_chat_id,
+      name: g.name,
+      sportarten: sportartenFuerAuswahl(db, g.id, nutzer.id).map((s) => ({ id: s.id, name: s.name, faktor: s.faktor })),
+    })),
+    dauern: DAUERN,
+    minuten: GRENZEN.minuten,
+    letzteMessung: letzte ?? null,
+  };
+}
+
+const TageSchema = z.number().int().min(0).max(GRENZEN.maxTageZurueck);
+const TrainingSchema = z.object({
+  chat: z.number().int(),
+  sportart: z.number().int().positive(),
+  minuten: z.number().int().min(GRENZEN.minuten.min).max(GRENZEN.minuten.max),
+  tage: TageSchema,
+});
+const MessungSchema = z.object({
+  gewichtKg: z.number(),
+  fettPct: z.number(),
+  muskelPct: z.number(),
+  tage: TageSchema,
+  /** Nach der Rückfrage bei großem Sprung: trotzdem speichern, als auffällig markiert. */
+  trotzdem: z.boolean().optional(),
+});
+
 const LoeschenSchema = z.object({ art: z.enum(["t", "m"]), id: z.number().int().positive() });
 const DauerSchema = z.object({ id: z.number().int().positive(), minuten: z.number().int() });
 const EinstellungenSchema = z.object({
@@ -191,7 +235,7 @@ const EinstellungenSchema = z.object({
     .optional(),
 });
 
-export async function bearbeiteApi(db: Db, a: Anfrage, gruppenpost: Gruppenpost): Promise<Antwort> {
+export async function bearbeiteApi(db: Db, a: Anfrage, gruppenpost: Gruppenpost, gruppensenden: Gruppensenden): Promise<Antwort> {
   const nutzer = speichereNutzer(db, a.nutzer.id, name(a.nutzer));
   const tag = heute(nutzer.zeitzone);
   const fehler = (status: number, text: string): Antwort => ({ status, json: { fehler: text } });
@@ -204,6 +248,42 @@ export async function bearbeiteApi(db: Db, a: Anfrage, gruppenpost: Gruppenpost)
   }
   if (a.methode === "GET" && a.pfad === "/api/eintraege") {
     return { status: 200, json: { eintraege: letzteEintraege(db, nutzer.id, 30).map((e) => eintragJson(e, tag)), dauern: DAUERN } };
+  }
+  if (a.methode === "GET" && a.pfad === "/api/eingabe") {
+    return { status: 200, json: eingabe(db, nutzer) };
+  }
+  if (a.methode === "POST" && a.pfad === "/api/training") {
+    const b = TrainingSchema.safeParse(a.body);
+    if (!b.success) return fehler(400, `Dauer bitte zwischen ${GRENZEN.minuten.min} und ${GRENZEN.minuten.max} Minuten.`);
+    const gruppe = gruppenDesNutzers(db, nutzer.id).find((g) => g.telegram_chat_id === b.data.chat);
+    const sportart = sportartNachId(db, b.data.sportart);
+    if (!gruppe || !sportart || sportart.gruppe !== gruppe.id) return fehler(403, "Gruppe oder Sportart passt nicht.");
+    nimmAnAktuellerSeasonTeil(db, gruppe.id, nutzer.id, heute(gruppenZeitzone()));
+    const { trainingId, post, last } = trageTrainingEin(db, nutzer, sportart, b.data.minuten, b.data.tage);
+    const was = `${b.data.minuten} min ${sportart.name}${TAG_TEXT[b.data.tage]}, ${last} Lastpunkte`;
+    try {
+      setzeGruppenNachricht(db, trainingId, await gruppensenden(gruppe.telegram_chat_id, post));
+      return { status: 200, json: { ok: true, text: `Eingetragen: ${was}. In „${gruppe.name}“ gepostet.` } };
+    } catch (err) {
+      log.warn(`Training ${trainingId} aus der Mini App nicht in Gruppe ${gruppe.id} gepostet`, err);
+      return { status: 200, json: { ok: true, text: `Eingetragen: ${was}. Posten in „${gruppe.name}“ hat nicht geklappt.` } };
+    }
+  }
+  if (a.methode === "POST" && a.pfad === "/api/messung") {
+    const b = MessungSchema.safeParse(a.body);
+    if (!b.success) return fehler(400, "Ungültige Anfrage");
+    const e = { gewichtKg: b.data.gewichtKg, fettPct: b.data.fettPct, muskelPct: b.data.muskelPct, tageZurueck: b.data.tage };
+    const falsch = pruefeWaage(e);
+    if (falsch) return fehler(400, falsch);
+    const datum = plusTage(tag, -e.tageZurueck);
+    const mittel = messMittel(db, nutzer.id, plusTage(datum, -6), datum);
+    if (!b.data.trotzdem && istSprung(e, mittel)) {
+      return {
+        status: 200,
+        json: { ok: false, sprung: { gewichtKg: runde(mittel!.gewichtKg), fettPct: runde(mittel!.fettPct) } },
+      };
+    }
+    return { status: 200, json: { ok: true, text: speichereWaage(db, nutzer, e, Boolean(b.data.trotzdem) && istSprung(e, mittel)) } };
   }
   if (a.methode === "POST" && a.pfad === "/api/eintrag/loeschen") {
     const b = LoeschenSchema.safeParse(a.body);
