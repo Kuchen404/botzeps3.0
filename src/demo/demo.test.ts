@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { uhr } from "../bot/kontext.js";
 import { GRUPPE, KEVIN, befehl, testBot } from "../bot/testhilfe.js";
+import { berechneStand } from "../bericht/stand.js";
+import { seasonNachId } from "../db/season-repo.js";
 import { DEMO_TAKT, aktiviereDemo, parseSprung } from "./index.js";
 
 const echteUhr = uhr.jetzt;
@@ -73,6 +75,18 @@ describe("Demo-Modus", () => {
 
     await bot.handleUpdate(befehl("/vorspulen"));
     expect(gruppenTexte().at(-1)).toContain("Die Season ist durch");
+  });
+
+  it("alle haben nach der ersten Woche einen Fortschritt, auch der Autopilot", async () => {
+    const { db, bot } = demoBot();
+    await bot.handleUpdate(befehl("/demo"));
+    await bot.handleUpdate(befehl("/vorspulen"));
+    await bot.handleUpdate(befehl("/vorspulen"));
+    expect(uhr.jetzt().toISOString()).toBe("2026-10-19T07:01:00.000Z");
+    const s = seasonNachId(db, t(db, "SELECT id FROM season") as number)!;
+    const staende = berechneStand(db, s, "2026-10-19");
+    expect(staende).toHaveLength(6);
+    expect(staende.filter((st) => st.fortschritt === null).map((st) => st.name)).toEqual([]);
   });
 
   it("Tage vorspulen, eigene Einträge zählen zur verstellten Zeit", async () => {
