@@ -37,6 +37,7 @@ export const BEFEHLE = [
   { command: "sportarten", description: "Welche Sportart wie zählt" },
   { command: "sportart", description: "Neue Sportart zur Abstimmung stellen" },
   { command: "erinnerungen", description: "Erinnerungen an/aus, Uhrzeit" },
+  { command: "einfuehrung", description: "Fleiß und Fortschritt kurz erklärt" },
   { command: "hilfe", description: "So funktioniert Botzeps" },
 ];
 

@@ -154,3 +154,35 @@ describe("/rangliste und /stand", () => {
     expect(letzterText()).toContain("in keiner Season");
   });
 });
+
+describe("/einfuehrung", () => {
+  it("kommt beim Anlegen der Season vor dem Formular, mit Kalibrierwoche und Gewichtung", async () => {
+    tag("2026-10-06");
+    const { bot, gesendet } = testBot();
+    await bot.handleUpdate(befehl("/season Herbst"));
+    const texte = gesendet().map((g) => String(g.payload.text));
+    expect(texte).toHaveLength(2);
+    expect(texte[0]).toContain("So läuft die Season „Herbst“");
+    expect(texte[0]).toContain("💪 Fleiß");
+    expect(texte[0]).toContain("⚖️ Fortschritt");
+    expect(texte[0]).toContain("Kalibrierwoche (05.10.2026 – 11.10.2026)");
+    expect(texte[0]).toContain("Fleiß und Fortschritt zählen gleich viel.");
+    expect(texte[1]).toContain("Season „Herbst“");
+  });
+
+  it("zeigt die aktuelle Gewichtung, auch privat und ohne Season", async () => {
+    tag("2026-10-06");
+    const { bot, aufrufe, letzterText } = testBot();
+    await bot.handleUpdate(befehl("/einfuehrung", PRIVAT));
+    expect(letzterText()).toContain("So läuft Botzeps");
+    expect(letzterText()).not.toContain("Kalibrierwoche (");
+
+    await bot.handleUpdate(befehl("/season Herbst"));
+    const siebzig = knoepfe(aufrufe).find((k) => k.text === "70/30")!;
+    await bot.handleUpdate(knopf(siebzig.daten));
+    await bot.handleUpdate(befehl("/einfuehrung"));
+    expect(letzterText()).toContain("Fleiß 70 % und Fortschritt 30 %");
+    await bot.handleUpdate(befehl("/einfuehrung", PRIVAT));
+    expect(letzterText()).toContain("So läuft die Season „Herbst“");
+  });
+});
