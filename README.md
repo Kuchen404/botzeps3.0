@@ -74,6 +74,27 @@ docker compose up -d --build
 - Ohne öffentliche Adresse geht auch `BOT_MODE=polling`; dann ist kein Reverse Proxy nötig, aber auch keine Mini App (Telegram verlangt HTTPS).
 - Backups: siehe unten.
 
+### Automatisches Deployment
+
+Nach jedem grünen CI-Lauf auf `main` kopiert die Action `Deploy` den Code per SSH in den Projektordner auf dem Server, baut `botzeps` neu und wartet, bis der Healthcheck grün ist. Der Test-Bot `botzeps-demo` wird nur neu gestartet, wenn er vorher lief. `.env` und die Daten-Volumes bleiben unberührt. Von Hand auslösen geht unter Actions → Deploy → „Run workflow“.
+
+Einmalig einrichten:
+
+1. Auf dem Server einen eigenen Schlüssel anlegen und freischalten:
+   ```bash
+   ssh-keygen -t ed25519 -N "" -C github-deploy -f ~/.ssh/botzeps_deploy
+   cat ~/.ssh/botzeps_deploy.pub >> ~/.ssh/authorized_keys
+   cat ~/.ssh/botzeps_deploy   # Inhalt für DEPLOY_SSH_KEY
+   ```
+2. Im Repo unter Settings → Secrets and variables → Actions diese Secrets anlegen:
+   - `DEPLOY_HOST`: Adresse des Servers, aus dem Internet per SSH erreichbar
+   - `DEPLOY_USER`: SSH-Nutzer (muss `docker` ohne `sudo` nutzen dürfen)
+   - `DEPLOY_PATH`: Projektordner, z. B. `~/botzepsv3`
+   - `DEPLOY_SSH_KEY`: der private Schlüssel aus Schritt 1, komplett
+   - optional `DEPLOY_PORT` (Standard 22) und `DEPLOY_KNOWN_HOSTS` (Ausgabe von `ssh-keyscan <host>`; ohne wird der Host-Schlüssel bei jedem Lauf frisch abgefragt)
+
+Solange die Secrets fehlen, überspringt die Action das Deployment mit einer Warnung.
+
 ### Backup und Wiederherstellen
 
 Der Bot sichert die Datenbank jeden Tag ab 4 Uhr (`BACKUP_UHRZEIT`) nach `/data/backups/botzeps-JJJJ-MM-TT.db` und behält die letzten 30 (`BACKUP_BEHALTEN`, `0` schaltet es ab). Jede Sicherung wird vorher auf Fehler geprüft; ein verpasstes Backup holt er nach dem Start nach.
