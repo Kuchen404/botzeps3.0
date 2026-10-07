@@ -74,6 +74,24 @@ docker compose up -d --build
 - Ohne öffentliche Adresse geht auch `BOT_MODE=polling`; dann ist kein Reverse Proxy nötig, aber auch keine Mini App (Telegram verlangt HTTPS).
 - Backups: siehe unten.
 
+### Automatisches Deployment
+
+Nach jedem grünen CI-Lauf auf `main` baut die Action `Deploy` das Image, pusht es als `ghcr.io/kuchen404/botzeps3.0:latest` (und `:sha-<commit>`) nach GHCR und ruft die Portainer-Webhooks auf. Portainer zieht dann das neue Image und startet den Stack neu. GitHub braucht keinen Zugang zum Server; die einzigen Secrets sind die Webhook-URLs. Von Hand auslösen geht unter Actions → Deploy → „Run workflow“.
+
+Bisher gibt es nur den Stack für den Test-Bot: `deploy/compose.demo.yml` (Port `127.0.0.1:3001`). `docker-compose.yml` bleibt für die lokale Entwicklung.
+
+Einmalig einrichten (erst, nachdem der erste Deploy-Lauf auf `main` das Image veröffentlicht hat):
+
+1. In GitHub unter Packages → `botzeps3.0` prüfen, dass das Paket privat und mit dem Repo verknüpft ist.
+2. Einen **Classic PAT** nur mit `read:packages` anlegen (fine-grained PATs gehen für GHCR nicht). In Portainer unter Registries → Add registry → Custom eintragen: URL `ghcr.io`, Benutzer `Kuchen404`, Passwort = PAT.
+3. Einen **fine-grained PAT** nur für dieses Repo mit *Contents: read* anlegen (für das Git-Repo im Stack).
+4. Einen alten Demo-Container stoppen, der Port 3001 belegt oder mit demselben Token pollt.
+5. In Portainer unter Stacks → Add stack → Repository: Name `botzeps-demo`, URL `https://github.com/Kuchen404/botzeps3.0`, Referenz `refs/heads/main`, Compose-Pfad `deploy/compose.demo.yml`, Authentifizierung mit dem PAT aus Schritt 3. *GitOps updates* an, Mechanismus *Webhook*, *Re-pull image* an; die Webhook-URL kopieren. Umgebungsvariablen `DEMO_BOT_TOKEN` (Token des Test-Bots) und `DEMO_MINIAPP_URL` (z. B. `https://botzeps-demo.example.de/app`) setzen, dann deployen.
+6. In GitHub unter Settings → Secrets and variables → Actions das Secret `PORTAINER_WEBHOOK_DEMO` mit der Webhook-URL anlegen.
+7. „Deploy“ einmal von Hand starten und prüfen, dass Portainer den Stack neu startet.
+
+Für den echten Bot kommt später ein Stack `deploy/compose.prod.yml` mit dem Secret `PORTAINER_WEBHOOK_PROD` dazu. Fehlt ein Webhook-Secret, überspringt die Action diesen Stack mit einem Hinweis.
+
 ### Backup und Wiederherstellen
 
 Der Bot sichert die Datenbank jeden Tag ab 4 Uhr (`BACKUP_UHRZEIT`) nach `/data/backups/botzeps-JJJJ-MM-TT.db` und behält die letzten 30 (`BACKUP_BEHALTEN`, `0` schaltet es ab). Jede Sicherung wird vorher auf Fehler geprüft; ein verpasstes Backup holt er nach dem Start nach.
