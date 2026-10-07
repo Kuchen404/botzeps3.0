@@ -1,0 +1,22 @@
+# Test-Bot für Portainer (Stack aus dem Git-Repo, siehe README „Automatisches Deployment“).
+# Nutzt das fertige Image aus GHCR; DEMO_BOT_TOKEN und DEMO_MINIAPP_URL setzt Portainer als Stack-Variablen.
+services:
+  botzeps-demo:
+    image: ghcr.io/kuchen404/botzeps3.0:latest
+    restart: unless-stopped
+    environment:
+      BOT_TOKEN: ${DEMO_BOT_TOKEN:?DEMO_BOT_TOKEN fehlt}
+      BOT_MODE: polling
+      DEMO_MODUS: "1"
+      BACKUP_BEHALTEN: "0"
+      DATABASE_PATH: /data/demo.db
+      MINIAPP_URL: ${DEMO_MINIAPP_URL:-}
+      TZ: Europe/Berlin
+    volumes:
+      - botzeps-demo:/data
+    ports:
+      # nginx reicht botzeps-demo.uklmuckl.com/app und /api/ hierhin weiter
+      - "127.0.0.1:3001:3000"
+
+volumes:
+  botzeps-demo:
