@@ -220,4 +220,12 @@ export const MIGRATIONEN: readonly { version: number; name: string; sql: string 
       ALTER TABLE boss ADD COLUMN pin_nachricht INTEGER;
     `,
   },
+  {
+    version: 7,
+    name: "boss_schwaeche",
+    sql: `
+      -- Zufällige Sportart, die gegen diesen Boss doppelten Schaden macht
+      ALTER TABLE boss ADD COLUMN schwaeche INTEGER REFERENCES sportart(id) ON DELETE SET NULL;
+    `,
+  },
 ];

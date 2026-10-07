@@ -63,6 +63,19 @@ export interface BossEinstellung {
   /** 0-basierte Woche der Season. */
   woche: number;
   lebenspunkte: number;
+  /** id der Sportart, die doppelten Schaden macht */
+  schwaeche?: number | null;
+}
+
+/** Schaden einer Einheit in der Schwäche des Bosses, als Vielfaches. */
+export const SCHWAECHE_FAKTOR = 2;
+
+/** Schaden eines Teilnehmers am Boss: Last der Boss-Woche, Einheiten in der Schwäche doppelt. */
+export function bossSchadenVon(
+  boss: Pick<BossEinstellung, "woche">,
+  st: { wochen: readonly Wochenwertung[]; bossSchaden?: Readonly<Record<number, number>> },
+): number {
+  return st.bossSchaden?.[boss.woche] ?? st.wochen[boss.woche]?.last ?? 0;
 }
 
 export interface BossKampf extends BossEinstellung {
@@ -75,8 +88,11 @@ export interface BossKampf extends BossEinstellung {
   drueckeberger: string[];
 }
 
-export function bossKampf(boss: BossEinstellung, staende: readonly { id: string; wochen: readonly Wochenwertung[] }[]): BossKampf {
-  const last = (st: (typeof staende)[number]) => st.wochen[boss.woche]?.last ?? 0;
+export function bossKampf(
+  boss: BossEinstellung,
+  staende: readonly { id: string; wochen: readonly Wochenwertung[]; bossSchaden?: Readonly<Record<number, number>> }[],
+): BossKampf {
+  const last = (st: (typeof staende)[number]) => bossSchadenVon(boss, st);
   const schaden = staende.reduce((s, st) => s + last(st), 0);
   return {
     ...boss,

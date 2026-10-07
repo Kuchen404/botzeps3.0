@@ -1,6 +1,6 @@
 import { type IsoDatum, plusTage, tageZwischen, imZeitraum } from "./datum.js";
-import { type Training, type Wochenwertung, FLEISS, gesamtLast, werteWochen } from "./fleiss.js";
-import { type BossEinstellung, bossKampf } from "./boss.js";
+import { type Faktor, type Training, type Wochenwertung, FLEISS, gesamtLast, werteWochen } from "./fleiss.js";
+import { type BossEinstellung, SCHWAECHE_FAKTOR, bossKampf } from "./boss.js";
 import {
   type Fortschrittswertung,
   type Koerpermassen,
@@ -49,6 +49,8 @@ export interface TeilnehmerStand {
   fortschritt: Fortschrittswertung | null;
   /** Bonus für Siege gegen Bosse, ungewichtet in `gesamt` enthalten. */
   bossBonus: number;
+  /** Schaden je Boss-Woche (Einheiten in der Schwäche doppelt), nur für Wochen mit Boss */
+  bossSchaden?: Record<number, number>;
   /** Gewichtete Gesamtpunkte. */
   gesamt: number;
   /** Gewichtete Fleißpunkte (Tiebreaker). */
@@ -111,6 +113,14 @@ export function teilnehmerStand(
   }
   proWoche.forEach((liste, i) => (lasten[i] = gesamtLast(liste)));
   const wochen = werteWochen(lasten, s.wochenzielLast);
+  const bossSchaden: Record<number, number> = {};
+  for (const boss of s.bosse ?? []) {
+    const liste = proWoche[boss.woche];
+    if (!liste) continue;
+    bossSchaden[boss.woche] = gesamtLast(
+      liste.map((tr) => (boss.schwaeche != null && tr.sportartId === boss.schwaeche ? { ...tr, faktor: (tr.faktor * SCHWAECHE_FAKTOR) as Faktor } : tr)),
+    );
+  }
   const fleiss = wochen.reduce((summe, w) => summe + w.punkte, 0);
 
   const fenster = kalibrierFenster(s, t.beitritt);
@@ -122,7 +132,7 @@ export function teilnehmerStand(
   const fleissGewichtet = fleiss * gewichtsFaktor(s.gewichtFleiss);
   const gesamt = fleissGewichtet + (fw?.punkte ?? 0) * gewichtsFaktor(s.gewichtFortschritt);
 
-  return { id: t.id, name: t.name, wochen, fleiss, start, aktuell, fortschritt: fw, bossBonus: 0, gesamt, fleissGewichtet };
+  return { id: t.id, name: t.name, wochen, fleiss, start, aktuell, fortschritt: fw, bossBonus: 0, bossSchaden, gesamt, fleissGewichtet };
 }
 
 /**
