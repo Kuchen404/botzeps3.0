@@ -77,6 +77,10 @@ describe("Zeitplan", () => {
     expect(woche1.text).toContain("2. Peter: 1");
     expect(woche1.text).toContain("Fleiß der Woche: Kevin mit 300 Lastpunkten");
     expect(woche1.text).not.toContain("Nächste Woche ist die letzte");
+    // Kurz halten: Erfolge kamen schon beim Trainingspost, Wochenziel steht als ✅ an den Namen
+    expect(woche1.text).not.toContain("Erfolge");
+    expect(woche1.text).not.toContain("Schweißtropfen");
+    expect(woche1.text).not.toContain("Wochenziel (");
     expect(woche1.text).not.toContain("kg");
     expect(db.prepare("SELECT COUNT(*) AS n FROM wochenstand WHERE woche = 0").get()).toEqual({ n: 2 });
     // Punkteverlauf als Bild direkt nach dem Bericht
