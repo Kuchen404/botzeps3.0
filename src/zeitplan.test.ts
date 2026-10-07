@@ -27,9 +27,9 @@ async function aufbau() {
     tag(d);
     await t.bot.handleUpdate(befehl("/waage 90 30 40", PRIVAT));
   }
-  const gesendet: { chatId: number; text: string }[] = [];
-  const senden = async (chatId: number, text: string) => {
-    gesendet.push({ chatId, text });
+  const gesendet: { chatId: number; text: string; appKnopf?: boolean }[] = [];
+  const senden = async (chatId: number, text: string, o?: { appKnopf?: boolean }) => {
+    gesendet.push({ chatId, text, ...(o?.appKnopf ? { appKnopf: true } : {}) });
   };
   const fotos: { chatId: number; png: Uint8Array }[] = [];
   const foto = async (chatId: number, png: Uint8Array) => {
@@ -60,7 +60,7 @@ describe("Zeitplan", () => {
   });
 
   it("Wochenberichte genau einmal, mit Veränderung zur Vorwoche, dann das Finale", async () => {
-    const { db, bot, berichte, fotos, lauf } = await aufbau();
+    const { db, bot, berichte, fotos, gesendet, lauf } = await aufbau();
     tag("2026-10-14");
     await bot.handleUpdate(befehl("/sport 100 Joggen"));
     await bot.handleUpdate(befehl("/sport 30 Yoga", GRUPPE, PETER));
@@ -71,6 +71,7 @@ describe("Zeitplan", () => {
     await lauf("2026-10-18T18:01:30Z");
     expect(berichte()).toHaveLength(1);
     const woche1 = { text: berichte()[0]! };
+    expect(gesendet.find((g) => g.chatId === GRUPPE.id)?.appKnopf).toBe(true);
     expect(woche1.text).toContain("Wochenbericht „Herbst“, Woche 1 von 3");
     expect(woche1.text).toContain("1. Kevin: 10 ✅");
     expect(woche1.text).toContain("2. Peter: 1");

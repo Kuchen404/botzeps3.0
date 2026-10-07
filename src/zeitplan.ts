@@ -26,8 +26,8 @@ import { meldungenNachTraining, mitMeldungen } from "./bericht/nach-training.js"
  * Nach einem Neustart wird Verpasstes nachgeholt, Erinnerungen aber nur bis 2 Stunden zu spät.
  */
 
-/** Sendet eine Nachricht und gibt, wenn bekannt, ihre message_id zurück. */
-export type Sender = (chatId: number, text: string) => Promise<number | void>;
+/** Sendet eine Nachricht (auf Wunsch mit Knopf zur Mini App) und gibt, wenn bekannt, ihre message_id zurück. */
+export type Sender = (chatId: number, text: string, optionen?: { appKnopf?: boolean }) => Promise<number | void>;
 /** Sendet ein PNG als Foto. */
 export type FotoSender = (chatId: number, png: Uint8Array) => Promise<unknown>;
 
@@ -188,7 +188,7 @@ async function berichte(db: Db, senden: Sender, t: TerminZeile, zeitzone: string
       vorlagen.get(st.id) ?? null,
     );
   }
-  await senden(gruppe.telegram_chat_id, text);
+  await senden(gruppe.telegram_chat_id, text, { appKnopf: true });
   if (foto) {
     // Ein fehlendes Diagramm soll den Bericht nicht als fehlgeschlagen markieren
     try {

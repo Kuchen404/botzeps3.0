@@ -22,7 +22,7 @@ Dieses Grundgerüst enthält:
 - **Erinnerungen** privat zur eigenen Uhrzeit (Standard 19:00): in der Kalibrierwoche, nach 3 Tagen ohne Training, nach 4 Tagen ohne Messung. `/erinnerungen an|aus|18:30`.
 - **Zeitplan** als Termine in der Datenbank: jeder Termin läuft genau einmal, verpasste Berichte werden nach einem Neustart nachgeholt, Erinnerungen nur bis 2 Stunden zu spät.
 - **Sprüche** (`src/texte/sprueche.json`) mit Platzhaltern und Auswahl ohne direkte Wiederholung.
-- **Mini App** (`src/miniapp/`) unter `/app`, geöffnet über den Menüknopf „Botzeps“ im privaten Chat oder `/app`: Stand mit interaktivem Punkteverlauf, Rangliste und Teams, eigene Waagenwerte als Diagramm, Einträge ändern und löschen, Erinnerungen einstellen, im Reiter „Ruhm“ der eigene Rang mit Fortschrittsbalken, alle Erfolge und die Ruhmeshalle der Gruppe. Anmeldung automatisch über die signierten Telegram-initData, keine PIN.
+- **Mini App** (`src/miniapp/`) unter `/app`, geöffnet über den Menüknopf „📊 Botzeps-App“ im privaten Chat, `/app` oder den App-Knopf unter Begrüßung, `/stand`, `/rangliste` und dem Wochenbericht (auch in der Gruppe; dort öffnet er die App direkt mit der Season dieser Gruppe, wenn beim BotFather eine Haupt-Mini-App eingerichtet ist, sonst führt er in den Privatchat): Stand mit interaktivem Punkteverlauf, Rangliste und Teams, eigene Waagenwerte als Diagramm, Einträge ändern und löschen, Erinnerungen einstellen, im Reiter „Ruhm“ der eigene Rang mit Fortschrittsbalken, alle Erfolge und die Ruhmeshalle der Gruppe. Anmeldung automatisch über die signierten Telegram-initData, keine PIN.
 - **Docker** und Webhook-Betrieb mit `/health`-Endpunkt.
 - **Tägliches Backup** der Datenbank mit Prüfung, die letzten 30 werden aufgehoben, optional zusätzlich als Datei per Telegram (siehe „Backup und Wiederherstellen“).
 
@@ -70,7 +70,7 @@ docker compose up -d --build
 
 - Die Datenbank liegt im Volume `botzeps-daten` unter `/data/botzeps.db`.
 - Der Container hört auf Port 3000 (nur `127.0.0.1`). Für den Webhook braucht Telegram HTTPS: einen Reverse Proxy (z. B. Caddy, Traefik, nginx) davor setzen, der `https://<WEBHOOK_URL>/telegram` an den Container weiterreicht.
-- Die Mini App liegt unter `https://<WEBHOOK_URL>/app` und spricht mit `/api/…`; der Reverse Proxy muss diese Pfade ebenfalls weiterreichen. Eine andere Adresse geht über `MINIAPP_URL`. Beim Start setzt der Bot den Menüknopf „Botzeps“, bei BotFather ist nichts einzustellen.
+- Die Mini App liegt unter `https://<WEBHOOK_URL>/app` und spricht mit `/api/…`; der Reverse Proxy muss diese Pfade ebenfalls weiterreichen. Eine andere Adresse geht über `MINIAPP_URL`. Beim Start setzt der Bot den Menüknopf „📊 Botzeps-App“. Damit der App-Knopf in Gruppen die App direkt öffnet und der Bot im Chatverlauf und Profil einen „Öffnen“-Knopf bekommt, beim BotFather einmal `/mybots` → Bot → *Bot Settings* → *Configure Mini App* → *Enable Mini App* mit derselben URL einstellen (je Bot, also auch beim Test-Bot).
 - Ohne öffentliche Adresse geht auch `BOT_MODE=polling`; dann ist kein Reverse Proxy nötig, aber auch keine Mini App (Telegram verlangt HTTPS).
 - Backups: siehe unten.
 

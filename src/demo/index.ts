@@ -9,6 +9,7 @@ import { kalibrierFenster, seasonEnde, wocheVon } from "../scoring/season.js";
 import { STUFEN } from "../scoring/boss.js";
 import { berichtsZeitpunkt, bossZeitpunkt, zeitplanLauf } from "../zeitplan.js";
 import { log } from "../log.js";
+import { appKnopf } from "../bot/app-knopf.js";
 import { FAKE_PROFILE, type Profil, autopilotProfil, simuliereTag, tage } from "./simulation.js";
 
 /**
@@ -223,7 +224,7 @@ export function sprungText(s: SeasonZeile, ziel: Date, zeitzone: string, simulie
   ].join("\n");
 }
 
-export function demoModul(db: Db): Composer<Context> {
+export function demoModul(db: Db, miniAppUrl?: string): Composer<Context> {
   const c = new Composer<Context>();
 
   c.command("demo", async (ctx) => {
@@ -303,7 +304,10 @@ export function demoModul(db: Db): Composer<Context> {
     try {
       await zeitplanLauf(
         db,
-        async (chatId, text) => (await ctx.api.sendMessage(chatId, text)).message_id,
+        async (chatId, text, o) => {
+          const app = o?.appKnopf ? appKnopf(ctx.me, { id: chatId, type: "group" }, miniAppUrl) : undefined;
+          return (await ctx.api.sendMessage(chatId, text, app ? { reply_markup: app } : {})).message_id;
+        },
         (chatId, png) => ctx.api.sendPhoto(chatId, new InputFile(png, "punkteverlauf.png")),
         uhr.jetzt(),
         zeitzone,
