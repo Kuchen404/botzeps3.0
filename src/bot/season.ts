@@ -16,7 +16,8 @@ import { MESSPROTOKOLL } from "./waage.js";
 import { einfuehrung } from "./texte.js";
 import { anzeigename, argumente, datumDe, gruppenId, gruppenZeitzone, heute, istGruppenAdmin } from "./kontext.js";
 
-const STARTS = [1, 2, 3];
+/** 0 = nächster Montag mit verkürzter Kalibrierwoche, sonst `startIn(tag, n)`. */
+const STARTS = [0, 1, 2, 3];
 const WOCHEN = [6, 8, 10, 12];
 const GEWICHTE = [50, 70, 30];
 
@@ -25,6 +26,19 @@ export function montagIn(heuteDatum: string, n: number): string {
   const wochentag = new Date(`${heuteDatum}T00:00:00Z`).getUTCDay(); // 0 = Sonntag
   const bisMontag = (8 - wochentag) % 7 || 7;
   return plusTage(heuteDatum, bisMontag + (n - 1) * 7);
+}
+
+/**
+ * Season-Start in `n` Wochen: n = 1 ist der erste Montag, vor dem noch eine volle
+ * Kalibrierwoche liegt (heute Montag: in 7 Tagen, sonst der übernächste Montag).
+ */
+export function startIn(heuteDatum: string, n: number): string {
+  return montagIn(plusTage(heuteDatum, 6), n);
+}
+
+/** Start zu einem Formular-Knopf: 0 ist der nächste Montag, auch wenn die Kalibrierwoche dann schon läuft. */
+function startOption(heuteDatum: string, n: number): string {
+  return n === 0 ? montagIn(heuteDatum, 1) : startIn(heuteDatum, n);
 }
 
 function teilnehmerZahl(db: Db, seasonId: number): number {
@@ -64,8 +78,11 @@ function formular(s: SeasonZeile, tag: string): InlineKeyboard {
   const kb = new InlineKeyboard();
   const haken = (aktiv: boolean, text: string) => (aktiv ? `✓ ${text}` : text);
   for (const n of STARTS) {
-    const start = montagIn(tag, n);
-    kb.text(haken(s.start === start, `Start ${datumDe(start).slice(0, 6)}`), `se:${s.id}:s:${n}`);
+    const start = startOption(tag, n);
+    // Am Montag ist der nächste Montag schon der Start mit voller Kalibrierwoche
+    if (n === 0 && start === startIn(tag, 1)) continue;
+    const kurz = n === 0 ? " (kurz)" : "";
+    kb.text(haken(s.start === start, `Start ${datumDe(start).slice(0, 6)}${kurz}`), `se:${s.id}:s:${n}`);
   }
   kb.row();
   for (const w of WOCHEN) kb.text(haken(s.wochen === w, `${w} Wo.`), `se:${s.id}:w:${w}`);
@@ -115,7 +132,7 @@ export function seasonModul(db: Db): Composer<Context> {
       await ctx.reply("Der Name ist zu lang, maximal 60 Zeichen.");
       return;
     }
-    const s = legeSeasonAn(db, { gruppe, name, start: montagIn(tag, 1), erstelltVon: nutzer.id, heute: tag });
+    const s = legeSeasonAn(db, { gruppe, name, start: startIn(tag, 1), erstelltVon: nutzer.id, heute: tag });
     await ctx.reply(einfuehrungText(s));
     await ctx.reply(
       `${seasonText(db, s, tag)}\n\nAlle Mitglieder sind dabei, wer später „Ich bin dabei“ drückt oder trainiert, kommt dazu. Start, Dauer und Gewichtung lassen sich bis zum Start mit den Knöpfen ändern.\n\n${MESSPROTOKOLL}`,
@@ -166,7 +183,7 @@ export function seasonModul(db: Db): Composer<Context> {
     const neu = aendereSeason(
       db,
       s.id,
-      feld === "s" ? { start: montagIn(tag, wert) } : feld === "w" ? { wochen: wert } : { gewicht_fleiss: wert },
+      feld === "s" ? { start: startOption(tag, wert) } : feld === "w" ? { wochen: wert } : { gewicht_fleiss: wert },
     );
     await ctx.answerCallbackQuery({ text: "Geändert" });
     try {

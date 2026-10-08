@@ -18,7 +18,7 @@ function tag(datum: string): void {
 /** Season „Herbst“ ab Mo 12.10.2026, angelegt von Kevin, mit vier Leuten. */
 async function aufbau() {
   const t = testBot();
-  tag("2026-10-06");
+  tag("2026-10-05");
   for (const wer of [PETER, MARIA, JONAS]) await t.bot.handleUpdate(knopf("mitmachen", GRUPPE, wer));
   await t.bot.handleUpdate(befehl("/season Herbst"));
   const groessen = () => teamsDerSeason(t.db, 1).map((x) => x.mitglieder.length);
