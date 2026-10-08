@@ -66,6 +66,21 @@ describe("/season", () => {
     expect(db.prepare("SELECT COUNT(*) AS n FROM season").get()).toEqual({ n: 1 });
   });
 
+  it("nach dem Finale am letzten Sonntag geht schon die nächste", async () => {
+    tag("2026-10-06");
+    const { db, bot, letzterText } = testBot();
+    await bot.handleUpdate(befehl("/season Eins"));
+    tag("2026-12-20"); // letzter Tag von Eins (12.10. + 10 Wochen)
+    await bot.handleUpdate(befehl("/season Zwei"));
+    expect(letzterText()).toContain("Es gibt schon eine Season");
+
+    db.prepare("INSERT INTO termin (art, season, faellig_am, erledigt_am) VALUES ('finale', 1, '2026-12-20T18:00:00Z', '2026-12-20T18:00:05Z')").run();
+    await bot.handleUpdate(befehl("/season Zwei"));
+    expect(letzterText()).toContain("Season „Zwei“");
+    expect(letzterText()).toContain("21.12.2026");
+    expect(db.prepare("SELECT COUNT(*) AS n FROM season").get()).toEqual({ n: 2 });
+  });
+
   it("wer später dazukommt, ist automatisch dabei", async () => {
     tag("2026-10-06");
     const { db, bot } = testBot();

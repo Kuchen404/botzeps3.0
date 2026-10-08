@@ -89,6 +89,11 @@ export function aktuelleSeason(db: Db, gruppeId: number, heute: string): SeasonZ
   return alle.find((s) => seasonEnde(s) >= heute);
 }
 
+/** Ob das Finale der Season schon verschickt wurde (danach ist sie durch, auch wenn der letzte Tag noch läuft). */
+export function finaleGelaufen(db: Db, seasonId: number): boolean {
+  return db.prepare("SELECT 1 FROM termin WHERE season = ? AND art = 'finale' AND erledigt_am IS NOT NULL").get(seasonId) !== undefined;
+}
+
 /** Die zuletzt gestartete Season der Gruppe, auch wenn sie schon vorbei ist. */
 export function letzteSeason(db: Db, gruppeId: number, heute: string): SeasonZeile | undefined {
   return db

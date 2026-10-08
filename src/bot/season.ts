@@ -5,6 +5,7 @@ import {
   type SeasonZeile,
   aendereSeason,
   aktuelleSeason,
+  finaleGelaufen,
   legeSeasonAn,
   nimmTeil,
   seasonNachId,
@@ -96,7 +97,9 @@ export function seasonModul(db: Db): Composer<Context> {
 
     trageMitgliedEin(db, gruppe, nutzer.id);
     const name = argumente(ctx).trim();
-    const vorhanden = aktuelleSeason(db, gruppe, tag);
+    // Nach dem Finale am letzten Sonntag ist die alte Season durch, die nächste darf schon angelegt werden
+    const aktuell = aktuelleSeason(db, gruppe, tag);
+    const vorhanden = aktuell && !finaleGelaufen(db, aktuell.id) ? aktuell : undefined;
     if (vorhanden) {
       nimmTeil(db, vorhanden.id, nutzer.id, tag);
       const darfAendern = tag < vorhanden.start && (vorhanden.erstellt_von === nutzer.id || (await istGruppenAdmin(ctx)));
