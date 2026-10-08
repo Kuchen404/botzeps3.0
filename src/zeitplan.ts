@@ -250,7 +250,7 @@ async function berichte(db: Db, senden: Sender, t: TerminZeile, zeitzone: string
   if (foto) {
     // Ein fehlendes Diagramm soll den Bericht nicht als fehlgeschlagen markieren
     try {
-      const verlauf = punkteverlauf(db, s, stichtag);
+      const verlauf = punkteverlauf(db, s, stichtag, true);
       if (verlauf) await foto(gruppe.telegram_chat_id, diagrammPng(gruppenDiagramm(s, verlauf)));
     } catch (err) {
       log.error(`Diagramm zum Bericht ${t.id} fehlgeschlagen`, err);
