@@ -22,6 +22,7 @@ import { setzeGruppenNachricht } from "./db/repo.js";
 import { ABSTIMMUNG_STUNDEN, ergebnisText } from "./bot/abstimmung.js";
 import { trainingsPostText } from "./bot/sport.js";
 import { meldungenNachTraining, mitMeldungen } from "./bericht/nach-training.js";
+import { type HypeKanal, fuehreHypeAus } from "./hype/hype.js";
 import { kuendigeMinispielAn, loeseMinispielAuf, meldeMinispielLage, minispielTeaserFuer, minispielTermine } from "./minispiel/ablauf.js";
 
 /**
@@ -41,6 +42,8 @@ export interface ZeitplanExtras {
   pause?: () => Promise<void>;
   anpinnen?: (chatId: number, nachrichtId: number) => Promise<unknown>;
   loesen?: (chatId: number, nachrichtId: number) => Promise<unknown>;
+  /** Beiträge der Hype-Woche (/hype) */
+  hype?: HypeKanal;
 }
 
 /** Echte Extras für den Bot: Pausen, Anpinnen (still, ohne zweite Benachrichtigung) und Lösen. */
@@ -530,6 +533,7 @@ export async function zeitplanLauf(db: Db, senden: Sender, foto: FotoSender, jet
   plane(db, jetzt, zeitzone);
   await fuehreAus(db, senden, jetzt, zeitzone, foto, extras);
   await beendeAbgelaufeneAbstimmungen(db, senden, jetzt, zeitzone);
+  if (extras.hype) await fuehreHypeAus(db, extras.hype, jetzt, zeitzone);
 }
 
 /** Startet die Zeitplanung; gibt eine Funktion zum Anhalten zurück. */

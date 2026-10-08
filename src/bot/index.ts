@@ -13,6 +13,7 @@ import { verlaufModul } from "./verlauf.js";
 import { abstimmungsModul } from "./abstimmung.js";
 import { teamModul } from "./teams.js";
 import { ruhmModul } from "./ruhm.js";
+import { hypeModul } from "./hype.js";
 import { demoModul } from "../demo/index.js";
 import { sportModul } from "./sport.js";
 import { WAAGE_ANLEITUNG, waageModul } from "./waage.js";
@@ -38,6 +39,7 @@ export const BEFEHLE = [
   { command: "sportart", description: "Neue Sportart zur Abstimmung stellen" },
   { command: "erinnerungen", description: "Erinnerungen an/aus, Uhrzeit" },
   { command: "einfuehrung", description: "Fleiß und Fortschritt kurz erklärt" },
+  { command: "hype", description: "Eine Woche Vorfreude vor dem Start (Admins)" },
   { command: "hilfe", description: "So funktioniert Botzeps" },
 ];
 
@@ -105,6 +107,7 @@ export function erstelleBot(token: string, db: Db, botInfo?: UserFromGetMe, opti
   bot.use(abstimmungsModul(db));
   bot.use(teamModul(db));
   bot.use(ruhmModul(db));
+  bot.use(hypeModul(db));
   if (optionen.demo) bot.use(demoModul(db, optionen.miniAppUrl));
 
   bot.command(["hilfe", "help"], (ctx) => ctx.reply(HILFE));

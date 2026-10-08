@@ -26,6 +26,7 @@ Befehle:
 /sportart Name – neue Sportart vorschlagen, die Gruppe stimmt über die Stufe ab
 /erinnerungen – an, aus oder Uhrzeit (z. B. /erinnerungen 18:30)
 /einfuehrung – was Fleiß und Fortschritt sind, kurz erklärt
+/hype – eine Woche Vorfreude vor dem Start, jeden Abend ein Beitrag (Admins, /hype stop bricht ab)
 /hilfe – diese Hilfe`;
 
 export interface EinfuehrungSeason {
