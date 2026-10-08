@@ -11,6 +11,7 @@ import { DEMO_BEFEHLE, aktiviereDemo } from "./demo/index.js";
 import { starteBackups } from "./backup.js";
 import { dirname, join } from "node:path";
 import { schriftVorhanden } from "./diagramm/index.js";
+import { hypeKanal } from "./hype/kanal.js";
 
 async function main(): Promise<void> {
   const config = ladeConfig();
@@ -83,7 +84,7 @@ async function main(): Promise<void> {
     config.TZ,
     60_000,
     () => uhr.jetzt(),
-    zeitplanExtras(bot.api),
+    { ...zeitplanExtras(bot.api), hype: hypeKanal(bot.api) },
   );
 
   // Tägliches Backup nach echter Uhrzeit (nicht nach der verstellbaren Demo-Uhr)

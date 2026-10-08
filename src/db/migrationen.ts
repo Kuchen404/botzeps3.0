@@ -243,4 +243,18 @@ export const MIGRATIONEN: readonly { version: number; name: string; sql: string 
       );
     `,
   },
+  {
+    version: 9,
+    name: "hype",
+    sql: `
+      -- Hype-Woche vor dem Start (/hype): ein Beitrag pro Tag, unabhängig von einer Season
+      CREATE TABLE hype_post (
+        gruppe      INTEGER NOT NULL REFERENCES gruppe(id) ON DELETE CASCADE,
+        tag         INTEGER NOT NULL,
+        faellig_am  TEXT    NOT NULL,
+        erledigt_am TEXT,
+        PRIMARY KEY (gruppe, tag)
+      );
+    `,
+  },
 ];
