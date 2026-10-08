@@ -5,9 +5,11 @@ import { plusTage } from "../scoring/datum.js";
 import { type TeilnehmerStand, seasonEnde, seasonStand } from "../scoring/season.js";
 
 export interface Punkteverlauf {
-  /** "Start", "W1", "W2", … */
+  /** "Start", "W1", "W2", … (täglich: "Start", "Mo 12.10.", …) */
   x: string[];
-  /** Stand je x-Punkt, beim Start leer (alle 0). */
+  /** Täglich: Achsenbeschriftung je x-Punkt, nur am Start und an Wochenenden gesetzt. */
+  achse?: (string | null)[];
+  /** Stand je x-Punkt, beim Start leer (alle 0). Täglich fehlen die Tage nach `bisTag`. */
   staende: TeilnehmerStand[][];
   /** Stand am letzten Punkt in Ranglistenfolge. */
   ende: TeilnehmerStand[];
@@ -15,12 +17,13 @@ export interface Punkteverlauf {
 }
 
 /** Punkte am Ende jeder Season-Woche bis `bisTag`; die laufende Woche zählt mit dem Stand von `bisTag`. */
-export function punkteverlauf(db: Db, s: SeasonZeile, bisTag: string): Punkteverlauf | null {
+export function punkteverlauf(db: Db, s: SeasonZeile, bisTag: string, taeglich = false): Punkteverlauf | null {
   if (bisTag < s.start) return null;
   const teilnehmer = ladeTeilnehmer(db, s);
   if (teilnehmer.length === 0) return null;
   const e = einstellungen(s, bosseDerSeason(db, s));
   const bis = bisTag < seasonEnde(s) ? bisTag : seasonEnde(s);
+  if (taeglich) return tagesverlauf(s, bis, teilnehmer, e);
   const x = ["Start"];
   const staende: TeilnehmerStand[][] = [[]];
   for (let w = 0; w < s.wochen; w++) {
@@ -32,6 +35,41 @@ export function punkteverlauf(db: Db, s: SeasonZeile, bisTag: string): Punktever
   }
   return {
     x,
+    staende,
+    ende: staende.at(-1)!,
+    telegramIds: new Map(teilnehmer.map((t) => [t.id, t.telegramId])),
+  };
+}
+
+const WOCHENTAGE = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
+
+function tagLabel(tag: string): string {
+  const [, m, d] = tag.split("-");
+  return `${WOCHENTAGE[new Date(`${tag}T00:00:00Z`).getUTCDay()]} ${d}.${m}.`;
+}
+
+/** Stand an jedem Tag bis `bis`; die laufende Woche reicht auf der Achse bis zu ihrem Ende. */
+function tagesverlauf(
+  s: SeasonZeile,
+  bis: string,
+  teilnehmer: ReturnType<typeof ladeTeilnehmer>,
+  e: ReturnType<typeof einstellungen>,
+): Punkteverlauf {
+  const x = ["Start"];
+  const achse: (string | null)[] = ["Start"];
+  const staende: TeilnehmerStand[][] = [[]];
+  for (let w = 0; w < s.wochen; w++) {
+    for (let d = 0; d < 7; d++) {
+      const tag = plusTage(s.start, w * 7 + d);
+      x.push(tagLabel(tag));
+      achse.push(d === 6 ? `W${w + 1}` : null);
+      if (tag <= bis) staende.push(seasonStand(e, teilnehmer, tag));
+    }
+    if (plusTage(s.start, w * 7 + 6) >= bis) break;
+  }
+  return {
+    x,
+    achse,
     staende,
     ende: staende.at(-1)!,
     telegramIds: new Map(teilnehmer.map((t) => [t.id, t.telegramId])),
@@ -61,7 +99,7 @@ export function eigenesDiagramm(s: SeasonZeile, v: Punkteverlauf, id: string): L
   if (!ich) return null;
   const reihe = (name: string, f: (st: TeilnehmerStand) => number) => ({
     name,
-    werte: v.staende.map((staende) => wert(staende, id, f)),
+    werte: v.x.map((_, i) => (i < v.staende.length ? wert(v.staende[i]!, id, f) : null)),
   });
   return {
     titel: `${ich.name} in „${s.name}“`,

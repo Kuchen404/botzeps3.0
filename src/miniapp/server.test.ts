@@ -100,7 +100,9 @@ describe("Mini App", () => {
         { platz: 1, name: "Kevin", gesamt: 110, ich: true, laterne: false, marke: null },
         { platz: 2, name: "Peter", gesamt: 1, ich: false, laterne: false, marke: null },
       ]);
-      expect(s.verlauf.x).toEqual(["Start", "W1"]);
+      expect(s.verlauf.x).toEqual(["Start", "Mo 12.10.", "Di 13.10.", "Mi 14.10.", "Do 15.10.", "Fr 16.10.", "Sa 17.10.", "So 18.10."]);
+      expect(s.verlauf.achse).toEqual(["Start", null, null, null, null, null, null, "W1"]);
+      expect(s.verlauf.reihen[0].werte.slice(2)).toEqual([0, 110, null, null, null, null]);
       expect(json.messungen).toHaveLength(5);
       expect(json.einstellungen).toEqual({ erinnerungen: true, uhrzeit: "19:00" });
 

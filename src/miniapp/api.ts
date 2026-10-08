@@ -95,7 +95,7 @@ function ich(db: Db, nutzerId: number, telegramId: number) {
     const laeuft = tag >= s.start && tag <= ende;
     const woche = wocheVon(s, tag < ende ? tag : ende);
     const w = woche === null || tag < s.start ? undefined : st.wochen[woche];
-    const verlauf = punkteverlauf(db, s, tag);
+    const verlauf = punkteverlauf(db, s, tag, true);
     const eigen = verlauf && eigenesDiagramm(s, verlauf, st.id);
     const laterne = laternen(db, s);
     const marken = laeuft ? aktuelleMarken(db, s, tag) : new Map<string, string>();
@@ -134,7 +134,7 @@ function ich(db: Db, nutzerId: number, telegramId: number) {
               marke: marken.get(x.id) ?? null,
             })) : [],
       teams: tag >= s.start ? berechneTeams(db, s, staende).map((t) => ({ platz: t.platz, name: t.name, gesamt: runde(t.gesamt), bonus: t.bonus })) : [],
-      verlauf: eigen ? { x: eigen.x, reihen: eigen.reihen } : null,
+      verlauf: eigen ? { x: eigen.x, achse: verlauf.achse, reihen: eigen.reihen } : null,
       boss: tag >= s.start ? bossJson(bosseDerSeason(db, s), staende, st.id, woche, laeuft) : null,
       minispiel: laeuft ? minispielFuerApp(db, s, tag, st.id) : null,
     });
