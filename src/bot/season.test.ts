@@ -66,6 +66,31 @@ describe("/season", () => {
     expect(String(aufrufe.at(-1)?.payload.text)).toContain("läuft schon");
   });
 
+  it("kurze Kalibrierung: Start am nächsten Montag per Knopf, Messungen von vorher zählen", async () => {
+    tag("2026-10-05");
+    const t = testBot();
+    await t.bot.handleUpdate(befehl("/waage 90 30 40", PRIVAT));
+    tag("2026-10-07");
+    await t.bot.handleUpdate(befehl("/waage 90 30 40", PRIVAT));
+    await t.bot.handleUpdate(befehl("/season Kurz"));
+    expect(t.letzterText()).toContain("19.10.2026");
+    const kurz = knoepfe(t.aufrufe).find((k) => k.text === "Start 12.10. (kurz)")!;
+    await t.bot.handleUpdate(knopf(kurz.daten));
+    expect(t.letzterText()).toContain("12.10.2026 – 20.12.2026 (10 Wochen)");
+    expect(t.letzterText()).toContain("Kalibrierwoche: 05.10.2026 – 11.10.2026");
+    tag("2026-10-08");
+    await t.bot.handleUpdate(befehl("/waage 90 30 40", PRIVAT));
+    await t.bot.handleUpdate(befehl("/rangliste"));
+    expect(t.letzterText()).toContain("1 von 1 haben ihre 3 Messungen");
+  });
+
+  it("am Montag gibt es keinen kurzen Start, der nächste Montag hat schon die volle Woche", async () => {
+    tag("2026-10-05");
+    const { bot, aufrufe } = testBot();
+    await bot.handleUpdate(befehl("/season Eins"));
+    expect(knoepfe(aufrufe).some((k) => k.text.includes("(kurz)"))).toBe(false);
+  });
+
   it("nur eine Season gleichzeitig", async () => {
     tag("2026-10-06");
     const { db, bot, letzterText } = testBot();
