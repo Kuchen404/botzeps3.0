@@ -102,6 +102,20 @@ function mund(x: number, y: number, b: number, wut: boolean): string {
   return `<path d="${maul}" fill="#4a0a10" stroke="${LINIE}" stroke-width="3" stroke-linejoin="round"/>${zunge}${zaehne}`;
 }
 
+/** Zottelige Umrisslinie (Fell) um eine Ellipse; `zipfel` ist die Länge der Büschel relativ zum Radius. */
+function zottel(cx: number, cy: number, rx: number, ry: number, n: number, zipfel: number): string {
+  const pt = (w: number, f: number) => `${(cx + Math.cos(w) * rx * f).toFixed(1)} ${(cy + Math.sin(w) * ry * f).toFixed(1)}`;
+  let d = `M${pt(0, 1)}`;
+  for (let i = 0; i < n; i++) {
+    const w0 = (i / n) * Math.PI * 2;
+    const w1 = ((i + 0.6) / n) * Math.PI * 2;
+    const w2 = ((i + 1) / n) * Math.PI * 2;
+    const lang = 1 + zipfel * (i % 3 === 0 ? 1.3 : 1);
+    d += ` Q${pt(w0 + 0.05, 1 + zipfel * 0.5)} ${pt(w1, lang)} Q${pt(w1, 1.02)} ${pt(w2, 1)}`;
+  }
+  return d + " Z";
+}
+
 /** Gegenstand in einer Hand; Ursprung ist die Hand bzw. Faust. */
 type Ding = (st: Stift) => string;
 
@@ -379,18 +393,47 @@ const figuren: Record<string, Figur> = {
       ]
         .map(([x, y, g]) => `<path transform="translate(${x} ${y}) scale(${g})" d="M-10 -2 C-14 -12 -2 -16 2 -10 C6 -18 18 -12 12 -4 C20 0 14 12 6 8 C4 16 -8 14 -6 6 C-14 8 -16 0 -10 -2 Z M16 -16 a3 3 0 1 0 0.1 0 M-16 10 a2.4 2.4 0 1 0 0.1 0" fill="#7a4a24" stroke="${LINIE}" stroke-width="1.4"/>`)
         .join("") + strich("M98 36 q-6 -8 0 -16 q6 -8 0 -16 M120 30 q-6 -8 0 -16 q6 -8 0 -16 M142 36 q-6 -8 0 -16 q6 -8 0 -16", 3, "#9bc83a"),
-    koerper: (st, wut) =>
-      st.form("M120 112 C152 110 174 140 171 172 C168 200 146 212 120 211 C93 212 71 199 69 171 C67 140 89 113 120 112 Z", "#f5a0b4") +
-      `<path d="M120 142 C140 142 150 160 148 180 C146 198 134 204 120 204 C106 204 94 198 92 180 C90 160 100 142 120 142 Z" fill="#fbc9d4" opacity=".9"/>` +
-      st.form("M96 204 C92 214 98 220 108 219 C114 218 116 210 112 204 Z", "#e88aa0") +
-      st.form("M144 204 C148 214 142 220 132 219 C126 218 124 210 128 204 Z", "#e88aa0") +
-      st.form("M92 64 C76 54 58 64 62 92 C64 108 76 112 82 102 C86 90 90 78 98 70 Z", "#8b5a3c") +
-      st.form("M148 64 C164 54 182 64 178 92 C176 108 164 112 158 102 C154 90 150 78 142 70 Z", "#8b5a3c") +
-      st.form("M120 50 C147 49 163 70 161 95 C159 117 141 130 120 129 C99 130 81 117 79 95 C77 70 93 49 120 50 Z", "#f5a0b4") +
-      augen(104, 136, 82, wut) +
-      st.form("M102 103 C101 93 139 93 138 103 C139 115 101 115 102 103 Z", "#ec7d98", { linie: 3 }) +
-      `<ellipse cx="113" cy="103" rx="3.2" ry="5" fill="${LINIE}" transform="rotate(-10 113 103)"/><ellipse cx="127" cy="103" rx="3.2" ry="5" fill="${LINIE}" transform="rotate(10 127 103)"/>` +
-      mund(120, 119, 26, wut),
+    koerper: (st, wut) => {
+      const fuss = (x: number, s: 1 | -1) =>
+        `<g transform="translate(${x} 0) scale(${s} 1)">` +
+        st.form("M-14 200 C-20 210 -18 218 -6 220 C6 221 12 216 10 206 Z", "#f5a0b4", { linie: 3 }) +
+        st.form("M-18 212 C-18 220 -10 223 -2 223 C6 223 11 220 11 214 C2 217 -10 217 -18 212 Z", "#6b3b45", { linie: 2.4 }) +
+        strich("M-3 215 L-3 222", 1.8) +
+        `</g>`;
+      return (
+        // Ringelschwanz hinter dem Körper
+        strich("M170 178 C184 178 192 168 186 160 C180 152 170 160 176 166 C180 170 188 166 190 160", 7, LINIE) +
+        strich("M170 178 C184 178 192 168 186 160 C180 152 170 160 176 166 C180 170 188 166 190 160", 3.4, "#f5a0b4") +
+        // ein Körper von den Ohren bis zum Hängebauch, birnenförmig
+        st.form(
+          "M120 46 C142 44 158 58 161 76 C163 88 161 98 158 105 C170 110 178 120 182 134 C192 158 193 182 183 198 " +
+            "C176 208 162 212 146 212 C132 214 108 214 94 212 C78 212 64 208 57 198 C47 182 48 158 58 134 " +
+            "C62 120 70 110 82 105 C79 98 77 88 79 76 C82 58 98 44 120 46 Z",
+          "#f5a0b4",
+        ) +
+        `<path d="M120 132 C146 132 168 152 170 178 C171 196 150 206 120 206 C90 206 69 196 70 178 C72 152 94 132 120 132 Z" fill="#fbd0da" opacity=".7"/>` +
+        strich("M66 186 C88 204 152 204 174 186", 2.4, "#c2607a") +
+        fuss(92, 1) +
+        fuss(148, -1) +
+        strich("M118 176 q2 4 5 0", 2.2, "#c2607a") +
+        strich("M60 148 q8 6 16 3 M180 148 q-8 6 -16 3 M64 166 q6 4 12 2 M176 166 q-6 4 -12 2", 2, "#c2607a") +
+        // Doppelkinn
+        strich("M88 112 C100 124 140 124 152 112", 2.4, "#c2607a") +
+        strich("M96 120 C108 128 132 128 144 120", 1.8, "#c2607a") +
+        // Hängeohren mit Knick
+        st.form("M88 60 C72 54 54 64 52 86 C50 104 58 120 70 121 C80 122 84 110 82 98 C81 86 86 72 96 64 Z", "#8b5a3c") +
+        strich("M66 74 C62 88 64 104 70 114", 1.8, "#5e3a24") +
+        st.form("M152 60 C168 54 186 64 188 86 C190 104 182 120 170 121 C160 122 156 110 158 98 C159 86 154 72 144 64 Z", "#8b5a3c") +
+        strich("M174 74 C178 88 176 104 170 114", 1.8, "#5e3a24") +
+        strich("M114 47 q1 -9 8 -12 M120 46 q4 -7 11 -7", 2.6) +
+        `<ellipse cx="91" cy="100" rx="8" ry="5" fill="#ff7f9a" opacity=".5"/><ellipse cx="149" cy="100" rx="8" ry="5" fill="#ff7f9a" opacity=".5"/>` +
+        augen(104, 136, 80, wut) +
+        // Rüssel, leicht nach oben gestülpt
+        st.form("M98 102 C95 90 106 86 120 86 C134 86 145 90 142 102 C140 113 131 116 120 116 C109 116 100 113 98 102 Z", "#ec7d98", { linie: 3 }) +
+        `<path d="M110 96 C106 98 106 106 111 107 C115 108 116 98 110 96 Z M130 96 C136 98 136 106 131 107 C127 108 126 98 130 96 Z" fill="${LINIE}"/>` +
+        mund(120, 122, 26, wut)
+      );
+    },
     gewicht: (st) => hantel(st, (x) => st.form(`M${x - 7} -22 Q${x} -25 ${x + 7} -22 L${x + 7} 22 Q${x} 25 ${x - 7} 22 Z`, "#34343a", { linie: 2.4 })),
     // Stachelhalsband
     extra: (st) =>
@@ -403,7 +446,7 @@ const figuren: Record<string, Figur> = {
         .join(""),
   },
   "Der Dönerteller XXL": {
-    haut: "#e2b066",
+    haut: "#d39a55",
     schulter: [70, 142, 170, 142],
     aermchen: { form: ["haengen", "huefte"], hand: "faust", ding: dinge.gabel },
     pump: { pose: ["stemmen", "bizeps"], muster: { art: "adern", farbe: "#d9141c" }, hand: "faust", ding: dinge.messer },
@@ -425,18 +468,45 @@ const figuren: Record<string, Figur> = {
       ]
         .map(([x, y, w]) => `<g transform="translate(${x} ${y}) rotate(${w})">${st.form("M-4 -10 C4 -10 6 0 4 10 C2 18 -2 22 -2 16 C-4 8 -8 -4 -4 -10 Z", "#e2352b", { linie: 2 })}${st.form("M-4 -10 C-4 -14 0 -16 2 -18 L3 -15 C1 -14 0 -12 2 -10 Z", "#5cbf3b", { linie: 1.6 })}</g>`)
         .join(""),
-    koerper: (st, wut) =>
-      st.form("M30 204 C30 192 80 186 120 186 C160 186 210 192 210 204 C210 216 160 222 120 222 C80 222 30 216 30 204 Z", "#f6f4ef") +
-      strich("M44 206 C70 214 170 214 196 206", 2, "#c9c4bb") +
-      st.form("M64 198 C52 152 58 104 84 80 C101 66 139 66 156 80 C182 104 188 152 176 198 C148 206 92 206 64 198 Z", "#e2b066") +
-      strich("M78 120 q4 8 2 16 M160 112 q-4 10 -1 18 M90 176 q8 4 16 2", 2, "#b98340") +
-      st.form("M76 88 C82 72 92 70 100 80 C106 64 118 62 124 76 C132 62 146 64 148 78 C156 70 166 76 164 92 C150 98 92 98 76 88 Z", "#5cbf3b", { linie: 3 }) +
-      st.form("M88 84 C88 76 102 76 102 84 C102 92 88 92 88 84 Z", "#e2352b", { linie: 2.4 }) +
-      st.form("M136 82 C136 74 150 74 150 82 C150 90 136 90 136 82 Z", "#e2352b", { linie: 2.4 }) +
-      st.form("M82 96 C100 90 140 90 158 96 C158 103 140 104 120 101 C100 104 82 103 82 96 Z", "#8d4a1f", { linie: 2.6 }) +
-      `<path d="M92 106 C104 112 136 112 148 106" stroke="#fffdf6" stroke-width="5" fill="none" stroke-linecap="round"/>` +
-      augen(102, 138, 132, wut, 10) +
-      mund(120, 158, 36, wut),
+    koerper: (st, wut) => {
+      const fladen = (s: 1 | -1) =>
+        `<g transform="translate(120 0) scale(${s} 1) translate(-120 0)">` +
+        st.form("M70 126 L50 62 C60 56 78 62 90 76 Z", "#ecc47e", { linie: 2.8 }) +
+        strich("M62 78 l10 6 M66 92 l12 6 M70 106 l10 6", 2.4, "#a8692a") +
+        `</g>`;
+      const pommes = (x: number, y: number, w: number) =>
+        `<g transform="translate(${x} ${y}) rotate(${w})">${st.form("M-4 -16 L4 -16 L4 10 L-4 10 Z", "#f6c94a", { linie: 2 })}</g>`;
+      const huegel =
+        "M58 198 C50 172 54 142 68 120 C74 102 88 88 102 86 C110 72 130 72 138 84 C154 86 168 100 172 118 " +
+        "C186 142 190 172 182 198 C150 206 90 206 58 198 Z";
+      return (
+        st.form("M28 204 C28 190 80 184 120 184 C160 184 212 190 212 204 C212 218 160 224 120 224 C80 224 28 218 28 204 Z", "#f6f4ef") +
+        `<path d="M48 202 C48 194 90 190 120 190 C150 190 192 194 192 202 C192 210 150 214 120 214 C90 214 48 210 48 202 Z" fill="#e4e0d8"/>` +
+        pommes(52, 192, -50) +
+        pommes(44, 198, -70) +
+        pommes(190, 192, 52) +
+        pommes(198, 199, 72) +
+        fladen(1) +
+        fladen(-1) +
+        // Fleischberg aus Dönerspänen
+        st.form(huegel, "#b8733a") +
+        st.clip(
+          huegel,
+          strich("M60 150 q10 -6 20 0 q10 6 20 0 M150 150 q10 -6 20 0 q10 6 20 0 M58 176 q12 -6 24 0 q12 6 24 0 q12 -6 24 0 q12 6 24 0 q12 -6 24 0 M76 118 q8 -5 16 0 M146 118 q8 -5 16 0 M70 194 q14 -6 28 0 q14 6 28 0 q14 -6 28 0 q14 6 28 0", 2.2, "#7a4416"),
+        ) +
+        // Salat, Tomate, Zwiebel und Soße obendrauf
+        st.form("M72 98 C70 84 84 78 92 86 C96 72 112 70 118 80 C126 68 144 70 146 82 C156 76 170 84 166 98 C160 106 148 102 142 106 C128 100 112 100 98 106 C90 102 78 106 72 98 Z", "#5cbf3b", { linie: 2.8 }) +
+        strich("M86 92 l6 6 M108 84 l2 8 M130 84 l-2 8 M150 90 l-6 6", 1.8, "#2f7a1f") +
+        st.form(kreis(94, 84, 8), "#e2352b", { linie: 2.2 }) +
+        st.form(kreis(146, 82, 8), "#e2352b", { linie: 2.2 }) +
+        `<path d="M94 80 v8 M90 84 h8 M146 78 v8 M142 82 h8" stroke="#ffd0c4" stroke-width="1.4"/>` +
+        `<ellipse cx="120" cy="80" rx="9" ry="6" fill="none" stroke="${LINIE}" stroke-width="4.4"/><ellipse cx="120" cy="80" rx="9" ry="6" fill="none" stroke="#c99adf" stroke-width="2.2"/>` +
+        strich("M74 104 L84 112 L94 102 L106 112 L118 102 L130 112 L142 102 L154 112 L166 104", 7) +
+        strich("M74 104 L84 112 L94 102 L106 112 L118 102 L130 112 L142 102 L154 112 L166 104", 4, "#fffdf6") +
+        augen(102, 138, 134, wut, 10) +
+        mund(120, 160, 36, wut)
+      );
+    },
     // Dönerspieß als Keule
     gewicht: (st) =>
       strich("M0 18 L0 -82", 6.4) +
@@ -475,25 +545,53 @@ const figuren: Record<string, Figur> = {
       ]
         .map(([x, y]) => `<path transform="translate(${x} ${y})" d="M-5 0 C-8 -6 -2 -9 0 -6 C2 -10 8 -7 6 -2 C10 0 7 7 2 5 C0 9 -6 7 -5 3 C-9 3 -9 -1 -5 0 Z" fill="#fff7d6" stroke="${LINIE}" stroke-width="1.4"/>`)
         .join(""),
-    koerper: (st, wut) =>
-      st.form("M90 64 C80 54 76 40 82 26 C86 40 96 50 106 58 Z", "#d9141c", { linie: 2.6 }) +
-      st.form("M150 64 C160 54 164 40 158 26 C154 40 144 50 134 58 Z", "#d9141c", { linie: 2.6 }) +
-      st.form("M66 154 C58 112 60 80 72 64 C96 50 144 50 168 64 C180 80 182 112 174 154 Z", "#7a2c8c") +
-      [
-        [92, 132],
-        [120, 136],
-        [148, 132],
+    koerper: (st, wut) => {
+      const lehne =
+        "M74 152 C68 124 62 96 56 72 C52 56 62 44 76 50 C84 40 102 36 120 42 C138 36 156 40 164 50 " +
+        "C178 44 188 56 184 72 C178 96 172 124 166 152 Z";
+      // Polsterknöpfe und Rautennähte in der Lehne
+      let rauten = "";
+      for (let k = -40; k < 260; k += 26) rauten += `M${k} 40 l120 120 M${k + 120} 40 l-120 120 `;
+      const knoepfe = [
+        [94, 70],
+        [120, 66],
+        [146, 70],
+        [107, 92],
+        [133, 92],
+        [94, 114],
+        [146, 114],
       ]
-        .map(([x, y]) => `<circle cx="${x}" cy="${y}" r="3" fill="#4e1a5b"/>` + strich(`M${x! - 8} ${y! - 6} l8 6 l8 -6 M${x} ${y} l0 10`, 1.6, "#4e1a5b"))
-        .join("") +
-      st.form("M44 198 C38 170 40 140 54 132 C70 124 84 136 84 152 L82 198 C70 202 54 202 44 198 Z", "#6a2379") +
-      st.form("M196 198 C202 170 200 140 186 132 C170 124 156 136 156 152 L158 198 C170 202 186 202 196 198 Z", "#6a2379") +
-      st.form("M74 190 C70 168 78 154 120 154 C162 154 170 168 166 190 C146 196 94 196 74 190 Z", "#8f3aa4") +
-      strich("M120 156 C118 168 118 180 120 192", 2.4) +
-      st.form("M58 198 L72 198 L68 214 L62 214 Z", "#3a1d12", { linie: 2 }) +
-      st.form("M182 198 L168 198 L172 214 L178 214 Z", "#3a1d12", { linie: 2 }) +
-      augen(102, 138, 96, wut, 11) +
-      mund(120, 120, 40, wut),
+        .map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2.6" fill="#3e1249"/>`)
+        .join("");
+      const rolle = (s: 1 | -1) =>
+        `<g transform="translate(120 0) scale(${s} 1) translate(-120 0)">` +
+        st.form("M38 198 C34 172 34 148 42 134 C50 120 72 118 82 130 C88 138 88 150 84 158 L86 198 C70 204 52 204 38 198 Z", "#6a2379") +
+        strich("M60 150 C50 152 46 142 52 136 C58 130 70 134 68 144 C66 154 52 158 44 150", 2.4, "#3e1249") +
+        strich("M44 172 C46 182 52 190 60 194", 1.8, "#3e1249") +
+        `</g>`;
+      const bein = (x: number, s: 1 | -1) =>
+        `<g transform="translate(${x} 0) scale(${s} 1)">${st.form("M-6 198 C-10 206 -4 210 -12 218 C-6 221 2 216 4 208 L6 198 Z", "#4a2a14", { linie: 2.2 })}</g>`;
+      // Volant mit Bögen
+      const volant = "M40 192 L200 192 L200 200 " + Array.from({ length: 10 }, (_, i) => `Q${195 - i * 16} 210 ${184 - i * 16} 200`).join(" ") + " L40 200 Z";
+      return (
+        bein(62, 1) +
+        bein(178, -1) +
+        st.form("M90 64 C80 52 76 36 84 22 C88 38 98 48 108 56 Z", "#d9141c", { linie: 2.6 }) +
+        st.form("M150 64 C160 52 164 36 156 22 C152 38 142 48 132 56 Z", "#d9141c", { linie: 2.6 }) +
+        st.form(lehne, "#7a2c8c") +
+        st.clip(lehne, `<path d="${rauten}" stroke="#4e1a5b" stroke-width="1.6" fill="none" opacity=".55"/>`) +
+        knoepfe +
+        strich("M66 64 C70 84 72 112 76 140 M174 64 C170 84 168 112 164 140", 2, "#4e1a5b") +
+        st.form(volant, "#5a1c68", { linie: 2.6 }) +
+        rolle(1) +
+        rolle(-1) +
+        // durchgesessenes Kissen
+        st.form("M72 188 C66 168 80 156 120 158 C160 156 174 168 168 188 C150 196 90 196 72 188 Z", "#8f3aa4") +
+        strich("M84 168 C100 176 140 176 156 168 M100 186 q6 -4 12 0 M128 186 q6 -4 12 0", 1.8, "#5a1c68") +
+        augen(102, 138, 92, wut, 11) +
+        mund(120, 118, 40, wut)
+      );
+    },
     // Hantel aus Sofakissen
     gewicht: (st) => hantel(st, (x) => st.form(`M${x - 11} -16 C${x - 12} -24 ${x + 12} -24 ${x + 11} -16 L${x + 11} 16 C${x + 12} 24 ${x - 12} 24 ${x - 11} 16 Z`, "#c169d6", { linie: 2.4 })),
   },
@@ -525,17 +623,39 @@ const figuren: Record<string, Figur> = {
         .map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#ffd54a" fill-opacity=".5" stroke="#fffdf6" stroke-width="1.8"/>`)
         .join("") +
       `<path d="M96 30 c-2 6 4 8 4 2 Z M146 26 c-2 6 4 8 4 2 Z M120 18 c-2 6 4 8 4 2 Z" fill="#f4b400" stroke="${LINIE}" stroke-width="1.2"/>`,
-    koerper: (st, wut) =>
-      st.form("M120 102 C168 100 186 140 180 174 C174 202 148 213 120 212 C92 213 66 202 60 174 C54 140 72 100 120 102 Z", "#f1bf92") +
-      strich("M98 140 q6 -5 12 0 M130 140 q6 -5 12 0", 2.4, "#b0754d") +
-      strich("M117 168 q3 5 6 0", 2.6, "#b0754d") +
-      st.form("M62 170 C90 184 150 184 178 170 L180 186 C150 202 90 202 60 186 Z", "#2e58a6") +
-      st.form("M120 52 C140 51 151 66 150 84 C149 102 136 112 120 112 C104 112 91 102 90 84 C89 66 100 51 120 52 Z", "#f1bf92") +
-      st.form("M90 88 C88 110 100 130 112 128 C114 134 126 134 128 128 C140 130 152 110 150 88 C142 102 132 106 120 103 C108 106 98 102 90 88 Z", "#c66f2a") +
-      st.form("M92 60 L94 34 L108 48 L120 26 L132 48 L146 34 L148 60 C130 54 110 54 92 60 Z", "#f4c400", { linie: 3 }) +
-      `<circle cx="120" cy="44" r="3.6" fill="#d9141c" stroke="${LINIE}" stroke-width="1.4"/>` +
-      augen(108, 132, 80, wut, 7) +
-      mund(120, 98, 20, wut),
+    koerper: (st, wut) => {
+      const leib =
+        "M120 50 C138 49 150 62 150 80 C150 92 147 100 142 106 C160 112 176 128 182 152 C190 182 176 206 150 212 " +
+        "C132 216 108 216 90 212 C64 206 50 182 58 152 C64 128 80 112 98 106 C93 100 90 92 90 80 C90 62 102 49 120 50 Z";
+      const hermelin = [92, 106, 120, 134, 148].map((x, i) => `<path d="M${x} ${118 + (i % 2) * 4} l-2 6 l2 -2 l2 2 Z" fill="${LINIE}"/>`).join("");
+      return (
+        // Königsmantel
+        st.form("M86 110 C60 140 44 180 38 214 C80 222 160 222 202 214 C196 180 180 140 154 110 Z", "#b3141c") +
+        strich("M60 160 C56 180 54 198 54 212 M180 160 C184 180 186 198 186 212", 2, "#7a0c12") +
+        st.form(leib, "#f1bf92") +
+        strich("M98 150 q6 -5 12 0 M130 150 q6 -5 12 0", 2.4, "#b0754d") +
+        strich("M117 176 q3 5 6 0", 2.6, "#b0754d") +
+        strich("M100 138 l-2 5 M106 136 l0 5 M134 136 l0 5 M140 138 l2 5 M114 160 l-1 5 M126 160 l1 5", 1.6, "#9a6640") +
+        // Lederhose mit Hosenträgern
+        st.form("M60 182 C84 198 156 198 180 182 C184 194 180 206 170 213 L70 213 C60 206 56 194 60 182 Z", "#6b4423") +
+        strich("M66 196 C90 206 150 206 174 196", 1.6, "#d9b98a") +
+        strich("M98 110 C92 140 88 168 90 192 M142 110 C148 140 152 168 150 192", 8.4) +
+        strich("M98 110 C92 140 88 168 90 192 M142 110 C148 140 152 168 150 192", 5, "#2f6b3a") +
+        `<path d="M89 170 h4 M147 170 h4" stroke="#f4c400" stroke-width="5" stroke-linecap="round"/>` +
+        // Hermelinkragen
+        st.form("M80 108 C96 124 144 124 160 108 C164 120 150 132 120 133 C90 132 76 120 80 108 Z", "#fffdf6", { linie: 2.8 }) +
+        hermelin +
+        // langer Bart
+        st.form("M92 88 C88 114 96 142 110 152 C113 162 127 162 130 152 C144 142 152 114 148 88 C140 102 130 106 120 103 C110 106 100 102 92 88 Z", "#c66f2a") +
+        strich("M108 112 C106 126 110 140 116 148 M132 112 C134 126 130 140 124 148 M120 112 L120 150", 1.8, "#8a4416") +
+        `<ellipse cx="100" cy="90" rx="6" ry="4" fill="#ff8a7a" opacity=".55"/><ellipse cx="140" cy="90" rx="6" ry="4" fill="#ff8a7a" opacity=".55"/>` +
+        st.form(kreis(120, 90, 5.5), "#ee8f7a", { linie: 2.2 }) +
+        // schiefe Krone
+        `<g transform="rotate(-12 120 50)">${st.form("M96 60 L94 36 L108 48 L120 28 L132 48 L146 36 L144 60 C128 55 112 55 96 60 Z", "#f4c400", { linie: 3 })}<circle cx="120" cy="45" r="3.6" fill="#d9141c" stroke="${LINIE}" stroke-width="1.4"/></g>` +
+        augen(108, 132, 78, wut, 7) +
+        mund(120, 100, 20, wut)
+      );
+    },
     // Bierfässer als Hantelscheiben
     gewicht: (st) =>
       hantel(
@@ -571,17 +691,30 @@ const figuren: Record<string, Figur> = {
       funkeln(150, 40, 5) +
       funkeln(212, 40, 6),
     koerper: (st, wut) => {
-      const zacken = (y: number, r: number) => `M70 ${y} ` + Array.from({ length: 13 }, (_, i) => `l8 ${i % 2 === 0 ? -r : r}`).join(" ");
+      const oben = (x0: number, y0: number, x1: number, y1: number, h: number) =>
+        Array.from({ length: 12 }, (_, i) => {
+          const t = (i + 1) / 12;
+          return `L${(x0 + (x1 - x0) * t).toFixed(1)} ${(y0 + (y1 - y0) * t + (i % 2 === 0 ? -h : 0)).toFixed(1)}`;
+        }).join(" ");
+      const tuete = `M70 64 ${oben(70, 64, 168, 56, 9)} C182 92 190 148 178 194 L62 198 C50 150 56 104 70 64 Z`;
       return (
-        st.form(`${zacken(62, 10)} L166 62 C176 104 182 152 176 198 L64 198 C58 152 64 104 74 62 Z`, "#e2352b") +
-        st.form(`${zacken(196, -10)} L176 196 L176 204 L64 204 Z`, "#c42a21", { linie: 2.6 }) +
-        strich("M82 80 C76 120 76 160 80 186 M158 80 C164 120 164 160 160 186", 2, "#a81f17") +
-        st.form("M80 164 C80 150 100 144 120 144 C140 144 160 150 160 164 C160 178 140 184 120 184 C100 184 80 178 80 164 Z", "#f4c400", { linie: 2.8 }) +
-        `<text x="120" y="171" font-size="18" font-weight="900" text-anchor="middle" fill="#e2352b">CHIPS</text>` +
-        st.form("M190 120 C198 112 210 116 208 126 C206 134 194 134 190 120 Z", "#f4c400", { linie: 2 }) +
-        st.form("M40 168 C46 160 58 164 56 172 C54 180 42 178 40 168 Z", "#f4c400", { linie: 2 }) +
-        augen(102, 138, 100, wut, 11) +
-        mund(120, 126, 38, wut)
+        // Chips quellen oben rechts aus einem Riss
+        st.form("M150 52 C152 38 166 34 172 42 C176 50 166 60 150 52 Z", "#f4c400", { linie: 2 }) +
+        st.form("M138 56 C134 44 144 36 152 42 C158 48 150 58 138 56 Z", "#f0b400", { linie: 2 }) +
+        st.form(tuete, "#e2352b") +
+        st.form(`M62 192 L178 188 L179 198 ${oben(179, 198, 61, 204, -8)} Z`, "#c42a21", { linie: 2.6 }) +
+        st.form("M70 64 L168 56 L169 66 C136 70 102 72 71 74 Z", "#c42a21", { linie: 2.4 }) +
+        // Knicke und Falten der Folie
+        strich("M84 78 L96 118 L88 168 M156 72 L146 112 L160 158 M110 182 l8 -12 l8 10", 2.2, "#9c1e16") +
+        strich("M78 86 C74 116 74 146 78 176", 5, "#fff") +
+        `<path d="M78 86 C74 116 74 146 78 176" stroke="#ff9a8f" stroke-width="2" fill="none" opacity=".8"/>` +
+        `<g transform="rotate(-6 120 164)">` +
+        st.form("M78 164 C78 148 100 142 120 142 C140 142 162 148 162 164 C162 180 140 186 120 186 C100 186 78 180 78 164 Z", "#f4c400", { linie: 2.8 }) +
+        `<text x="120" y="171" font-size="19" font-weight="900" text-anchor="middle" fill="#e2352b" letter-spacing="1">CHIPS</text></g>` +
+        st.form("M192 120 C200 110 214 116 210 128 C206 136 194 134 192 120 Z", "#f4c400", { linie: 2 }) +
+        st.form("M36 168 C42 158 56 162 54 172 C52 180 38 178 36 168 Z", "#f4c400", { linie: 2 }) +
+        augen(102, 138, 102, wut, 11) +
+        mund(120, 128, 38, wut)
       );
     },
     // Hantel mit Chips als Scheiben
@@ -613,16 +746,29 @@ const figuren: Record<string, Figur> = {
       `<g transform="translate(120 22) rotate(-8)">${st.form("M-10 6 C-10 -4 -8 -12 0 -12 C8 -12 10 -4 10 6 L14 10 L-14 10 Z", "#f4c400", { linie: 2.2 })}<circle cx="0" cy="13" r="3" fill="#f4c400" stroke="${LINIE}" stroke-width="1.6"/></g>` +
       strich("M98 18 l-8 -4 M100 30 l-9 1 M142 18 l8 -4 M140 30 l9 1", 2.4, "#fffdf6"),
     koerper: (st, wut) =>
-      st.form("M74 126 C58 150 48 180 44 208 C80 214 160 214 196 208 C192 180 182 150 166 126 Z", "#5a2985") +
-      strich("M74 132 C70 160 66 186 64 206 M166 132 C170 160 174 186 176 206", 2, "#3d1a5c") +
-      st.form("M82 128 C80 154 82 182 86 202 C108 208 132 208 154 202 C158 182 160 154 158 128 C140 118 100 118 82 128 Z", "#e2352b") +
-      st.form("M98 146 Q120 142 142 146 L142 174 Q120 178 98 174 Z", "#fffdf6", { linie: 2.2 }) +
-      `<text x="120" y="164" font-size="13" font-weight="900" text-anchor="middle" fill="#e2352b">LORD</text>` +
-      st.form("M120 56 C140 55 153 70 152 90 C151 108 137 120 120 120 C103 120 89 108 88 90 C87 70 100 55 120 56 Z", "#efb88b") +
-      st.form("M84 90 C82 60 98 44 120 44 C142 44 158 60 156 90 C152 82 148 76 146 74 C138 66 102 66 94 74 C92 76 88 82 84 90 Z", "#f4c400") +
-      st.form("M88 80 Q120 72 152 80 L152 88 Q120 80 88 88 Z", "#2f2f35", { linie: 2.2 }) +
-      augen(107, 133, 98, wut, 8) +
-      mund(120, 110, 22, wut),
+      // Lieferrucksack hinter allem
+      st.form("M66 48 L174 48 C180 48 184 52 184 58 L184 142 L56 142 L56 58 C56 52 60 48 66 48 Z", "#1fa39a") +
+      strich("M60 62 L180 62", 2, "#137068") +
+      `<path d="M158 70 L174 70 L166 90 Z" fill="#fffdf6" stroke="${LINIE}" stroke-width="1.6" stroke-linejoin="round"/>` +
+      // Umhang mit Goldborte
+      st.form("M80 122 C58 150 46 182 40 212 C80 220 160 220 200 212 C194 182 182 150 160 122 Z", "#5a2985") +
+      strich("M78 128 C58 156 48 186 44 210 M162 128 C182 156 192 186 196 210", 3.4, "#f4c400") +
+      // Jacke mit Bauch
+      st.form("M86 122 C78 146 72 176 78 200 C96 214 144 214 162 200 C168 176 162 146 154 122 C140 114 100 114 86 122 Z", "#e2352b") +
+      strich("M120 120 L120 206", 2, "#9c1e16") +
+      strich("M82 188 C100 196 140 196 158 188", 2, "#9c1e16") +
+      `<g transform="rotate(-8 132 158)">${st.form("M114 146 Q132 142 150 146 L150 168 Q132 172 114 168 Z", "#fffdf6", { linie: 2.2 })}<text x="132" y="162" font-size="11" font-weight="900" text-anchor="middle" fill="#e2352b">LORD</text></g>` +
+      // Kopf mit Doppelkinn und Stoppeln
+      st.form("M120 60 C141 59 154 74 153 94 C153 106 148 114 142 118 C136 124 128 126 120 126 C112 126 104 124 98 118 C92 114 87 106 87 94 C86 74 99 59 120 60 Z", "#efb88b") +
+      strich("M102 118 C110 124 130 124 138 118", 2, "#b77b53") +
+      `<path d="M96 108 C100 120 140 120 144 108 C140 116 100 116 96 108 Z" fill="#7a5a48" opacity=".35"/>` +
+      // Fahrradhelm mit Schlitzen, darauf ein Krönchen
+      st.form("M84 92 C80 62 98 46 120 46 C142 46 160 62 156 92 C150 82 140 76 120 76 C100 76 90 82 84 92 Z", "#f4c400") +
+      strich("M104 52 L106 70 M120 48 L120 70 M136 52 L134 70", 3, "#b98a00") +
+      st.form("M86 86 Q120 76 154 86 L156 94 Q120 84 84 94 Z", "#2f2f35", { linie: 2.2 }) +
+      `<g transform="rotate(10 120 40)">${st.form("M108 46 L106 32 L114 38 L120 28 L126 38 L134 32 L132 46 Z", "#f4c400", { linie: 2.2 })}</g>` +
+      augen(107, 133, 100, wut, 8) +
+      mund(120, 112, 22, wut),
     // Pizzakartons als Gewichte
     gewicht: (st) =>
       hantel(
@@ -650,22 +796,33 @@ const figuren: Record<string, Figur> = {
         .join("") +
       `<g font-weight="900" fill="#fffdf6" stroke="${LINIE}" stroke-width="1.2" paint-order="stroke"><text x="146" y="26" font-size="14">Z</text><text x="160" y="14" font-size="18">Z</text><text x="178" y="0" font-size="22">Z</text></g>`,
     koerper: (st, wut) =>
-      st.form("M80 122 C64 150 54 182 50 208 C90 214 150 214 190 208 C186 182 176 150 160 122 L148 134 L120 128 L92 134 Z", "#1f1c22") +
-      `<path d="M84 128 C72 156 64 186 62 206 L80 206 Z M156 128 C168 156 176 186 178 206 L160 206 Z" fill="#a8131b"/>` +
-      st.form("M120 112 C146 112 166 134 164 166 C164 172 168 176 162 182 C158 200 142 210 120 210 C98 210 82 200 78 182 C72 176 76 172 76 166 C74 134 94 112 120 112 Z", "#8b684d") +
-      strich("M88 150 l-6 4 M86 164 l-7 2 M152 150 l6 4 M154 164 l7 2 M104 196 l-2 6 M136 196 l2 6", 1.8, "#5e4330") +
-      `<path d="M120 140 C136 140 146 156 144 176 C142 194 132 200 120 200 C108 200 98 194 96 176 C94 156 104 140 120 140 Z" fill="#b39478" opacity=".9"/>` +
-      st.form("M120 54 C144 52 160 70 158 94 C162 98 160 102 156 104 C150 122 136 128 120 128 C104 128 90 122 84 104 C80 102 78 98 82 94 C80 70 96 52 120 54 Z", "#8b684d") +
-      st.form("M120 74 C140 74 152 84 150 98 C148 112 134 120 120 120 C106 120 92 112 90 98 C88 84 100 74 120 74 Z", "#e6d3bb", { licht: 0.5 }) +
-      `<path d="M94 90 C98 82 110 84 114 92 C112 100 100 102 94 90 Z M146 90 C142 82 130 84 126 92 C128 100 140 102 146 90 Z" fill="#4a3426"/>` +
+      // Umhang mit hohem Draculakragen
+      st.form("M84 120 C60 150 48 184 42 212 C82 222 158 222 198 212 C192 184 180 150 156 120 Z", "#1f1c22") +
+      `<path d="M86 128 C68 156 58 186 54 208 L76 210 Z M154 128 C172 156 182 186 186 208 L164 210 Z" fill="#a8131b"/>` +
+      st.form("M92 122 C76 108 62 84 56 58 C72 70 88 84 100 100 Z", "#a8131b", { linie: 2.8 }) +
+      st.form("M148 122 C164 108 178 84 184 58 C168 70 152 84 140 100 Z", "#a8131b", { linie: 2.8 }) +
+      strich("M64 70 C74 86 84 100 94 112 M176 70 C166 86 156 100 146 112", 1.8, "#6e0b10") +
+      // zotteliger Leib
+      st.form(zottel(120, 168, 44, 42, 26, 0.09), "#8b684d") +
+      `<path d="M120 144 C136 144 146 160 144 178 C142 196 132 202 120 202 C108 202 98 196 96 178 C94 160 104 144 120 144 Z" fill="#b39478" opacity=".9"/>` +
+      strich("M108 156 q-3 6 0 12 M132 156 q3 6 0 12 M114 178 q-2 6 1 10 M126 178 q2 6 -1 10", 1.6, "#8b684d") +
+      strich("M98 204 C94 212 98 218 104 218 M106 206 C104 214 108 219 113 218 M142 204 C146 212 142 218 136 218 M134 206 C136 214 132 219 127 218", 5) +
+      strich("M98 204 C94 212 98 218 104 218 M106 206 C104 214 108 219 113 218 M142 204 C146 212 142 218 136 218 M134 206 C136 214 132 219 127 218", 2.4, "#efe6cf") +
+      // zotteliger Kopf mit Faultiermaske
+      st.form(zottel(120, 94, 38, 35, 22, 0.1), "#8b684d") +
+      st.form("M120 74 C142 74 154 86 152 100 C150 114 136 122 120 122 C104 122 90 114 88 100 C86 86 98 74 120 74 Z", "#e6d3bb", { licht: 0.5 }) +
+      `<path d="M92 90 C96 80 110 82 116 92 C114 102 98 104 92 90 Z M148 90 C144 80 130 82 124 92 C126 102 142 104 148 90 Z" fill="#4a3426"/>` +
       augen(105, 135, 92, wut, 6) +
       `<circle cx="135" cy="92" r="9.5" fill="none" stroke="#f4c400" stroke-width="2.6"/>` +
       strich("M144 95 Q151 110 146 126", 1.6, "#f4c400") +
       `<path d="M114 103 C114 99 126 99 126 103 C126 108 114 108 114 103 Z" fill="${LINIE}"/>` +
       mund(120, 113, 20, wut) +
-      st.form("M98 60 C96 46 96 34 100 26 C112 22 128 22 140 26 C144 34 144 46 142 60 Z", "#1f1c22", { licht: 0.35 }) +
-      `<path d="M98 50 C112 47 128 47 142 50 L142 58 C128 55 112 55 98 58 Z" fill="#a8131b"/>` +
-      st.form("M80 62 C92 56 148 56 160 62 C160 68 148 70 120 68 C92 70 80 68 80 62 Z", "#1f1c22", { licht: 0.35 }),
+      // Zylinder, schief und etwas eingedrückt
+      `<g transform="rotate(9 120 62)">` +
+      st.form("M98 62 C94 48 96 34 100 24 C112 20 128 20 140 24 C142 36 146 48 142 62 Z", "#1f1c22", { licht: 0.35 }) +
+      `<path d="M97 50 C112 47 128 47 143 50 L142 58 C128 55 112 55 98 58 Z" fill="#a8131b"/>` +
+      st.form("M78 64 C92 56 148 56 162 64 C162 70 148 72 120 70 C92 72 78 70 78 64 Z", "#1f1c22", { licht: 0.35 }) +
+      `</g>`,
     gewicht: (st) =>
       hantel(
         st,
