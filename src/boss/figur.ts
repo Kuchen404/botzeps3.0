@@ -20,21 +20,44 @@ function mische(hex: string, t: number): string {
 /** Zeichenkontext: vergibt eindeutige ids für Masken, damit mehrere Bosse auf einer Seite gehen. */
 class Stift {
   private n = 0;
+  /** Farbiges Gegenlicht unten rechts (Stufe 2 im Schein der Aura) */
+  rand: string | null = null;
   constructor(private readonly praefix: string) {}
 
-  /** Fläche mit Schatten unten rechts, Licht oben links und Umriss. */
+  /** Weicher Schlagschatten der Fläche auf das, was dahinter liegt (Arme auf dem Körper). */
+  wurf(d: string): string {
+    return `<path d="${d}" fill="#1a0a08" opacity=".32" transform="translate(5 7)" filter="url(#${this.praefix}w)"/>`;
+  }
+
+  /** Weichzeichner für die Schattierungsmasken; muss einmal pro Zeichnung in die Ausgabe. */
+  defs(): string {
+    return `<filter id="${this.praefix}w" x="-25%" y="-25%" width="150%" height="150%"><feGaussianBlur stdDeviation="2.6"/></filter>`;
+  }
+
+  /**
+   * Fläche wie mit Pinsel und Tusche: weicher Schatten unten rechts mit dunklerem Kern,
+   * Licht und Glanzkante oben links, Umriss unten rechts dick und oben links dünn.
+   */
   form(d: string, farbe: string, o: { linie?: number; schatten?: number; licht?: number } = {}): string {
-    const s = `${this.praefix}s${++this.n}`;
-    const l = `${this.praefix}l${this.n}`;
-    const maske = (id: string, verschiebung: string) =>
-      `<mask id="${id}" maskUnits="userSpaceOnUse" x="-200" y="-200" width="700" height="700"><rect x="-200" y="-200" width="700" height="700" fill="#fff"/><path d="${d}" transform="translate(${verschiebung})" fill="#000"/></mask>`;
+    const id = `${this.praefix}m${++this.n}`;
+    const linie = o.linie ?? 3.4;
+    const maske = (name: string, verschiebung: string, weich: boolean) =>
+      `<mask id="${id}${name}" maskUnits="userSpaceOnUse" x="-200" y="-200" width="700" height="700"><rect x="-200" y="-200" width="700" height="700" fill="#fff"/><path d="${d}" transform="translate(${verschiebung})" fill="#000"${weich ? ` filter="url(#${this.praefix}w)"` : ""}/></mask>`;
+    const schatten = o.schatten ?? -0.22;
     return (
-      maske(s, "-9 -8") +
-      maske(l, "5 6") +
+      maske("s", "-9 -8", true) +
+      maske("k", "-20 -18", true) +
+      maske("l", "6 7", true) +
+      maske("g", "2.2 2.8", false) +
+      (this.rand ? maske("r", "-2.6 -3.2", false) : "") +
+      `<path d="${d}" fill="${LINIE}" stroke="${LINIE}" stroke-width="${linie}" stroke-linejoin="round" transform="translate(${linie * 0.38} ${linie * 0.5})"/>` +
       `<path d="${d}" fill="${farbe}"/>` +
-      `<path d="${d}" fill="${mische(farbe, o.schatten ?? -0.28)}" mask="url(#${s})"/>` +
-      `<path d="${d}" fill="${mische(farbe, 0.55)}" opacity="${o.licht ?? 0.7}" mask="url(#${l})"/>` +
-      `<path d="${d}" fill="none" stroke="${LINIE}" stroke-width="${o.linie ?? 3.4}" stroke-linejoin="round" stroke-linecap="round"/>`
+      `<path d="${d}" fill="${mische(farbe, schatten)}" mask="url(#${id}s)"/>` +
+      `<path d="${d}" fill="${mische(farbe, schatten * 1.6)}" opacity=".3" mask="url(#${id}k)"/>` +
+      `<path d="${d}" fill="${mische(farbe, 0.5)}" opacity="${o.licht ?? 0.7}" mask="url(#${id}l)"/>` +
+      `<path d="${d}" fill="#fff" opacity="${(o.licht ?? 0.7) * 0.55}" mask="url(#${id}g)"/>` +
+      (this.rand ? `<path d="${d}" fill="${this.rand}" opacity=".6" mask="url(#${id}r)"/>` : "") +
+      `<path d="${d}" fill="none" stroke="${LINIE}" stroke-width="${linie * 0.62}" stroke-linejoin="round" stroke-linecap="round"/>`
     );
   }
 
@@ -115,6 +138,17 @@ function kreis(x: number, y: number, r: number): string {
   return `M${x} ${y - r} C${x + k} ${y - r} ${x + r} ${y - k} ${x + r} ${y} C${x + r} ${y + k} ${x + k} ${y + r} ${x} ${y + r} C${x - k} ${y + r} ${x - r} ${y + k} ${x - r} ${y} C${x - r} ${y - k} ${x - k} ${y - r} ${x} ${y - r} Z`;
 }
 
+/** Faust: Fingerknöchel oben, Daumen quer davor; `r` ist der ungefähre Radius. */
+function faust(st: Stift, haut: string, r: number): string {
+  const k = r / 13;
+  const p = (t: string) => t.replace(/-?\d+(\.\d+)?/g, (z) => String(Math.round(Number(z) * k * 10) / 10));
+  return (
+    st.form(p("M-12 6 C-14 -2 -13 -10 -8 -13 C-5 -15 -2 -14 -1 -12 C1 -15 5 -15 6 -12 C8 -14 12 -13 12 -9 C14 -4 13 4 10 8 C6 13 -6 14 -12 6 Z"), haut, { linie: 2.6 }) +
+    strich(p("M-1 -12 L-1.5 -6 M6 -12 L5.5 -6"), 1.6) +
+    st.form(p("M-12 4 C-8 -1 0 -2 6 0 C8 1 8 4 5 5 C0 4 -6 6 -10 9 Z"), haut, { linie: 2 })
+  );
+}
+
 /**
  * Hand bzw. Faust, Knöchel zeigen nach oben (−y), gedreht um `winkel`.
  * Huf und Krallen machen aus der Hand etwas Tierisches, der Handschuh ist für Comicärmchen.
@@ -130,17 +164,16 @@ function hand(st: Stift, typ: Hand, haut: string, x: number, y: number, r: numbe
     case "krallen":
       inhalt =
         [-0.6, 0, 0.6]
-          .map((t) => st.form(`M${t * r - 3} ${-r * 0.6} Q${t * r - 3} ${-r * 1.8} ${t * r + 3} ${-r * 2.1} Q${t * r + 1} ${-r * 1.3} ${t * r + 3.5} ${-r * 0.6} Z`, "#efe6cf", { linie: 1.8 }))
-          .join("") + st.form(kreis(0, 0, r), haut, { linie: 2.6 });
+          .map((t) => st.form(`M${t * r - 3} ${-r * 0.6} Q${t * r - 3} ${-r * 1.9} ${t * r + 3} ${-r * 2.1} Q${t * r + 1} ${-r * 1.3} ${t * r + 3.5} ${-r * 0.6} Z`, "#efe6cf", { linie: 1.8 }))
+          .join("") + faust(st, haut, r);
       break;
     case "handschuh":
       inhalt =
-        [-0.6, 0, 0.6].map((t) => st.form(kreis(t * r, -r * 0.75, r * 0.42), "#fffdf6", { linie: 2 })).join("") +
-        st.form(kreis(0, 0, r), "#fffdf6", { linie: 2.4 }) +
-        st.form(`M${-r * 0.8} ${r * 0.7} L${r * 0.8} ${r * 0.7} L${r * 0.7} ${r * 1.3} L${-r * 0.7} ${r * 1.3} Z`, "#fffdf6", { linie: 2 });
+        faust(st, "#fffdf6", r) +
+        st.form(`M${-r * 0.8} ${r * 0.75} Q0 ${r * 0.55} ${r * 0.8} ${r * 0.75} L${r * 0.75} ${r * 1.35} Q0 ${r * 1.2} ${-r * 0.75} ${r * 1.35} Z`, "#fffdf6", { linie: 2 });
       break;
     default:
-      inhalt = st.form(kreis(0, 0, r), haut, { linie: 2.6 }) + strich(`M${-r * 0.45} ${-r * 0.55} q${r * 0.25} ${-r * 0.25} ${r * 0.5} 0`, 1.6);
+      inhalt = faust(st, haut, r);
   }
   return `<g transform="translate(${x} ${y}) rotate(${winkel})">${inhalt}</g>`;
 }
@@ -148,13 +181,13 @@ function hand(st: Stift, typ: Hand, haut: string, x: number, y: number, r: numbe
 /** Ärmchen der Stufe 1, nach links gezeichnet, Schulter im Ursprung. */
 const ARMFORMEN: Record<ArmForm, { d?: string; stock?: string; hand: readonly [number, number]; winkel: number; r: number }> = {
   // dünn und hängend
-  haengen: { d: "M2 -5 C-12 -3 -22 10 -25 34 L-15 36 C-15 18 -9 8 2 5 Z", hand: [-20, 41], winkel: 180, r: 7 },
+  haengen: { d: "M2 -5 C-12 -3 -22 10 -25 34 L-15 36 C-15 18 -9 8 2 5 C7 3 7 -3 2 -5 Z", hand: [-20, 41], winkel: 180, r: 8 },
   // Hand in die Hüfte gestemmt, Ellbogen raus: überheblich
-  huefte: { d: "M2 -5 C-16 -4 -30 8 -30 20 C-30 28 -22 34 -12 37 L-8 29 C-14 27 -19 24 -19 20 C-19 13 -9 7 2 5 Z", hand: [-6, 34], winkel: 115, r: 7 },
+  huefte: { d: "M2 -5 C-16 -4 -30 8 -30 20 C-30 28 -22 34 -12 37 L-8 29 C-14 27 -19 24 -19 20 C-19 13 -9 7 2 5 C7 3 7 -3 2 -5 Z", hand: [-6, 34], winkel: 115, r: 8 },
   // Comicärmchen als Strich, wie bei Verpackungsmaskottchen
   stock: { stock: "M0 0 Q-22 6 -24 34", hand: [-24, 40], winkel: 180, r: 7 },
   // lang und schlaff bis zum Boden
-  lang: { d: "M3 -7 C-14 -4 -26 14 -28 40 C-29 54 -28 64 -26 72 L-14 72 C-14 60 -15 48 -14 38 C-12 18 -6 8 3 5 Z", hand: [-20, 76], winkel: 180, r: 8 },
+  lang: { d: "M3 -7 C-14 -4 -26 14 -28 40 C-29 54 -28 64 -26 72 L-14 72 C-14 60 -15 48 -14 38 C-12 18 -6 8 3 5 C8 3 8 -5 3 -7 Z", hand: [-20, 76], winkel: 180, r: 8 },
 };
 
 function aermchen(st: Stift, f: Figur, x: number, y: number, s: 1 | -1, form: ArmForm, ding: Ding | undefined): string {
@@ -167,7 +200,7 @@ function aermchen(st: Stift, f: Figur, x: number, y: number, s: 1 | -1, form: Ar
   const [hx, hy] = a.hand;
   const gegenstand = ding ? `<g transform="translate(${x + s * hx} ${y + hy}) scale(.6)">${ding(st)}</g>` : "";
   return (
-    `<g transform="translate(${x} ${y}) scale(${s} 1)">${arm}</g>` +
+    `<g transform="translate(${x} ${y}) scale(${s} 1)">${a.d ? st.wurf(a.d) : ""}${arm}</g>` +
     gegenstand +
     `<g transform="translate(${x} ${y}) scale(${s} 1)">${hand(st, f.aermchen.hand, f.haut, hx, hy, a.r, a.winkel)}</g>`
   );
@@ -177,38 +210,35 @@ function aermchen(st: Stift, f: Figur, x: number, y: number, s: 1 | -1, form: Ar
  * Aufgepumpte Arme als je eine Form, nach links gezeichnet, Schulter im Ursprung.
  * Bizeps: Doppelbizeps-Pose. Stemmen: Faust über dem Kopf. Hängen: Gorillaarme bis zum Boden.
  */
-const POSEN: Record<Pose, { d: string; faust: readonly [number, number]; winkel: number; falte: string; knoechel: string; adern: string; gelenk: string }> = {
+const POSEN: Record<Pose, { d: string; faust: readonly [number, number]; winkel: number; falte: string; adern: string; gelenk: string }> = {
   bizeps: {
     d:
       "M2 -16 C-6 -36 -22 -50 -37 -47 C-50 -44 -55 -32 -52 -20 C-54 -30 -55 -40 -56 -48 " +
       "C-55 -58 -60 -70 -71 -71 C-84 -72 -90 -60 -85 -48 C-88 -36 -88 -14 -80 0 " +
-      "C-76 14 -60 20 -46 15 C-30 13 -14 16 2 13 Z",
+      "C-76 14 -60 20 -46 15 C-30 13 -14 16 2 13 C12 8 12 -10 2 -16 Z",
     faust: [-71, -59],
     winkel: -8,
     falte: "M-52 -20 C-46 -13 -36 -13 -26 -18",
-    knoechel: "M-80 -62 q4 -3 8 0 M-82 -54 q5 -3 10 0",
     adern: "M-12 -26 C-18 -36 -26 -32 -32 -38 S-40 -34 -45 -38 M-24 -20 C-30 -22 -34 -20 -38 -24 M-66 -36 C-70 -26 -68 -18 -72 -8",
     gelenk: "M-57 -46 Q-71 -41 -86 -47",
   },
   stemmen: {
     d:
       "M2 13 C-20 16 -46 8 -58 -12 C-66 -30 -64 -58 -62 -84 C-70 -92 -68 -108 -56 -110 " +
-      "C-44 -114 -36 -106 -38 -94 C-40 -76 -40 -62 -36 -50 C-28 -52 -14 -44 -10 -32 C-6 -24 0 -19 2 -16 Z",
+      "C-44 -114 -36 -106 -38 -94 C-40 -76 -40 -62 -36 -50 C-28 -52 -14 -44 -10 -32 C-6 -24 0 -19 2 -16 C12 -10 12 8 2 13 Z",
     faust: [-52, -99],
     winkel: 0,
     falte: "M-36 -50 C-42 -44 -46 -36 -48 -26",
-    knoechel: "M-60 -104 q4 -3 8 0 M-50 -106 q4 -3 8 0",
     adern: "M-12 -22 C-24 -28 -30 -18 -40 -22 M-50 -30 C-54 -46 -50 -62 -54 -80",
     gelenk: "M-63 -84 Q-50 -79 -38 -88",
   },
   haengen: {
     d:
       "M6 -14 C-14 -26 -40 -20 -46 2 C-52 18 -52 32 -46 44 C-58 56 -62 72 -56 84 " +
-      "C-52 96 -36 98 -30 88 C-26 74 -26 58 -28 48 C-22 36 -18 24 -14 14 C-8 8 0 8 6 6 Z",
+      "C-52 96 -36 98 -30 88 C-26 74 -26 58 -28 48 C-22 36 -18 24 -14 14 C-8 8 0 8 6 6 C14 0 14 -10 6 -14 Z",
     faust: [-44, 86],
     winkel: 180,
     falte: "M-46 44 C-40 47 -34 48 -28 48",
-    knoechel: "M-52 92 q4 3 8 0 M-43 94 q4 3 8 0",
     adern: "M-18 -6 C-30 0 -36 16 -40 30 M-48 54 C-52 62 -48 70 -50 76",
     gelenk: "M-57 76 Q-44 81 -29 76",
   },
@@ -252,16 +282,16 @@ function pumparm(st: Stift, f: Figur, x: number, y: number, s: 1 | -1, pose: Pos
   const p = POSEN[pose];
   const { muster: m, hand: h, farbe } = f.pump;
   const [fx, fy] = p.faust;
-  const eigeneFaust = h !== "faust" || farbe !== undefined;
   // Gegenstand hinter dem Arm, damit die Faust ihn umschließt; nicht spiegeln, sonst stünde Schrift verkehrt
   const gegenstand = `<g transform="translate(${x + s * fx} ${y + fy})">${ding(st)}</g>`;
   return (
     gegenstand +
     `<g transform="translate(${x} ${y}) scale(${s} 1)">` +
+    st.wurf(p.d) +
     st.form(p.d, farbe ?? f.haut) +
     muster(st, m, p) +
     strich(p.falte, 2.4) +
-    (eigeneFaust ? hand(st, h, f.haut, fx, fy, 13, p.winkel) : strich(p.knoechel, 2)) +
+    hand(st, h, f.haut, fx, fy, 14, p.winkel) +
     `</g>`
   );
 }
@@ -651,6 +681,9 @@ function figurVon(name: string): Figur {
   return figuren[name] ?? figuren["Der innere Schweinehund"]!;
 }
 
+/** Weicher Bodenschatten, damit der Boss steht statt schwebt. */
+const boden = (_f: Figur) => `<ellipse cx="120" cy="216" rx="78" ry="9" fill="#000" opacity=".28"/>`;
+
 let zaehler = 0;
 
 /** Die eigentliche Zeichnung ohne äußeres <svg>. */
@@ -661,16 +694,19 @@ export function bossZeichnung(name: string, stufe: BossStufe): string {
   const [lx, ly, rx, ry] = f.schulter;
   if (stufe === 1) {
     const [fl, fr] = f.aermchen.form;
-    return `<g>${f.koerper(st, false)}${aermchen(st, f, lx, ly, 1, fl, f.aermchen.ding)}${aermchen(st, f, rx, ry, -1, fr, undefined)}</g>`;
+    return `<g>${st.defs()}${boden(f)}${f.koerper(st, false)}${aermchen(st, f, lx, ly, 1, fl, f.aermchen.ding)}${aermchen(st, f, rx, ry, -1, fr, undefined)}</g>`;
   }
   const [pl, pr] = f.pump.pose;
+  st.rand = mische(f.aura, 0.25);
   const schweiss = f.schwitzt
     ? `<path d="M150 68 C154 76 156 80 153 83 C150 86 146 83 147 79 C147 76 149 72 150 68 Z M92 62 C96 70 98 74 95 77 C92 80 88 77 89 73 C89 70 91 66 92 62 Z" fill="#8fd8ff" stroke="${LINIE}" stroke-width="1.3"/>`
     : "";
   return `<g transform="translate(120 128) scale(.9) translate(-120 -128)">
     <defs><radialGradient id="${id}a" cx="50%" cy="55%" r="50%"><stop offset="0" stop-color="${f.aura}" stop-opacity=".6"/><stop offset="1" stop-color="${f.aura}" stop-opacity="0"/></radialGradient></defs>
+    ${st.defs()}
     <circle cx="120" cy="128" r="118" fill="url(#${id}a)"/>
     ${f.rage(st)}
+    ${boden(f)}
     <g>
       ${f.koerper(st, true)}
       ${f.extra?.(st) ?? ""}
