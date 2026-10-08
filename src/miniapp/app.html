@@ -176,7 +176,8 @@ function karte(titel, kinder) { return el("div", { class: "karte" }, [titel ? el
 function zeile(links, rechts, klasse) { return el("div", { class: "zeile" + (klasse ? " " + klasse : "") }, [el("span", { text: links }), el("span", { text: rechts })]); }
 
 /** Liniendiagramm mit Antippen: zeigt die Werte am nächsten Punkt. */
-function diagramm(x, reihen, einheit) {
+/** `achse` (optional): Beschriftung je x-Punkt, null = Zwischenpunkt ohne Beschriftung und Punkt. */
+function diagramm(x, reihen, einheit, achse) {
   var NS = "http://www.w3.org/2000/svg", B = 340, H = 200, L = 36, R = 10, O = 10, U = 24;
   var werte = [];
   reihen.forEach(function (r) { r.werte.forEach(function (w) { if (w != null) werte.push(w); }); });
@@ -199,7 +200,16 @@ function diagramm(x, reihen, einheit) {
     neu("text", { x: L - 4, y: y + 4, "text-anchor": "end" }).textContent = zahl(Math.abs(w) < schrittY / 1000 ? 0 : w, schrittY < 1 ? 1 : 0);
   }
   var schritt = Math.ceil(x.length / 6), letzte = x.length - 1;
-  x.forEach(function (t, i) {
+  if (achse) {
+    // Je eine Beschriftung und feine Trennlinie pro Woche; bei vielen Wochen nur jede zweite beschriftet
+    var marken = [];
+    achse.forEach(function (t, i) { if (t != null) marken.push(i); });
+    var jede = Math.ceil(marken.length / 7);
+    marken.forEach(function (i, k) {
+      if (i > 0) neu("line", { x1: px(i), x2: px(i), y1: O, y2: H - U, stroke: "currentColor", "stroke-opacity": "0.08" });
+      if ((marken.length - 1 - k) % jede === 0 || k === 0) neu("text", { x: px(i), y: H - 6, "text-anchor": i === 0 ? "start" : i === letzte ? "end" : "middle" }).textContent = achse[i];
+    });
+  } else x.forEach(function (t, i) {
     // Die letzte Beschriftung immer, die davor nur mit genug Abstand
     if (i === letzte || (i % schritt === 0 && letzte - i >= schritt * 0.7)) neu("text", { x: px(i), y: H - 6, "text-anchor": x.length > 1 && i === letzte ? "end" : i === 0 && x.length > 1 ? "start" : "middle" }).textContent = t;
   });
@@ -207,8 +217,11 @@ function diagramm(x, reihen, einheit) {
   reihen.forEach(function (r, ri) {
     var d = "", offen = false;
     r.werte.forEach(function (w, i) { if (w == null) { offen = false; return; } d += (offen ? "L" : "M") + px(i).toFixed(1) + " " + py(w).toFixed(1) + " "; offen = true; });
-    neu("path", { d: d, fill: "none", stroke: farben[ri % 3], "stroke-width": "2.5", "stroke-linejoin": "round" });
-    if (x.length <= 40) r.werte.forEach(function (w, i) { if (w != null) neu("circle", { cx: px(i), cy: py(w), r: 3, fill: farben[ri % 3] }); });
+    neu("path", { d: d, fill: "none", stroke: farben[ri % 3], "stroke-width": achse ? "2" : "2.5", "stroke-linejoin": "round" });
+    var zuletzt = -1;
+    r.werte.forEach(function (w, i) { if (w != null) zuletzt = i; });
+    // Mit Achse nur an Wochenenden und am aktuellen Tag ein Punkt
+    if (x.length <= 40 || achse) r.werte.forEach(function (w, i) { if (w != null && (!achse || achse[i] != null || i === zuletzt)) neu("circle", { cx: px(i), cy: py(w), r: 3, fill: farben[ri % 3] }); });
   });
   var marke = neu("line", { y1: O, y2: H - U, stroke: "currentColor", "stroke-opacity": "0.4", visibility: "hidden" });
   var tipp = el("div", { class: "tipp hint", text: "Antippen für Werte" });
@@ -218,6 +231,7 @@ function diagramm(x, reihen, einheit) {
     var i = Math.round((xx - L) / ((B - L - R) / Math.max(1, x.length - 1)));
     i = Math.max(0, Math.min(x.length - 1, i));
     marke.setAttribute("x1", px(i)); marke.setAttribute("x2", px(i)); marke.setAttribute("visibility", "visible");
+    if (reihen.every(function (r) { return r.werte[i] == null; })) { tipp.textContent = x[i] + ": noch offen"; return; }
     tipp.textContent = x[i] + ": " + reihen.map(function (r) { return r.name + " " + zahl(r.werte[i]); }).join(" · ");
   }
   svg.addEventListener("pointerdown", zeige);
@@ -410,7 +424,7 @@ function standTab(s) {
     ]));
   }
   if (s.boss && !s.boss.aktiv) kinder.push(bossKarte(s.boss));
-  if (s.verlauf) kinder.push(karte("Punkteverlauf", [diagramm(s.verlauf.x, s.verlauf.reihen, "Punkte")]));
+  if (s.verlauf) kinder.push(karte("Punkteverlauf", [diagramm(s.verlauf.x, s.verlauf.reihen, "Punkte", s.verlauf.achse)]));
   if (s.teams.length) kinder.push(karte("Teams", s.teams.map(function (t) {
     return zeile(t.platz + ". " + t.name, zahl(t.gesamt) + (t.bonus ? " (inkl. " + zahl(t.bonus) + " Bonus)" : ""));
   })));
