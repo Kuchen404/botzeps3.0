@@ -26,6 +26,14 @@ export function montagIn(heuteDatum: string, n: number): string {
   return plusTage(heuteDatum, bisMontag + (n - 1) * 7);
 }
 
+/**
+ * Season-Start in `n` Wochen: n = 1 ist der erste Montag, vor dem noch eine volle
+ * Kalibrierwoche liegt (heute Montag: in 7 Tagen, sonst der übernächste Montag).
+ */
+export function startIn(heuteDatum: string, n: number): string {
+  return montagIn(plusTage(heuteDatum, 6), n);
+}
+
 function teilnehmerZahl(db: Db, seasonId: number): number {
   return (db.prepare("SELECT COUNT(*) AS n FROM teilnahme WHERE season = ?").get(seasonId) as { n: number }).n;
 }
@@ -63,7 +71,7 @@ function formular(s: SeasonZeile, tag: string): InlineKeyboard {
   const kb = new InlineKeyboard();
   const haken = (aktiv: boolean, text: string) => (aktiv ? `✓ ${text}` : text);
   for (const n of STARTS) {
-    const start = montagIn(tag, n);
+    const start = startIn(tag, n);
     kb.text(haken(s.start === start, `Start ${datumDe(start).slice(0, 6)}`), `se:${s.id}:s:${n}`);
   }
   kb.row();
@@ -112,7 +120,7 @@ export function seasonModul(db: Db): Composer<Context> {
       await ctx.reply("Der Name ist zu lang, maximal 60 Zeichen.");
       return;
     }
-    const s = legeSeasonAn(db, { gruppe, name, start: montagIn(tag, 1), erstelltVon: nutzer.id, heute: tag });
+    const s = legeSeasonAn(db, { gruppe, name, start: startIn(tag, 1), erstelltVon: nutzer.id, heute: tag });
     await ctx.reply(einfuehrungText(s));
     await ctx.reply(
       `${seasonText(db, s, tag)}\n\nAlle Mitglieder sind dabei, wer später „Ich bin dabei“ drückt oder trainiert, kommt dazu. Start, Dauer und Gewichtung lassen sich bis zum Start mit den Knöpfen ändern.\n\n${MESSPROTOKOLL}`,
@@ -163,7 +171,7 @@ export function seasonModul(db: Db): Composer<Context> {
     const neu = aendereSeason(
       db,
       s.id,
-      feld === "s" ? { start: montagIn(tag, wert) } : feld === "w" ? { wochen: wert } : { gewicht_fleiss: wert },
+      feld === "s" ? { start: startIn(tag, wert) } : feld === "w" ? { wochen: wert } : { gewicht_fleiss: wert },
     );
     await ctx.answerCallbackQuery({ text: "Geändert" });
     try {

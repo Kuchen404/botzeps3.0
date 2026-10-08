@@ -22,7 +22,7 @@ function anmeldung(von: { id: number; first_name: string }): string {
 /** Season mit Kevin (kalibriert, Fortschritt, ein Training) und Peter, Server auf freiem Port. */
 async function aufbau() {
   const t = testBot();
-  tag("2026-10-06");
+  tag("2026-10-05");
   await t.bot.handleUpdate(knopf("mitmachen", GRUPPE, PETER));
   await t.bot.handleUpdate(befehl("/season Herbst"));
   for (const d of ["2026-10-07", "2026-10-08", "2026-10-09"]) {

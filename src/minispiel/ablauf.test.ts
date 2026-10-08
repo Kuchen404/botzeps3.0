@@ -19,7 +19,7 @@ function tag(datum: string): void {
 /** Season ab Mo 12.10.2026 mit Kevin und Peter, 4 Wochen: Bosse in Woche 2 und 3, Minispiel in Woche 4 (02.11. bis 08.11.). */
 async function aufbau() {
   const t = testBot();
-  tag("2026-10-06");
+  tag("2026-10-05");
   await t.bot.handleUpdate(knopf("mitmachen", GRUPPE, PETER));
   await t.bot.handleUpdate(befehl("/season Herbst"));
   aendereSeason(t.db, 1, { wochen: 4 });

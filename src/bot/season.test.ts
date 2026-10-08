@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { eigenesDiagramm, gruppenDiagramm, punkteverlauf } from "../bericht/punkteverlauf.js";
 import { seasonNachId } from "../db/season-repo.js";
 import { uhr } from "./kontext.js";
-import { montagIn } from "./season.js";
+import { montagIn, startIn } from "./season.js";
 import { GRUPPE, PETER, PRIVAT, befehl, knoepfe, knopf, testBot } from "./testhilfe.js";
 
 const echteUhr = uhr.jetzt;
@@ -26,6 +26,15 @@ describe("montagIn", () => {
   });
 });
 
+describe("startIn", () => {
+  it("lässt immer eine volle Kalibrierwoche vor dem Start", () => {
+    expect(startIn("2026-10-05", 1)).toBe("2026-10-12"); // Montag: in 7 Tagen
+    expect(startIn("2026-10-06", 1)).toBe("2026-10-19"); // Dienstag: übernächster Montag
+    expect(startIn("2026-10-11", 1)).toBe("2026-10-19"); // Sonntag: übernächster Montag
+    expect(startIn("2026-10-06", 3)).toBe("2026-11-02");
+  });
+});
+
 describe("/season", () => {
   it("ohne Season und ohne Namen: Anleitung", async () => {
     const { bot, letzterText } = testBot();
@@ -34,7 +43,7 @@ describe("/season", () => {
   });
 
   it("legt eine Season an, nimmt alle Mitglieder auf und lässt sie bis zum Start ändern", async () => {
-    tag("2026-10-06");
+    tag("2026-10-05");
     const { db, bot, aufrufe, letzterText } = testBot();
     await bot.handleUpdate(knopf("mitmachen", GRUPPE, PETER));
     await bot.handleUpdate(befehl("/season Winterspeck 2026"));
@@ -82,7 +91,7 @@ describe("/season", () => {
 describe("/rangliste und /stand", () => {
   async function seasonMitDaten() {
     const t = testBot();
-    tag("2026-10-06");
+    tag("2026-10-05");
     await t.bot.handleUpdate(knopf("mitmachen", GRUPPE, PETER));
     await t.bot.handleUpdate(befehl("/season Winterspeck"));
     for (const d of ["2026-10-07", "2026-10-08", "2026-10-09"]) {
@@ -157,7 +166,7 @@ describe("/rangliste und /stand", () => {
 
 describe("/einfuehrung", () => {
   it("kommt beim Anlegen der Season vor dem Formular, mit Kalibrierwoche und Gewichtung", async () => {
-    tag("2026-10-06");
+    tag("2026-10-05");
     const { bot, gesendet } = testBot();
     await bot.handleUpdate(befehl("/season Herbst"));
     const texte = gesendet().map((g) => String(g.payload.text));
