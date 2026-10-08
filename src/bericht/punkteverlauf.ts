@@ -86,9 +86,10 @@ export function gruppenDiagramm(s: SeasonZeile, v: Punkteverlauf): Liniendiagram
   return {
     titel: `Punkteverlauf „${s.name}“`,
     x: v.x,
+    achse: v.achse,
     reihen: v.ende.map((st) => ({
       name: `${st.platz}. ${st.name}`,
-      werte: v.staende.map((staende) => wert(staende, st.id, (x) => x.gesamt)),
+      werte: v.x.map((_, i) => (i < v.staende.length ? wert(v.staende[i]!, st.id, (x) => x.gesamt) : null)),
     })),
   };
 }

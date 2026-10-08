@@ -13,6 +13,8 @@ export interface Liniendiagramm {
   titel: string;
   x: readonly string[];
   reihen: readonly Reihe[];
+  /** Beschriftung je x-Punkt, null = Zwischenpunkt ohne Beschriftung und Punkt (z. B. Tage zwischen Wochenenden). */
+  achse?: readonly (string | null)[];
 }
 
 export const FARBEN = [
@@ -86,12 +88,24 @@ export function liniendiagramm(d: Liniendiagramm): string {
       `<text x="${RAND.links - 10}" y="${yy + 5}" font-size="15" text-anchor="end" fill="#555">${zahl(Math.abs(w) < y.schritt / 1000 ? 0 : w)}</text>`,
     );
   }
-  // Bei vielen Punkten nur jede n-te x-Beschriftung
-  const jede = Math.ceil(d.x.length / 14);
-  d.x.forEach((text, i) => {
-    if (i % jede !== 0 && i !== d.x.length - 1) return;
-    teile.push(`<text x="${r(px(i))}" y="${unten + 28}" font-size="15" text-anchor="middle" fill="#555">${xml(text)}</text>`);
-  });
+  if (d.achse) {
+    // Feine Trennlinie und Beschriftung an jeder Marke, bei vielen nur an jeder n-ten
+    const marken = d.achse.flatMap((t, i) => (t === null ? [] : [i]));
+    const jede = Math.ceil(marken.length / 14);
+    marken.forEach((i, k) => {
+      if (i > 0) teile.push(`<line x1="${r(px(i))}" y1="${RAND.oben}" x2="${r(px(i))}" y2="${unten}" stroke="#f0f0f0" stroke-width="1"/>`);
+      if (k === 0 || (marken.length - 1 - k) % jede === 0) {
+        teile.push(`<text x="${r(px(i))}" y="${unten + 28}" font-size="15" text-anchor="middle" fill="#555">${xml(d.achse![i]!)}</text>`);
+      }
+    });
+  } else {
+    // Bei vielen Punkten nur jede n-te x-Beschriftung
+    const jede = Math.ceil(d.x.length / 14);
+    d.x.forEach((text, i) => {
+      if (i % jede !== 0 && i !== d.x.length - 1) return;
+      teile.push(`<text x="${r(px(i))}" y="${unten + 28}" font-size="15" text-anchor="middle" fill="#555">${xml(text)}</text>`);
+    });
+  }
 
   d.reihen.forEach((reihe, i) => {
     const { farbe, strich } = stil(i);
@@ -110,8 +124,10 @@ export function liniendiagramm(d: Liniendiagramm): string {
         `<path d="${pfad.trim()}" fill="none" stroke="${farbe}" stroke-width="3" stroke-linejoin="round"${strich ? ` stroke-dasharray="${strich}"` : ""}/>`,
       );
     }
+    const zuletzt = reihe.werte.findLastIndex((w) => w !== null);
     reihe.werte.forEach((w, j) => {
-      if (w !== null) teile.push(`<circle cx="${r(px(j))}" cy="${r(py(w))}" r="4" fill="${farbe}"/>`);
+      // Mit Achse nur an den Marken und am letzten Wert ein Punkt
+      if (w !== null && (!d.achse || d.achse[j] != null || j === zuletzt)) teile.push(`<circle cx="${r(px(j))}" cy="${r(py(w))}" r="4" fill="${farbe}"/>`);
     });
 
     const spalte = i % LEGENDE.spalten;

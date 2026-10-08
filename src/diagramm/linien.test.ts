@@ -22,6 +22,18 @@ describe("Liniendiagramm", () => {
     expect(svg.match(/<circle/g)).toHaveLength(3);
   });
 
+  it("mit Achse: nur Marken beschriftet, Punkte nur an Marken und am letzten Wert", () => {
+    const svg = liniendiagramm({
+      titel: "T",
+      x: ["Start", "Mo", "Di", "Mi", "Do"],
+      achse: ["Start", null, "W1", null, null],
+      reihen: [{ name: "X", werte: [0, 1, 2, 3, null] }],
+    });
+    expect(svg).toContain(">W1</text>");
+    expect(svg).not.toContain(">Mo</text>");
+    expect(svg.match(/<circle/g)).toHaveLength(3);
+  });
+
   it("beliebig viele Reihen: Legende wächst, Stile unterscheiden sich lange", () => {
     const reihen = Array.from({ length: 25 }, (_, i) => ({ name: `P${i}`, werte: [0, i] }));
     const svg = liniendiagramm({ titel: "T", x: ["Start", "W1"], reihen });
