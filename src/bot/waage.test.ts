@@ -88,7 +88,7 @@ describe("/ohnewaage", () => {
     expect(letzterText()).toContain("ohne Waage dabei");
     expect(teilnahme(db, 1, peter)?.ohneWaage).toBe(true);
 
-    await bot.handleUpdate(befehl("/ohnewaage aus", { ...PRIVAT, id: PETER.id, first_name: "Peter" }, PETER));
+    await bot.handleUpdate(befehl("/ohnewaage aus", { ...PRIVAT, id: PETER.id }, PETER));
     expect(letzterText()).toContain("Waage ist zurück");
     expect(teilnahme(db, 1, peter)?.ohneWaage).toBe(false);
     await bot.handleUpdate(befehl("/ohnewaage", GRUPPE, PETER));

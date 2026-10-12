@@ -132,14 +132,19 @@ export interface NeuesTraining {
   datum: string;
   minuten: number;
   sportart: SportartZeile;
+  /** ISO-Zeitpunkt der Eingabe; ohne Angabe die Uhr der Datenbank. */
+  erstelltAm?: string;
 }
 
 /** Speichert ein Training mit dem aktuellen Faktor der Sportart. Gibt die id zurück. */
 export function speichereTraining(db: Db, t: NeuesTraining): number {
   return db.transaction(() => {
     const { id } = db
-      .prepare("INSERT INTO training (nutzer, datum, minuten, sportart, faktor) VALUES (?, ?, ?, ?, ?) RETURNING id")
-      .get(t.nutzer, t.datum, t.minuten, t.sportart.id, t.sportart.faktor) as { id: number };
+      .prepare(
+        `INSERT INTO training (nutzer, datum, minuten, sportart, faktor, erstellt_am)
+         VALUES (?, ?, ?, ?, ?, COALESCE(?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))) RETURNING id`,
+      )
+      .get(t.nutzer, t.datum, t.minuten, t.sportart.id, t.sportart.faktor, t.erstelltAm ?? null) as { id: number };
     protokolliere(db, "training", id, t.nutzer, { datum: t.datum, minuten: t.minuten, sportart: t.sportart.name });
     return id;
   })();

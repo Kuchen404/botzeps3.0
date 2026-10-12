@@ -6,17 +6,19 @@ const echteUhr = uhr.jetzt;
 afterEach(() => {
   uhr.jetzt = echteUhr;
 });
-function tag(datum: string): void {
-  uhr.jetzt = () => new Date(`${datum}T08:00:00Z`);
+function tag(datum: string, uhrzeit = "08:00"): void {
+  uhr.jetzt = () => new Date(`${datum}T${uhrzeit}:00Z`);
 }
 
 async function mitEintraegen() {
   const t = testBot();
   tag("2026-10-10");
   await t.bot.handleUpdate(befehl("/sport 45 Joggen"));
+  tag("2026-10-10", "08:05");
   await t.bot.handleUpdate(befehl("/waage 80 25 40", PRIVAT));
   tag("2026-10-14");
   await t.bot.handleUpdate(befehl("/sport 60 Krafttraining"));
+  tag("2026-10-14", "08:05");
   await t.bot.handleUpdate(befehl("/waage 80,5 24,5 40", PRIVAT));
   await t.bot.handleUpdate(befehl("/verlauf", PRIVAT));
   return t;
