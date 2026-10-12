@@ -87,6 +87,21 @@ export interface Fortschrittswertung {
   /** Relativer Muskelaufbau in Prozent (positiv = mehr Muskel). */
   muskelAufbauPct: number;
   punkte: number;
+  /** Ohne Waage: Punkte sind der Median der Gruppe, die Prozente bleiben 0. */
+  ausGruppe?: boolean;
+}
+
+/**
+ * Fortschritt für jemanden ohne Körperfettwaage: der Median der Fortschrittspunkte aller,
+ * die selbst messen. So bringt es weder Vor- noch Nachteil, ohne Waage mitzumachen.
+ * Null, solange noch niemand Fortschrittspunkte hat.
+ */
+export function fortschrittAusGruppe(punkte: readonly number[]): Fortschrittswertung | null {
+  if (punkte.length === 0) return null;
+  const sortiert = [...punkte].sort((a, b) => a - b);
+  const mitte = Math.floor(sortiert.length / 2);
+  const median = sortiert.length % 2 ? sortiert[mitte]! : (sortiert[mitte - 1]! + sortiert[mitte]!) / 2;
+  return { fettAbbauPct: 0, muskelAufbauPct: 0, punkte: median, ausGruppe: true };
 }
 
 /** Fortschrittspunkte = 10 × Fettabbau % + 30 × Muskelaufbau %, mindestens −50. */

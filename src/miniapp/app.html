@@ -395,8 +395,10 @@ function standTab(s) {
   if (!s.gestartet) {
     kinder.push(karte("Vor dem Start", [
       el("p", { text: "„" + s.name + "“ startet am " + datum(s.start) + "." }),
-      el("p", { text: "Kalibrierung: " + ich.kalibrierMessungen + " von 3 Messungen." }),
-      el("button", { class: "knopf", text: "⚖️ Jetzt messen", onclick: function () { zeigeTab("eintraege"); } })
+      ich.ohneWaage
+        ? el("p", { text: "Du bist ohne Waage dabei: Als Fortschritt bekommst du den Median der Gruppe. Doch eine Waage? /ohnewaage aus" })
+        : el("p", { text: "Kalibrierung: " + ich.kalibrierMessungen + " von 3 Messungen." }),
+      ich.ohneWaage ? null : el("button", { class: "knopf", text: "⚖️ Jetzt messen", onclick: function () { zeigeTab("eintraege"); } })
     ]));
     return kinder;
   }
@@ -406,7 +408,8 @@ function standTab(s) {
     el("div", { class: "gross", text: zahl(ich.gesamt) + " Punkte" }),
     el("div", { text: "Platz " + ich.platz + " von " + s.anzahl }),
     zeile("Fleiß", zahl(ich.fleiss)),
-    zeile("Fortschritt", ich.fortschritt == null ? "noch kein Wert" : zahl(ich.fortschritt))
+    zeile("Fortschritt", ich.fortschritt == null ? "noch kein Wert" : (ich.ohneWaage ? "≈ " : "") + zahl(ich.fortschritt)),
+    ich.ohneWaage ? el("div", { class: "hint", text: "Ohne Waage: Fortschritt ist der Median der Gruppe." }) : null
   ]));
   if (s.laeuft) {
     var anteil = Math.min(100, Math.round(ich.wochenLast / ich.wochenziel * 100));

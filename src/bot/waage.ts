@@ -1,9 +1,11 @@
 import { Composer, InlineKeyboard, type Context } from "grammy";
 import type { Db } from "../db/index.js";
-import { type NutzerZeile, messMittel, speichereMessung, speichereNutzer } from "../db/repo.js";
+import { type NutzerZeile, gruppenDesNutzers, messMittel, speichereMessung, speichereNutzer, trageMitgliedEin } from "../db/repo.js";
+import { type SeasonZeile, aktuelleSeason, setzeOhneWaage, teilnahme } from "../db/season-repo.js";
+import { kalibrierFenster } from "../scoring/season.js";
 import { type WaageEingabe, istSprung, parseWaage } from "../domain/eingabe.js";
 import { plusTage } from "../scoring/datum.js";
-import { anzeigename, argumente, datumDe, heute, istGruppe, uhr, zahlDe } from "./kontext.js";
+import { anzeigename, argumente, datumDe, gruppenId, gruppenZeitzone, heute, istGruppe, uhr, zahlDe } from "./kontext.js";
 
 export const MESSPROTOKOLL = "Messprotokoll: morgens, nach dem Klo, vor Essen und Trinken, immer dieselbe Waage.";
 
@@ -38,6 +40,26 @@ export function speichereWaage(db: Db, nutzer: NutzerZeile, e: WaageEingabe, mar
     `Fett ${zahlDe(e.fettPct)} % = ${zahlDe(fettKg)} kg`,
     `Muskel ${zahlDe(e.muskelPct)} % = ${zahlDe(muskelKg)} kg`,
   ].join("\n");
+}
+
+/**
+ * /ohnewaage [aus]: Teilnahme ohne Körperfettwaage an- oder abschalten.
+ * Geht nur bis zum Ende der eigenen Kalibrierwoche, sonst flüchtet jeder zum Gruppen-Median,
+ * sobald die Waage hässlich wird.
+ */
+export function ohneWaageText(db: Db, s: SeasonZeile, nutzerId: number, ohne: boolean, tag: string): string | null {
+  const t = teilnahme(db, s.id, nutzerId);
+  if (!t) return null;
+  const bis = kalibrierFenster(s, t.beitritt).bis;
+  if (tag > bis) {
+    return t.ohneWaage === ohne
+      ? `In „${s.name}“ bist du schon ${ohne ? "ohne" : "mit"} Waage dabei.`
+      : `In „${s.name}“ ist das seit dem Ende deiner Kalibrierwoche (${datumDe(bis)}) fest. Sonst wirft jeder seine Waage weg, sobald sie hässliche Zahlen zeigt.`;
+  }
+  setzeOhneWaage(db, s.id, nutzerId, ohne);
+  return ohne
+    ? `Alles klar, in „${s.name}“ bist du ohne Waage dabei. Als Fortschritt bekommst du den Median der Gruppe: nicht besser, nicht schlechter als der Durchschnittstyp. Deinen Platz holst du dir über Fleiß.\nDoch noch eine Waage besorgt? /ohnewaage aus, geht bis ${datumDe(bis)}.`
+    : `Waage ist zurück: In „${s.name}“ zählen wieder deine eigenen Messungen. Bis ${datumDe(bis)} brauchst du 3 davon für den Startwert. /waage`;
 }
 
 export function waageModul(db: Db): Composer<Context> {
@@ -79,6 +101,26 @@ export function waageModul(db: Db): Composer<Context> {
       return;
     }
     await ctx.reply(`${speichere(ctx, e, false)}\n\n${MESSPROTOKOLL}`);
+  });
+
+  modul.command("ohnewaage", async (ctx) => {
+    if (!ctx.from) return;
+    const tag = heute(gruppenZeitzone());
+    const nutzer = speichereNutzer(db, ctx.from.id, anzeigename(ctx));
+    const hier = gruppenId(db, ctx);
+    if (hier !== null) trageMitgliedEin(db, hier, nutzer.id);
+    const gruppen = hier !== null ? [hier] : gruppenDesNutzers(db, nutzer.id).map((g) => g.id);
+    const ohne = argumente(ctx).trim().toLowerCase() !== "aus";
+    const texte = gruppen
+      .map((g) => aktuelleSeason(db, g, tag))
+      .filter((s) => s !== undefined)
+      .map((s) => ohneWaageText(db, s, nutzer.id, ohne, tag))
+      .filter((t) => t !== null);
+    await ctx.reply(
+      texte.length
+        ? texte.join("\n\n")
+        : "Du bist in keiner laufenden oder kommenden Season. Erst mitmachen, dann über die Waage jammern.",
+    );
   });
 
   modul.callbackQuery(/^wj:(\d):([\d.]+):([\d.]+):([\d.]+)$/, async (ctx) => {

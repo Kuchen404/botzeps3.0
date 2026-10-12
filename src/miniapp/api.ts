@@ -122,6 +122,7 @@ function ich(db: Db, nutzerId: number, telegramId: number) {
         // Wie oft in dieser Season, wenn man die Rote Laterne gerade trägt
         laterne: laterne.traeger.includes(st.id) ? (laterne.anzahl.get(st.id) ?? 1) : null,
         kalibrierMessungen: st.kalibrierMessungen,
+        ohneWaage: st.ohneWaage ?? false,
         fettKg: st.start && st.aktuell ? { start: runde(st.start.fettKg), aktuell: runde(st.aktuell.fettKg) } : null,
         muskelKg: st.start && st.aktuell ? { start: runde(st.start.muskelKg), aktuell: runde(st.aktuell.muskelKg) } : null,
       },

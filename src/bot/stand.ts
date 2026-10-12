@@ -53,8 +53,10 @@ export function ranglisteText(
   marken: ReadonlyMap<string, string> = new Map(),
 ): string {
   if (tag < s.start) {
-    const fertig = staende.filter((st) => st.kalibrierMessungen >= FORTSCHRITT.minMessungenKalibrierung).length;
-    return `„${s.name}“ startet am ${datumDe(s.start)}, Punkte gibt's danach.\nKalibrierung: ${fertig} von ${staende.length} haben ihre 3 Messungen.`;
+    const mitWaage = staende.filter((st) => !st.ohneWaage);
+    const fertig = mitWaage.filter((st) => st.kalibrierMessungen >= FORTSCHRITT.minMessungenKalibrierung).length;
+    const ohne = staende.length - mitWaage.length;
+    return `„${s.name}“ startet am ${datumDe(s.start)}, Punkte gibt's danach.\nKalibrierung: ${fertig} von ${mitWaage.length} haben ihre 3 Messungen.${ohne ? ` ${ohne} ohne Waage dabei.` : ""}`;
   }
   if (staende.length === 0) return `„${s.name}“ hat noch keine Teilnehmer.`;
   const ende = seasonEnde(s);
@@ -63,7 +65,7 @@ export function ranglisteText(
   const kopf = tag > ende ? `🏁 Endstand „${s.name}“` : `🏆 Rangliste „${s.name}“, Woche ${(woche ?? 0) + 1} von ${s.wochen}`;
   const zeilen = staende.map(
     (st) =>
-      `${st.platz}. ${st.name}: ${p(st.gesamt)} (Fleiß ${p(st.fleiss)} · Fortschritt ${st.fortschritt ? p(st.fortschritt.punkte) : "–"})${abzeichen(st, woche, laterne, marken.get(st.id))}`,
+      `${st.platz}. ${st.name}: ${p(st.gesamt)} (Fleiß ${p(st.fleiss)} · Fortschritt ${st.fortschritt ? `${st.fortschritt.ausGruppe ? "≈" : ""}${p(st.fortschritt.punkte)}` : "–"})${abzeichen(st, woche, laterne, marken.get(st.id))}`,
   );
   const fuehrender = staende[0]!;
   const zweiter = staende[1];
@@ -118,7 +120,13 @@ export function standText(
     zeilen.push(`🏮 Du trägst die Rote Laterne${n > 1 ? ` (schon ${n}× diese Season)` : ""}. Weg ist sie erst, wenn diese Woche jemand fauler ist als du.`);
   }
 
-  if (!st.start) {
+  if (st.ohneWaage) {
+    zeilen.push(
+      st.fortschritt
+        ? `Fortschritt: ${p(st.fortschritt.punkte)} Punkte (ohne Waage, Median der Gruppe)`
+        : "Fortschritt: ohne Waage, du bekommst den Median der Gruppe, sobald es Fortschrittspunkte gibt.",
+    );
+  } else if (!st.start) {
     const fenster = kalibrierFenster(s, st.beitritt);
     zeilen.push(
       `Fortschritt: noch kein Startwert, ${st.kalibrierMessungen} von ${FORTSCHRITT.minMessungenKalibrierung} Messungen zwischen ${datumDe(fenster.von)} und ${datumDe(fenster.bis)}.`,
