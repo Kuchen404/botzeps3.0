@@ -1,5 +1,7 @@
-import { describe, expect, it } from "vitest";
-import { GRUPPE, PRIVAT, befehl, knoepfe, knopf, testBot } from "./testhilfe.js";
+import { afterEach, describe, expect, it } from "vitest";
+import { teilnahme } from "../db/season-repo.js";
+import { uhr } from "./kontext.js";
+import { GRUPPE, PETER, PRIVAT, befehl, knoepfe, knopf, testBot } from "./testhilfe.js";
 
 function messungen(db: ReturnType<typeof testBot>["db"]) {
   return db.prepare("SELECT gewicht_kg AS g, fett_pct AS f, muskel_pct AS m, markiert FROM messung ORDER BY id").all();
@@ -66,5 +68,42 @@ describe("/waage", () => {
     await bot.handleUpdate(knopf("wj:0:80:1:40", PRIVAT));
     await bot.handleUpdate(knopf("wj:9:80:25:40", PRIVAT));
     expect(messungen(db)).toEqual([]);
+  });
+});
+
+describe("/ohnewaage", () => {
+  const echteUhr = uhr.jetzt;
+  afterEach(() => {
+    uhr.jetzt = echteUhr;
+  });
+  const tag = (datum: string) => (uhr.jetzt = () => new Date(`${datum}T08:00:00Z`));
+
+  it("an und aus bis zum Ende der Kalibrierwoche, danach fest", async () => {
+    const { db, bot, letzterText } = testBot();
+    tag("2026-10-05");
+    await bot.handleUpdate(knopf("mitmachen", GRUPPE, PETER));
+    await bot.handleUpdate(befehl("/season Herbst"));
+    const peter = (db.prepare("SELECT id FROM nutzer WHERE telegram_id = ?").get(PETER.id) as { id: number }).id;
+    await bot.handleUpdate(befehl("/ohnewaage", GRUPPE, PETER));
+    expect(letzterText()).toContain("ohne Waage dabei");
+    expect(teilnahme(db, 1, peter)?.ohneWaage).toBe(true);
+
+    await bot.handleUpdate(befehl("/ohnewaage aus", { ...PRIVAT, id: PETER.id }, PETER));
+    expect(letzterText()).toContain("Waage ist zurück");
+    expect(teilnahme(db, 1, peter)?.ohneWaage).toBe(false);
+    await bot.handleUpdate(befehl("/ohnewaage", GRUPPE, PETER));
+
+    tag("2026-10-12");
+    await bot.handleUpdate(befehl("/ohnewaage aus", GRUPPE, PETER));
+    expect(letzterText()).toContain("fest");
+    expect(teilnahme(db, 1, peter)?.ohneWaage).toBe(true);
+    await bot.handleUpdate(befehl("/stand", GRUPPE, PETER));
+    expect(letzterText()).toContain("ohne Waage");
+  });
+
+  it("ohne Season gibt's nichts umzustellen", async () => {
+    const { bot, letzterText } = testBot();
+    await bot.handleUpdate(befehl("/ohnewaage", PRIVAT));
+    expect(letzterText()).toContain("keiner laufenden oder kommenden Season");
   });
 });

@@ -234,7 +234,7 @@ export function finale(
   const sieger = staende.filter((st) => st.platz === 1);
   const zeilen = staende.map(
     (st) =>
-      `${st.platz}. ${st.name}: ${z(st.gesamt)} (Fleiß ${z(st.fleiss)} · Fortschritt ${st.fortschritt ? z(st.fortschritt.punkte) : "–"}${st.bossBonus ? ` · Boss +${z(st.bossBonus)}` : ""})`,
+      `${st.platz}. ${st.name}: ${z(st.gesamt)} (Fleiß ${z(st.fleiss)} · Fortschritt ${st.fortschritt ? `${st.fortschritt.ausGruppe ? "≈" : ""}${z(st.fortschritt.punkte)}` : "–"}${st.bossBonus ? ` · Boss +${z(st.bossBonus)}` : ""})`,
   );
   const neueErfolge = erfolgZeilen(erfolge);
   const preise = sonderpreise(staende, extras);

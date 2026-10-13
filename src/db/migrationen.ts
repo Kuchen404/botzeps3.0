@@ -257,4 +257,12 @@ export const MIGRATIONEN: readonly { version: number; name: string; sql: string 
       );
     `,
   },
+  {
+    version: 10,
+    name: "ohne-waage",
+    sql: `
+      -- Teilnahme ohne Körperfettwaage: Fortschritt = Median der Gruppe (/ohnewaage)
+      ALTER TABLE teilnahme ADD COLUMN ohne_waage INTEGER NOT NULL DEFAULT 0;
+    `,
+  },
 ];

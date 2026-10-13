@@ -26,6 +26,7 @@ export const BEFEHLE = [
   { command: "start", description: "Anmelden" },
   { command: "sport", description: "Training eintragen, z. B. /sport 45 Joggen" },
   { command: "waage", description: "Messung eintragen (nur privat)" },
+  { command: "ohnewaage", description: "Ohne Körperfettwaage mitmachen (aus: /ohnewaage aus)" },
   { command: "stand", description: "Dein Punktestand" },
   { command: "app", description: "Mini App mit Diagrammen und Einstellungen" },
   { command: "verlauf", description: "Einträge korrigieren oder löschen (privat)" },

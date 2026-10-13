@@ -231,3 +231,37 @@ describe("Rote Laterne", () => {
     expect(roteLaterne(START, 2, [t("a", 300), t("b", 100), t("c", 0, "2026-10-21")])).toEqual(["c"]);
   });
 });
+
+describe("Ohne Waage", () => {
+  // a: −10 % Fett = 100 Punkte, b: 0 Punkte, c: −5 % Fett = 50 Punkte → Median 50
+  const mitWaage = [
+    teilnehmer({ id: "a", messungen: [...messungen("2026-10-05", 3, 100, 20, 40), ...messungen("2026-10-26", 3, 100, 18, 40)] }),
+    teilnehmer({ id: "b", messungen: [...messungen("2026-10-05", 3, 100, 20, 40), ...messungen("2026-10-26", 3, 100, 20, 40)] }),
+    teilnehmer({ id: "c", messungen: [...messungen("2026-10-05", 3, 100, 20, 40), ...messungen("2026-10-26", 3, 100, 19, 40)] }),
+  ];
+
+  it("bekommt den Median der Gruppe als Fortschritt, eigene Messungen zählen nicht", () => {
+    const ohne = teilnehmer({ id: "o", ohneWaage: true, trainings: zielwoche("2026-10-12") });
+    const staende = seasonStand(season, [...mitWaage, ohne], "2026-10-28");
+    const o = staende.find((st) => st.id === "o")!;
+    expect(o.fortschritt?.punkte).toBeCloseTo(50);
+    expect(o.fortschritt?.ausGruppe).toBe(true);
+    expect(o.fortschritt?.fettAbbauPct).toBe(0);
+    expect(o.gesamt).toBeCloseTo(o.fleiss + 50);
+  });
+
+  it("gerade Anzahl: Mittel der beiden mittleren, ohne Fortschritt der anderen keine Punkte", () => {
+    const ohne = teilnehmer({ id: "o", ohneWaage: true });
+    const zwei = seasonStand(season, [mitWaage[0]!, mitWaage[1]!, ohne], "2026-10-28");
+    expect(zwei.find((st) => st.id === "o")!.fortschritt?.punkte).toBeCloseTo(50);
+    const frueh = seasonStand(season, [...mitWaage, ohne], "2026-10-12");
+    expect(frueh.find((st) => st.id === "o")!.fortschritt).toBeNull();
+  });
+
+  it("zählt in der Teamwertung mit", () => {
+    const ohne = teilnehmer({ id: "o", ohneWaage: true });
+    const staende = seasonStand(season, [...mitWaage, ohne], "2026-10-28");
+    const [team] = teamStand([{ id: "t", name: "T", mitglieder: ["b", "o"] }], staende);
+    expect(team!.durchschnitt).toBeCloseTo(25);
+  });
+});

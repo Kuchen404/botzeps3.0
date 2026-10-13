@@ -2,7 +2,7 @@ export const HILFE = `Botzeps 3.0 – Sport in der Gruppe, mit Punkten und ohne 
 
 So läuft's:
 • Fleiß: Jede Einheit zählt als Minuten × Faktor der Sportart (leicht ×1, mittel ×2, intensiv ×3). Wochenziel 300, das gibt 10 Punkte, maximal 15.
-• Fortschritt: Fett- und Muskelmasse von der Waage, relativ zum Startwert aus der Kalibrierwoche.
+• Fortschritt: Fett- und Muskelmasse von der Waage, relativ zum Startwert aus der Kalibrierwoche. Keine Körperfettwaage? /ohnewaage, dann zählt der Median der Gruppe.
 • Jeden Sonntag um 20 Uhr kommt der Wochenbericht, am Ende das Finale mit Sonderpreisen.
 • Boss-Wochen: In der 2. und der vorletzten Woche greift ein Boss an. Prügelt ihn mit euren Trainings weg, dann gibt's Bonuspunkte für alle, die mitgemacht haben.
 • Minispiele: In den anderen Wochen läuft jeweils ein Spiel (Zombies, Bombe, Kopfgeldjagd, Gipfelsturm, Tauziehen, Tresor, Losduell). Keine Punkte, nur Ruhm und Schande.
@@ -13,6 +13,7 @@ Befehle:
 /sport 45 Joggen – Training eintragen (wird in der Gruppe gepostet), auch „gestern“ oder „vorgestern“ am Ende
 /sport – dasselbe mit Knöpfen
 /waage 82,4 18,5 41,2 – Gewicht, Fett %, Muskel % (nur privat)
+/ohnewaage – ohne Körperfettwaage mitmachen, Fortschritt = Median der Gruppe (bis Ende der Kalibrierwoche, zurück mit /ohnewaage aus)
 /stand – dein Punktestand (privat mit Details)
 /app – Mini App: Stand, Diagramme, Waage, Einträge, Einstellungen
 /verlauf – letzte Einträge ändern oder löschen (bis 2 Tage zurück, nur privat)
@@ -53,7 +54,7 @@ export function einfuehrung(s: EinfuehrungSeason, datum: (iso: string) => string
     `Jede Einheit zählt Minuten × Faktor der Sportart (leicht ×1, mittel ×2, intensiv ×3). ${s.wochenzielLast} Lastpunkte pro Woche sind das Ziel und bringen 10 Punkte, mehr als 15 gibt's nicht. Das sind z. B. 100 Minuten Joggen. Wer das Ziel 3 Wochen am Stück packt, kriegt Bonus.`,
     "",
     "⚖️ Fortschritt: was dein Körper draus macht",
-    `In der Kalibrierwoche${kalibrierung} wiegst du dich mindestens 3× per /waage (privat), das ist dein Startwert. Danach zählt, wie viel Fett du davon verlierst und wie viel Muskel du zulegst, in Prozent deiner eigenen Werte. Wer schwerer ist, hat also keinen Vorteil. 1 % weniger Fett bringt 10 Punkte, 1 % mehr Muskel 30. Wer sich mästet, rutscht ins Minus (höchstens −50).`,
+    `In der Kalibrierwoche${kalibrierung} wiegst du dich mindestens 3× per /waage (privat), das ist dein Startwert. Danach zählt, wie viel Fett du davon verlierst und wie viel Muskel du zulegst, in Prozent deiner eigenen Werte. Wer schwerer ist, hat also keinen Vorteil. 1 % weniger Fett bringt 10 Punkte, 1 % mehr Muskel 30. Wer sich mästet, rutscht ins Minus (höchstens −50). Keine Körperfettwaage? Vor dem Start /ohnewaage, dann bekommst du den Median der Gruppe.`,
     "",
     `${gewichtungText(s.gewichtFleiss)} Wer nur schwitzt und weiter Döner frisst, verliert. Wer nur hungert und auf der Couch liegt, auch.`,
     "",

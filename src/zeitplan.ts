@@ -447,14 +447,14 @@ async function erinnere(db: Db, senden: Sender, t: TerminZeile, jetzt: Date): Pr
   const s = t.season === null ? undefined : seasonNachId(db, t.season);
   const nutzer = db
     .prepare(
-      `SELECT n.telegram_id, n.name, n.zeitzone, n.erinnerungen, tn.beitritt FROM nutzer n
+      `SELECT n.telegram_id, n.name, n.zeitzone, n.erinnerungen, tn.beitritt, tn.ohne_waage FROM nutzer n
        JOIN teilnahme tn ON tn.nutzer = n.id AND tn.season = ? WHERE n.id = ?`,
     )
     .get(t.season, t.nutzer) as
-    | { telegram_id: number; name: string; zeitzone: string; erinnerungen: number; beitritt: string }
+    | { telegram_id: number; name: string; zeitzone: string; erinnerungen: number; beitritt: string; ohne_waage: number }
     | undefined;
   if (!s || !nutzer || !nutzer.erinnerungen) return false;
-  const text = erinnerungsText(db, s, t.nutzer!, nutzer, lokalesDatum(jetzt, nutzer.zeitzone));
+  const text = erinnerungsText(db, s, t.nutzer!, { ...nutzer, ohneWaage: nutzer.ohne_waage === 1 }, lokalesDatum(jetzt, nutzer.zeitzone));
   if (!text) return false;
   await senden(nutzer.telegram_id, text);
   return true;
@@ -465,7 +465,7 @@ export function erinnerungsText(
   db: Db,
   s: SeasonZeile,
   nutzerId: number,
-  nutzer: { name: string; beitritt: string },
+  nutzer: { name: string; beitritt: string; ohneWaage?: boolean },
   heute: string,
 ): string | null {
   const fenster = kalibrierFenster(s, nutzer.beitritt);
@@ -483,6 +483,7 @@ export function erinnerungsText(
     ).d;
 
   if (heute >= fenster.von && heute <= fenster.bis) {
+    if (nutzer.ohneWaage) return null;
     const fehlen = FORTSCHRITT.minMessungenKalibrierung - zaehle(fenster.von, fenster.bis);
     if (fehlen <= 0) return null;
     return `${nutzer.name}, Kalibrierwoche! Dir fehlen noch ${fehlen} Messung${fehlen === 1 ? "" : "en"} bis ${fenster.bis.split("-").reverse().join(".")}. Ohne Startwert keine Fortschrittspunkte. /waage`;
@@ -501,7 +502,7 @@ export function erinnerungsText(
   }
   const messung = letztes("messung");
   const seitMessung = messung ? tageZwischen(messung, heute) : Infinity;
-  if (heute > fenster.bis && seitMessung >= ERINNERUNG.tageOhneMessung) {
+  if (!nutzer.ohneWaage && heute > fenster.bis && seitMessung >= ERINNERUNG.tageOhneMessung) {
     meckern.push(`Seit ${messung ? `${seitMessung} Tagen` : "Ewigkeiten"} nicht auf der Waage. Angst vor der Wahrheit? /waage`);
   }
   if (meckern.length === 0) return null;

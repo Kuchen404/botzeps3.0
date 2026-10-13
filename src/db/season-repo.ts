@@ -147,10 +147,10 @@ export function ladeTeilnehmer(db: Db, s: SeasonZeile): (Teilnehmer & { nutzerId
   const ende = seasonEnde(s);
   const teilnehmer = db
     .prepare(
-      `SELECT n.id, n.telegram_id, n.name, t.beitritt FROM teilnahme t
+      `SELECT n.id, n.telegram_id, n.name, t.beitritt, t.ohne_waage FROM teilnahme t
        JOIN nutzer n ON n.id = t.nutzer WHERE t.season = ? ORDER BY n.name`,
     )
-    .all(s.id) as { id: number; telegram_id: number; name: string; beitritt: string }[];
+    .all(s.id) as { id: number; telegram_id: number; name: string; beitritt: string; ohne_waage: number }[];
   const trainings = db.prepare(
     `SELECT datum, minuten, faktor, sportart AS sportartId FROM training
      WHERE nutzer = ? AND geloescht_am IS NULL AND datum BETWEEN ? AND ?`,
@@ -165,9 +165,23 @@ export function ladeTeilnehmer(db: Db, s: SeasonZeile): (Teilnehmer & { nutzerId
     telegramId: t.telegram_id,
     name: t.name,
     beitritt: t.beitritt,
+    ohneWaage: t.ohne_waage === 1,
     trainings: trainings.all(t.id, s.start, ende) as { datum: string; minuten: number; faktor: Faktor; sportartId: number }[],
-    messungen: messungen.all(t.id, kalibrierFenster(s, t.beitritt).von, ende) as Messung[],
+    // Ohne Waage zählen Messungen nicht, auch wenn doch mal eine eingetragen wurde
+    messungen: t.ohne_waage ? [] : (messungen.all(t.id, kalibrierFenster(s, t.beitritt).von, ende) as Messung[]),
   }));
+}
+
+/** Ob der Nutzer in dieser Season ohne Waage teilnimmt; undefined, wenn er nicht teilnimmt. */
+export function teilnahme(db: Db, seasonId: number, nutzerId: number): { beitritt: string; ohneWaage: boolean } | undefined {
+  const z = db.prepare("SELECT beitritt, ohne_waage FROM teilnahme WHERE season = ? AND nutzer = ?").get(seasonId, nutzerId) as
+    | { beitritt: string; ohne_waage: number }
+    | undefined;
+  return z && { beitritt: z.beitritt, ohneWaage: z.ohne_waage === 1 };
+}
+
+export function setzeOhneWaage(db: Db, seasonId: number, nutzerId: number, ohneWaage: boolean): void {
+  db.prepare("UPDATE teilnahme SET ohne_waage = ? WHERE season = ? AND nutzer = ?").run(ohneWaage ? 1 : 0, seasonId, nutzerId);
 }
 
 /** Nimmt ein (neues) Gruppenmitglied an der laufenden oder bevorstehenden Season teil. */

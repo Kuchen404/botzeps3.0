@@ -22,7 +22,7 @@ import { einheitsLast } from "../scoring/fleiss.js";
 import { fuelle, waehleSpruch } from "../texte/sprueche.js";
 import { log } from "../log.js";
 import { meldungenNachTraining, mitMeldungen } from "../bericht/nach-training.js";
-import { anzeigename, argumente, gruppenId, gruppenZeitzone, heute } from "./kontext.js";
+import { anzeigename, argumente, gruppenId, gruppenZeitzone, heute, uhr } from "./kontext.js";
 
 const DAUERN = [15, 30, 45, 60, 90, 120];
 export const TAG_TEXT = ["", " (gestern)", " (vorgestern)"];
@@ -47,7 +47,7 @@ export function trageTrainingEin(
   tage: number,
 ): { trainingId: number; post: string; last: number } {
   const datum = plusTage(heute(nutzer.zeitzone), -tage);
-  const trainingId = speichereTraining(db, { nutzer: nutzer.id, datum, minuten, sportart });
+  const trainingId = speichereTraining(db, { nutzer: nutzer.id, datum, minuten, sportart, erstelltAm: uhr.jetzt().toISOString() });
   const meldungen = meldungenNachTraining(db, trainingId, heute(gruppenZeitzone()));
   const post = mitMeldungen(`${trainingsPostText(nutzer.name, minuten, sportart.name)}${TAG_TEXT[tage]}`, meldungen);
   return { trainingId, post, last: einheitsLast({ minuten, faktor: sportart.faktor }) };

@@ -8,6 +8,7 @@ import {
   FORTSCHRITT,
   aktuellerWert,
   fortschritt,
+  fortschrittAusGruppe,
   startwert,
 } from "./fortschritt.js";
 
@@ -34,6 +35,8 @@ export interface Teilnehmer {
   name: string;
   /** Tag des Beitritts; vor oder am Season-Start heißt regulärer Start. */
   beitritt: IsoDatum;
+  /** Ohne Körperfettwaage: Fortschritt ist der Median der Gruppe. */
+  ohneWaage?: boolean;
   trainings: readonly Training[];
   messungen: readonly Messung[];
 }
@@ -47,6 +50,7 @@ export interface TeilnehmerStand {
   start: Koerpermassen | null;
   aktuell: Koerpermassen | null;
   fortschritt: Fortschrittswertung | null;
+  ohneWaage?: boolean;
   /** Bonus für Siege gegen Bosse, ungewichtet in `gesamt` enthalten. */
   bossBonus: number;
   /** Schaden je Boss-Woche (Einheiten in der Schwäche doppelt), nur für Wochen mit Boss */
@@ -123,13 +127,18 @@ export function teilnehmerStand(
   }
   const fleiss = wochen.reduce((summe, w) => summe + w.punkte, 0);
 
+  const fleissGewichtet = fleiss * gewichtsFaktor(s.gewichtFleiss);
+  if (t.ohneWaage) {
+    // Fortschritt kommt erst in seasonStand dazu, wenn die Werte der anderen feststehen
+    return { id: t.id, name: t.name, wochen, fleiss, start: null, aktuell: null, fortschritt: null, ohneWaage: true, bossBonus: 0, bossSchaden, gesamt: fleissGewichtet, fleissGewichtet };
+  }
+
   const fenster = kalibrierFenster(s, t.beitritt);
   const start = startwert(t.messungen, fenster.von, fenster.bis);
   // Aktuelle Werte erst nach der Kalibrierung, sonst wäre der Fortschritt trivial 0.
   const aktuell = start && bis > fenster.bis ? aktuellerWert(t.messungen, bis, plusTage(fenster.bis, 1)) : null;
   const fw = start && aktuell ? fortschritt(start, aktuell) : null;
 
-  const fleissGewichtet = fleiss * gewichtsFaktor(s.gewichtFleiss);
   const gesamt = fleissGewichtet + (fw?.punkte ?? 0) * gewichtsFaktor(s.gewichtFortschritt);
 
   return { id: t.id, name: t.name, wochen, fleiss, start, aktuell, fortschritt: fw, bossBonus: 0, bossSchaden, gesamt, fleissGewichtet };
@@ -155,6 +164,11 @@ export function rangliste<T extends { gesamt: number; fleissGewichtet: number }>
 /** Stand aller Teilnehmer; für jeden besiegten Boss bekommen alle Beteiligten den Bonus. */
 export function seasonStand(s: SeasonEinstellungen, teilnehmer: readonly Teilnehmer[], stichtag: IsoDatum): TeilnehmerStand[] {
   let staende = teilnehmer.map((t) => teilnehmerStand(s, t, stichtag));
+  const ausGruppe = fortschrittAusGruppe(staende.filter((st) => !st.ohneWaage && st.fortschritt).map((st) => st.fortschritt!.punkte));
+  if (ausGruppe) {
+    const zusatz = ausGruppe.punkte * gewichtsFaktor(s.gewichtFortschritt);
+    staende = staende.map((st) => (st.ohneWaage ? { ...st, fortschritt: ausGruppe, gesamt: st.gesamt + zusatz } : st));
+  }
   for (const boss of s.bosse ?? []) {
     const kampf = bossKampf(boss, staende);
     if (!kampf.besiegt) continue;
@@ -194,7 +208,7 @@ export function roteLaterne(
 export interface TeamStand {
   id: string;
   name: string;
-  /** Durchschnitt der Mitglieder mit Startwert. */
+  /** Durchschnitt der Mitglieder mit Startwert (oder ohne Waage). */
   durchschnitt: number;
   /** +3 für jede Woche, in der alle Mitglieder ihr Ziel erreicht haben. */
   bonus: number;
@@ -213,7 +227,7 @@ export function teamStand(
   const nachId = new Map(staende.map((st) => [st.id, st]));
   const ergebnis = teams.map((team) => {
     const mitglieder = team.mitglieder.map((id) => nachId.get(id)).filter((st) => st !== undefined);
-    const mitStart = mitglieder.filter((st) => st.start !== null);
+    const mitStart = mitglieder.filter((st) => st.start !== null || st.ohneWaage);
     const durchschnitt = mitStart.length ? mitStart.reduce((s, st) => s + st.gesamt, 0) / mitStart.length : 0;
     const anzahlWochen = Math.max(0, ...mitglieder.map((st) => st.wochen.length));
     const bonusWochen: number[] = [];
