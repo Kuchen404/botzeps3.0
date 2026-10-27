@@ -41,9 +41,11 @@ async function aufbau() {
     plane(t.db, jetzt, TZ);
     return fuehreAus(t.db, senden, jetzt, TZ, foto);
   };
+  /** Nur die privaten Nachrichten (Erinnerungen). */
+  const privat = () => gesendet.filter((g) => g.chatId !== GRUPPE.id);
   /** Nur die Nachrichten an die Gruppe (Berichte), ohne private Erinnerungen. */
   const berichte = () => gesendet.filter((g) => g.chatId === GRUPPE.id).map((g) => g.text);
-  return { ...t, gesendet, berichte, fotos, lauf };
+  return { ...t, gesendet, privat, berichte, fotos, lauf };
 }
 
 describe("Zeitplan", () => {
@@ -51,7 +53,7 @@ describe("Zeitplan", () => {
     const { db, lauf } = await aufbau();
     await lauf("2026-10-10T06:00:00Z");
     await lauf("2026-10-10T06:01:00Z");
-    const berichte = db.prepare("SELECT art, faellig_am FROM termin WHERE art != 'erinnerung' ORDER BY faellig_am").all();
+    const berichte = db.prepare("SELECT art, faellig_am FROM termin WHERE art NOT IN ('erinnerung', 'countdown') ORDER BY faellig_am").all();
     expect(berichte).toEqual([
       { art: "wochenbericht", faellig_am: "2026-10-18T18:00:00.000Z" },
       { art: "wochenbericht", faellig_am: "2026-10-25T19:00:00.000Z" }, // Winterzeit
@@ -178,15 +180,70 @@ describe("Zeitplan", () => {
     await lauf("2026-10-10T06:00:00Z");
     aendereSeason(db, 1, { start: "2026-10-19" });
     await lauf("2026-10-18T18:00:30Z");
+    expect(berichte().filter((b) => b.includes("Wochenbericht"))).toEqual([]);
+  });
+});
+
+describe("Countdown der Kalibrierwoche", () => {
+  it("erklärt beim ersten Beitrag alles, danach Häppchen, und nennt, wer noch auf die Waage muss", async () => {
+    const { bot, berichte, gesendet, lauf } = await aufbau();
+    // Mo 05.10. ist Tag −7, der Beitrag kommt um 18 Uhr Berlin
+    await lauf("2026-10-05T15:59:00Z");
     expect(berichte()).toEqual([]);
+    await lauf("2026-10-05T16:00:30Z");
+    await lauf("2026-10-05T16:01:30Z");
+    expect(berichte()).toHaveLength(1);
+    const erster = berichte()[0]!;
+    expect(erster).toContain("Noch 7 Tage bis „Herbst“ (Start 12.10.2026)");
+    // Kevins Messungen aus dem Aufbau liegen schon in der Datenbank
+    expect(erster).toContain("Kalibrierung: 1 von 2 haben ihre 3 Messungen.");
+    expect(erster).toContain("Noch offen: Peter (0/3)");
+    expect(erster).toContain("⚖️ DIE WAAGE");
+    expect(erster).toContain("1 % mehr Muskel = 30 Punkte");
+    expect(gesendet.find((g) => g.chatId === GRUPPE.id)?.appKnopf).toBe(true);
+
+    // Do 08.10.: Peter hat eine Messung, die Erklärung kommt nicht nochmal
+    tag("2026-10-08");
+    await bot.handleUpdate(befehl("/waage 80 20 40", PETER_PRIVAT, PETER));
+    await lauf("2026-10-08T16:00:30Z");
+    const donnerstag = berichte().at(-1)!;
+    expect(donnerstag).toContain("Noch 4 Tage");
+    expect(donnerstag).toContain("Noch offen: Peter (1/3)");
+    expect(donnerstag).not.toContain("DIE WAAGE");
+    expect(donnerstag).toContain("Schummeln lohnt nicht");
+
+    // So 11.10.: letzter Tag, Peter fehlt noch
+    await lauf("2026-10-11T16:00:30Z");
+    const sonntag = berichte().at(-1)!;
+    expect(sonntag).toContain("MORGEN GEHT'S LOS");
+    expect(sonntag).toContain("Kalibrierung: 1 von 2");
+    expect(sonntag).toContain("Heute ist der letzte Tag der Kalibrierwoche! Peter:");
+
+    // Mo 12.10., 8 Uhr Berlin: Startschuss
+    await lauf("2026-10-12T06:00:30Z");
+    const start = berichte().at(-1)!;
+    expect(start).toContain("STARTSCHUSS! „Herbst“ läuft.");
+    expect(start).toContain("Ohne Startwert und damit ohne Fortschrittspunkte: Peter.");
+    expect(berichte()).toHaveLength(4);
+  });
+
+  it("mitten in der Woche eingeschaltet: Verpasstes verfällt, der erste Beitrag erklärt alles", async () => {
+    const { berichte, lauf } = await aufbau();
+    await lauf("2026-10-07T16:00:30Z"); // Mi 18 Uhr Berlin, Mo und Di sind zu lange her
+    expect(berichte()).toHaveLength(1);
+    expect(berichte()[0]).toContain("Noch 5 Tage");
+    expect(berichte()[0]).toContain("⚖️ DIE WAAGE");
+    await lauf("2026-10-08T16:00:30Z");
+    expect(berichte()).toHaveLength(2);
+    expect(berichte()[1]).not.toContain("DIE WAAGE");
   });
 });
 
 describe("Erinnerungen", () => {
   it("Kalibrierwoche: erinnert, wer noch Messungen braucht", async () => {
-    const { gesendet, lauf } = await aufbau();
+    const { privat, lauf } = await aufbau();
     await lauf("2026-10-08T17:00:30Z"); // 19 Uhr Berlin
-    expect(gesendet).toEqual([
+    expect(privat()).toEqual([
       { chatId: PETER.id, text: expect.stringContaining("Dir fehlen noch 3 Messungen bis 11.10.2026") },
     ]);
   });
@@ -208,13 +265,13 @@ describe("Erinnerungen", () => {
   });
 
   it("verfällt nach 2 Stunden und lässt sich abschalten", async () => {
-    const { bot, gesendet, lauf } = await aufbau();
+    const { bot, privat, lauf } = await aufbau();
     await lauf("2026-10-08T19:30:00Z"); // 21:30 Berlin, 2,5 h zu spät
-    expect(gesendet).toEqual([]);
+    expect(privat()).toEqual([]);
 
     await bot.handleUpdate(befehl("/erinnerungen aus", PETER_PRIVAT, PETER));
     await lauf("2026-10-09T17:00:30Z");
-    expect(gesendet).toEqual([]);
+    expect(privat()).toEqual([]);
   });
 
   it("/erinnerungen stellt die Uhrzeit", async () => {

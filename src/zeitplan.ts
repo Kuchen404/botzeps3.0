@@ -23,6 +23,7 @@ import { ABSTIMMUNG_STUNDEN, ergebnisText } from "./bot/abstimmung.js";
 import { trainingsPostText } from "./bot/sport.js";
 import { meldungenNachTraining, mitMeldungen } from "./bericht/nach-training.js";
 import { type HypeKanal, fuehreHypeAus } from "./hype/hype.js";
+import { COUNTDOWN_VERFALL_MS, countdownTermine, countdownText, countdownZeitpunkt } from "./bericht/kalibrierung.js";
 import { kuendigeMinispielAn, loeseMinispielAuf, meldeMinispielLage, minispielTeaserFuer, minispielTermine } from "./minispiel/ablauf.js";
 
 /**
@@ -71,7 +72,7 @@ export const ERINNERUNG = { tageOhneTraining: 3, tageOhneMessung: 4 } as const;
 
 interface TerminZeile {
   id: number;
-  art: "wochenbericht" | "finale" | "erinnerung" | "boss1" | "boss2" | "boss1_spott" | "boss2_spott" | "minispiel" | "minispiel_lage";
+  art: "wochenbericht" | "finale" | "erinnerung" | "boss1" | "boss2" | "boss1_spott" | "boss2_spott" | "minispiel" | "minispiel_lage" | "countdown";
   season: number | null;
   nutzer: number | null;
   faellig_am: string;
@@ -114,6 +115,7 @@ export function plane(db: Db, jetzt: Date, zeitzone: string): void {
         if (spott) neu.run(`boss${stufe}_spott`, s.id, null, spott.toISOString());
       }
       for (const m of minispielTermine(s, zeitzone)) neu.run(m.art, s.id, null, m.zeitpunkt.toISOString());
+      for (const z of countdownTermine(s, zeitzone)) neu.run("countdown", s.id, null, z.toISOString());
       if (heute < plusTage(s.start, -7) || heute > ende) continue;
       const teilnehmer = db
         .prepare(
@@ -157,7 +159,9 @@ export async function fuehreAus(
                 ? await kuendigeMinispielAn(db, senden, t, jetzt, zeitzone, extras)
                 : t.art === "minispiel_lage"
                   ? await meldeMinispielLage(db, senden, t, jetzt, zeitzone)
-                  : await berichte(db, senden, t, zeitzone, foto, extras);
+                  : t.art === "countdown"
+                    ? await zaehleRunter(db, senden, t, jetzt, zeitzone)
+                    : await berichte(db, senden, t, zeitzone, foto, extras);
       if (gesendet) ausgefuehrt++;
     } catch (err) {
       log.error(`Termin ${t.id} (${t.art}) fehlgeschlagen`, err);
@@ -440,6 +444,39 @@ function extras(db: Db, s: SeasonZeile): Map<string, Extras> {
       ];
     }),
   );
+}
+
+/**
+ * Countdown der Kalibrierwoche und Startschuss in der Gruppe. Der erste Beitrag, der wirklich
+ * ankommt, erklärt Waage und Punkte komplett, auch wenn die Season erst mitten in der Woche entsteht.
+ */
+async function zaehleRunter(db: Db, senden: Sender, t: TerminZeile, jetzt: Date, zeitzone: string): Promise<boolean> {
+  if (jetzt.getTime() - Date.parse(t.faellig_am) > COUNTDOWN_VERFALL_MS) return false;
+  const s = t.season === null ? undefined : seasonNachId(db, t.season);
+  const gruppe = s ? gruppeNachId(db, s.gruppe) : undefined;
+  if (!s || !gruppe) return false;
+  const datum = lokalesDatum(new Date(t.faellig_am), zeitzone);
+  const tag = tageZwischen(s.start, datum);
+  // Termin verfällt, wenn der Start der Season inzwischen verschoben wurde
+  if (tag < -7 || tag > 0 || countdownZeitpunkt(s, tag, zeitzone).toISOString() !== t.faellig_am) return false;
+  const staende = berechneStand(db, s, datum);
+  if (staende.length === 0) return false;
+  const vorher = db
+    .prepare(
+      `SELECT faellig_am, erledigt_am FROM termin WHERE art = 'countdown' AND season = ? AND faellig_am < ? AND erledigt_am IS NOT NULL`,
+    )
+    .all(s.id, t.faellig_am) as { faellig_am: string; erledigt_am: string }[];
+  // Gesendet wurde nur, was rechtzeitig erledigt und noch passend zum Start war
+  const erstmals = !vorher.some((v) => {
+    const vTag = tageZwischen(s.start, lokalesDatum(new Date(v.faellig_am), zeitzone));
+    return (
+      vTag >= -7 &&
+      countdownZeitpunkt(s, vTag, zeitzone).toISOString() === v.faellig_am &&
+      Date.parse(v.erledigt_am) - Date.parse(v.faellig_am) <= COUNTDOWN_VERFALL_MS
+    );
+  });
+  await senden(gruppe.telegram_chat_id, countdownText(s, staende, tag, erstmals), { appKnopf: true });
+  return true;
 }
 
 async function erinnere(db: Db, senden: Sender, t: TerminZeile, jetzt: Date): Promise<boolean> {
