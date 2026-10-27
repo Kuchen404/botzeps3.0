@@ -628,7 +628,9 @@ function trainingKarte() {
 function messungKarte() {
   var letzte = eingabeDaten.letzteMessung || {};
   var felder = [["gewichtKg", "Gewicht kg"], ["fettPct", "Fett %"], ["muskelPct", messung.muskelKg ? "Muskel kg" : "Skelettmuskel %"]].map(function (f) {
-    var vorschlag = f[0] === "muskelPct" && messung.muskelKg ? null : letzte[f[0]];
+    var vorschlag = letzte[f[0]];
+    // Im kg-Modus die letzte Muskelmasse in kg vorschlagen, gespeichert ist sie in % vom Gewicht
+    if (f[0] === "muskelPct" && messung.muskelKg) vorschlag = letzte.muskelPct != null && letzte.gewichtKg != null ? letzte.muskelPct * letzte.gewichtKg / 100 : null;
     var eingabe = el("input", { type: "text", inputmode: "decimal", autocomplete: "off", placeholder: vorschlag != null ? zahl(vorschlag) : "" });
     eingabe.value = messung[f[0]];
     eingabe.addEventListener("input", function () { messung[f[0]] = eingabe.value; });
