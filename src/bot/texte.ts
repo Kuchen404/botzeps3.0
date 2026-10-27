@@ -12,7 +12,7 @@ Befehle:
 /start – anmelden
 /sport 45 Joggen – Training eintragen (wird in der Gruppe gepostet), auch „gestern“ oder „vorgestern“ am Ende
 /sport – dasselbe mit Knöpfen
-/waage 82,4 18,5 41,2 – Gewicht, Fett %, Muskel % (nur privat)
+/waage 82,4 18,5 41,2 – Gewicht, Körperfett %, Skelettmuskel % (sonst Muskelrate) (nur privat)
 /ohnewaage – ohne Körperfettwaage mitmachen, Fortschritt = Median der Gruppe (bis Ende der Kalibrierwoche, zurück mit /ohnewaage aus)
 /stand – dein Punktestand (privat mit Details)
 /app – Mini App: Stand, Diagramme, Waage, Einträge, Einstellungen

@@ -44,6 +44,13 @@ describe("parseWaage", () => {
     expect(parseWaage("82 18 41 gestern")).toMatchObject({ ok: true, wert: { tageZurueck: 1 } });
   });
 
+  it("Muskeln in kg werden in Prozent vom Gewicht umgerechnet", () => {
+    expect(parseWaage("88,55 20,7 66,7kg")).toEqual({ ok: true, wert: { gewichtKg: 88.55, fettPct: 20.7, muskelPct: 75.32, tageZurueck: 0 } });
+    expect(parseWaage("88,55kg 20,7 % 66,7 kg gestern")).toEqual({ ok: true, wert: { gewichtKg: 88.55, fettPct: 20.7, muskelPct: 75.32, tageZurueck: 1 } });
+    // Ohne kg bleibt es Prozent
+    expect(parseWaage("88,55 20,7 51,2")).toMatchObject({ ok: true, wert: { muskelPct: 51.2 } });
+  });
+
   it("leere Eingabe heißt: Anleitung zeigen", () => {
     expect(parseWaage("  ")).toBeNull();
   });
@@ -53,7 +60,7 @@ describe("parseWaage", () => {
     expect(parseWaage("82 18 41 12")).toMatchObject({ ok: false });
     expect(parseWaage("20 18 41")).toMatchObject({ ok: false, fehler: expect.stringContaining("Gewicht") });
     expect(parseWaage("82 1 41")).toMatchObject({ ok: false, fehler: expect.stringContaining("Fett") });
-    expect(parseWaage("82 18 80")).toMatchObject({ ok: false, fehler: expect.stringContaining("Muskel") });
+    expect(parseWaage("82 8 95")).toMatchObject({ ok: false, fehler: expect.stringContaining("Muskel") });
     expect(parseWaage("82 45 60")).toMatchObject({ ok: false, fehler: expect.stringContaining("100") });
   });
 });

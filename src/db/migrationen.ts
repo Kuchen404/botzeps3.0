@@ -265,4 +265,28 @@ export const MIGRATIONEN: readonly { version: number; name: string; sql: string 
       ALTER TABLE teilnahme ADD COLUMN ohne_waage INTEGER NOT NULL DEFAULT 0;
     `,
   },
+  {
+    version: 11,
+    name: "muskel_bis_90",
+    // Manche Waagen zeigen statt Skelettmuskulatur nur die „Muskelrate“ (um 75 %).
+    // SQLite kann CHECK nicht ändern, also Tabelle neu anlegen; nichts verweist auf messung.
+    sql: `
+      CREATE TABLE messung_neu (
+        id          INTEGER PRIMARY KEY,
+        nutzer      INTEGER NOT NULL REFERENCES nutzer(id) ON DELETE CASCADE,
+        zeitpunkt   TEXT    NOT NULL,
+        datum       TEXT    NOT NULL,                     -- lokales Datum, YYYY-MM-DD
+        gewicht_kg  REAL    NOT NULL CHECK (gewicht_kg BETWEEN 35 AND 250),
+        fett_pct    REAL    NOT NULL CHECK (fett_pct BETWEEN 3 AND 60),
+        muskel_pct  REAL    NOT NULL CHECK (muskel_pct BETWEEN 20 AND 90),
+        foto_file_id TEXT,
+        markiert    INTEGER NOT NULL DEFAULT 0,
+        geloescht_am TEXT
+      );
+      INSERT INTO messung_neu SELECT id, nutzer, zeitpunkt, datum, gewicht_kg, fett_pct, muskel_pct, foto_file_id, markiert, geloescht_am FROM messung;
+      DROP TABLE messung;
+      ALTER TABLE messung_neu RENAME TO messung;
+      CREATE INDEX messung_nutzer_datum ON messung (nutzer, datum);
+    `,
+  },
 ];
