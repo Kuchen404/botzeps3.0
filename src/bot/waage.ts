@@ -12,6 +12,7 @@ export const MESSPROTOKOLL = "Messprotokoll: morgens, nach dem Klo, vor Essen un
 export const WAAGE_ANLEITUNG = `Messung eintragen: Gewicht, Fett %, Muskel % in einer Zeile.
 Beispiel: /waage 82,4 18,5 41,2
 Vergessen? /waage 82,4 18,5 41,2 gestern
+Muskeln nur in kg? /waage 82,4 18,5 62,3kg, der Bot rechnet in % um.
 
 Fett % = Körperfett. Muskel % = Skelettmuskulatur, falls deine Waage die zeigt, sonst Muskelrate. Egal welcher, aber immer derselbe.
 

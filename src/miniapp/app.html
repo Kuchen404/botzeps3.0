@@ -537,7 +537,27 @@ function waageTab() {
 
 var TAGE = [{ wert: 0, text: "Heute" }, { wert: 1, text: "Gestern" }, { wert: 2, text: "Vorgestern" }];
 var training = { chat: null, sportart: null, minuten: null, tage: 0, status: "" };
-var messung = { gewichtKg: "", fettPct: "", muskelPct: "", tage: 0, status: "" };
+var messung = { gewichtKg: "", fettPct: "", muskelPct: "", muskelKg: false, tage: 0, status: "" };
+
+// Einheit für Muskeln merken: Standard %, wer einmal kg wählt, behält kg.
+// Telegram-CloudStorage gilt auf allen Geräten des Nutzers, localStorage ist nur der Notnagel.
+var MUSKEL_EINHEIT = "muskel_einheit";
+try { messung.muskelKg = localStorage.getItem(MUSKEL_EINHEIT) === "kg"; } catch (e) {}
+if (tg && tg.CloudStorage) {
+  try {
+    tg.CloudStorage.getItem(MUSKEL_EINHEIT, function (fehler, wert) {
+      if (fehler || !wert) return;
+      var kg = wert === "kg";
+      if (kg !== messung.muskelKg) { messung.muskelKg = kg; if (daten) zeichne(); }
+    });
+  } catch (e) {}
+}
+function merkeMuskelEinheit(kg) {
+  messung.muskelKg = kg;
+  var wert = kg ? "kg" : "pct";
+  try { localStorage.setItem(MUSKEL_EINHEIT, wert); } catch (e) {}
+  if (tg && tg.CloudStorage) { try { tg.CloudStorage.setItem(MUSKEL_EINHEIT, wert); } catch (e) {} }
+}
 
 function chips(optionen, aktiv, waehle) {
   return el("div", { class: "chips" }, optionen.map(function (o) {
@@ -607,8 +627,9 @@ function trainingKarte() {
 
 function messungKarte() {
   var letzte = eingabeDaten.letzteMessung || {};
-  var felder = [["gewichtKg", "Gewicht kg"], ["fettPct", "Fett %"], ["muskelPct", "Skelettmuskel %"]].map(function (f) {
-    var eingabe = el("input", { type: "text", inputmode: "decimal", autocomplete: "off", placeholder: letzte[f[0]] != null ? zahl(letzte[f[0]]) : "" });
+  var felder = [["gewichtKg", "Gewicht kg"], ["fettPct", "Fett %"], ["muskelPct", messung.muskelKg ? "Muskel kg" : "Skelettmuskel %"]].map(function (f) {
+    var vorschlag = f[0] === "muskelPct" && messung.muskelKg ? null : letzte[f[0]];
+    var eingabe = el("input", { type: "text", inputmode: "decimal", autocomplete: "off", placeholder: vorschlag != null ? zahl(vorschlag) : "" });
     eingabe.value = messung[f[0]];
     eingabe.addEventListener("input", function () { messung[f[0]] = eingabe.value; });
     return el("label", {}, [f[1], eingabe]);
@@ -618,6 +639,8 @@ function messungKarte() {
   function sende(trotzdem) {
     var body = { gewichtKg: wert("gewichtKg"), fettPct: wert("fettPct"), muskelPct: wert("muskelPct"), tage: messung.tage };
     if ([body.gewichtKg, body.fettPct, body.muskelPct].some(isNaN)) { status.textContent = "Bitte alle drei Werte eintragen."; return; }
+    // Muskelmasse in kg als Anteil am Gewicht, wie auf dem Server bei /waage … kg
+    if (messung.muskelKg) body.muskelPct = Math.round(body.muskelPct / body.gewichtKg * 10000) / 100;
     if (trotzdem) body.trotzdem = true;
     knopf.disabled = true; status.textContent = "Speichert …";
     api("/api/messung", body).then(function (j) {
@@ -627,16 +650,17 @@ function messungKarte() {
         return;
       }
       erfolg();
-      messung = { gewichtKg: "", fettPct: "", muskelPct: "", tage: 0, status: j.text.split("\n").join(" · ") };
+      messung = { gewichtKg: "", fettPct: "", muskelPct: "", muskelKg: messung.muskelKg, tage: 0, status: j.text.split("\n").join(" · ") };
       return neuLaden();
     }).catch(function (f) { knopf.disabled = false; status.textContent = f.message; });
   }
   var knopf = el("button", { type: "button", class: "knopf", text: "Speichern", onclick: function () { sende(false); } });
   return karte("⚖️ Waage (nur für dich)", [
     el("div", { class: "werte" }, felder),
+    feld("Muskel in", chips([{ wert: false, text: "%" }, { wert: true, text: "kg" }], messung.muskelKg, merkeMuskelEinheit)),
     feld("Wann", chips(TAGE, messung.tage, function (w) { messung.tage = w; })),
     el("div", { class: "senden" }, [knopf, status]),
-    el("p", { class: "hint", text: "Fett % = Körperfett. Muskel % = Skelettmuskulatur, falls deine Waage die zeigt, sonst Muskelrate. Immer denselben Wert nehmen." }),
+    el("p", { class: "hint", text: "Fett % = Körperfett. Muskel % = Skelettmuskulatur, falls deine Waage die zeigt, sonst Muskelrate. Nur kg? Auf kg umschalten, die App rechnet in % vom Gewicht um. Immer denselben Wert nehmen." }),
     el("p", { class: "hint", text: "Morgens, nach dem Klo, vor Essen und Trinken, immer dieselbe Waage." })
   ]);
 }

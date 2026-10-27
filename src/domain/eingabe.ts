@@ -65,16 +65,26 @@ export interface WaageEingabe {
   tageZurueck: number;
 }
 
-/** Drei Zahlen in fester Reihenfolge: Gewicht (kg), Fett %, Muskel %. Komma oder Punkt. */
+/** Muskelmasse in kg als Anteil am Gewicht, auf zwei Stellen gerundet (entspricht der Muskelrate). */
+export function muskelKgInProzent(muskelKg: number, gewichtKg: number): number {
+  return Math.round((muskelKg / gewichtKg) * 10000) / 100;
+}
+
+/**
+ * Drei Zahlen in fester Reihenfolge: Gewicht (kg), Fett %, Muskel %. Komma oder Punkt.
+ * Steht hinter dem Muskelwert „kg“, ist es Muskelmasse und wird in Prozent vom Gewicht umgerechnet.
+ */
 export function parseWaage(text: string): Ergebnis<WaageEingabe> | null {
-  const woerter = text.trim().replace(/%|kg/gi, " ").split(/\s+/).filter(Boolean);
+  // Einheiten an die Zahl davor hängen, dann sind sie Teil desselben Worts
+  const woerter = text.trim().replace(/(\d)\s+(%|kg)/gi, "$1$2").split(/\s+/).filter(Boolean);
   if (woerter.length === 0) return null;
   const tage = tageZurueck(woerter);
-  const zahlen = woerter.map(zahl);
+  const zahlen = woerter.map((w) => zahl(w.replace(/(%|kg)$/i, "")));
   if (zahlen.length !== 3 || zahlen.some((z) => z === null)) {
     return { ok: false, fehler: "Bitte genau drei Zahlen: Gewicht, Fett %, Muskel %. Beispiel: /waage 82,4 18,5 41,2" };
   }
-  const [gewichtKg, fettPct, muskelPct] = zahlen as [number, number, number];
+  const [gewichtKg, fettPct, muskel] = zahlen as [number, number, number];
+  const muskelPct = /kg$/i.test(woerter[2]!) ? muskelKgInProzent(muskel, gewichtKg) : muskel;
   const fehler = pruefeWaage({ gewichtKg, fettPct, muskelPct });
   if (fehler) return { ok: false, fehler };
   return { ok: true, wert: { gewichtKg, fettPct, muskelPct, tageZurueck: tage } };
