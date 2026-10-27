@@ -607,7 +607,7 @@ function trainingKarte() {
 
 function messungKarte() {
   var letzte = eingabeDaten.letzteMessung || {};
-  var felder = [["gewichtKg", "Gewicht kg"], ["fettPct", "Fett %"], ["muskelPct", "Muskel %"]].map(function (f) {
+  var felder = [["gewichtKg", "Gewicht kg"], ["fettPct", "Fett %"], ["muskelPct", "Skelettmuskel %"]].map(function (f) {
     var eingabe = el("input", { type: "text", inputmode: "decimal", autocomplete: "off", placeholder: letzte[f[0]] != null ? zahl(letzte[f[0]]) : "" });
     eingabe.value = messung[f[0]];
     eingabe.addEventListener("input", function () { messung[f[0]] = eingabe.value; });
@@ -636,6 +636,7 @@ function messungKarte() {
     el("div", { class: "werte" }, felder),
     feld("Wann", chips(TAGE, messung.tage, function (w) { messung.tage = w; })),
     el("div", { class: "senden" }, [knopf, status]),
+    el("p", { class: "hint", text: "Fett % = Körperfett. Muskel % = Skelettmuskulatur, falls deine Waage die zeigt, sonst Muskelrate. Immer denselben Wert nehmen." }),
     el("p", { class: "hint", text: "Morgens, nach dem Klo, vor Essen und Trinken, immer dieselbe Waage." })
   ]);
 }

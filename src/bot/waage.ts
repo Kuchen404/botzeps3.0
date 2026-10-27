@@ -13,6 +13,8 @@ export const WAAGE_ANLEITUNG = `Messung eintragen: Gewicht, Fett %, Muskel % in 
 Beispiel: /waage 82,4 18,5 41,2
 Vergessen? /waage 82,4 18,5 41,2 gestern
 
+Fett % = Körperfett. Muskel % = Skelettmuskulatur, falls deine Waage die zeigt, sonst Muskelrate. Egal welcher, aber immer derselbe.
+
 ${MESSPROTOKOLL}
 Deine Werte sieht außer dir keiner, in der Gruppe stehen nur Punkte.`;
 

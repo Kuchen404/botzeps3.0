@@ -53,7 +53,7 @@ describe("parseWaage", () => {
     expect(parseWaage("82 18 41 12")).toMatchObject({ ok: false });
     expect(parseWaage("20 18 41")).toMatchObject({ ok: false, fehler: expect.stringContaining("Gewicht") });
     expect(parseWaage("82 1 41")).toMatchObject({ ok: false, fehler: expect.stringContaining("Fett") });
-    expect(parseWaage("82 18 80")).toMatchObject({ ok: false, fehler: expect.stringContaining("Muskel") });
+    expect(parseWaage("82 8 95")).toMatchObject({ ok: false, fehler: expect.stringContaining("Muskel") });
     expect(parseWaage("82 45 60")).toMatchObject({ ok: false, fehler: expect.stringContaining("100") });
   });
 });

@@ -4,7 +4,7 @@ export const GRENZEN = {
   minuten: { min: 5, max: 240 },
   gewichtKg: { min: 35, max: 250 },
   fettPct: { min: 3, max: 60 },
-  muskelPct: { min: 20, max: 70 },
+  muskelPct: { min: 20, max: 90 },
   /** Kein Rückdatieren über 2 Tage hinaus (Konzept 4). */
   maxTageZurueck: 2,
 } as const;

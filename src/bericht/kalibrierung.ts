@@ -50,6 +50,7 @@ export function erklaerung(s: CountdownSeason): string[] {
   return [
     "⚖️ DIE WAAGE",
     `Bis ${d(k.bis)} mindestens ${FORTSCHRITT.minMessungenKalibrierung}× wiegen, privat beim Bot: /waage 82,4 18,5 41,2 (Gewicht, Fett %, Muskel %) oder in der Mini App. Der Mittelwert aller Messungen dieser Woche ist euer Startwert. Mehr Messungen, genauerer Startwert.`,
+    "Fett % ist der Körperfettanteil. Muskel % ist die Skelettmuskulatur, falls eure Waage die zeigt, sonst die Muskelrate. Egal welcher, aber die ganze Season derselbe.",
     "Immer gleich wiegen: morgens, nach dem Klo, vor Essen und Trinken, dieselbe Waage.",
     "",
     "🧮 DIE PUNKTE",

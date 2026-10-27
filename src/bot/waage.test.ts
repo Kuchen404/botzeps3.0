@@ -39,6 +39,14 @@ describe("/waage", () => {
     expect(messungen(db)).toEqual([]);
   });
 
+  it("nimmt auch die Muskelrate mancher Waagen (um 75 %), aber nicht über 90", async () => {
+    const { db, bot, letzterText } = testBot();
+    await bot.handleUpdate(befehl("/waage 88,55 20,7 75,4", PRIVAT));
+    expect(messungen(db)).toEqual([{ g: 88.55, f: 20.7, m: 75.4, markiert: 0 }]);
+    await bot.handleUpdate(befehl("/waage 88,55 20,7 91", PRIVAT));
+    expect(letzterText()).toContain("erlaubt 20–90");
+  });
+
   it("große Sprünge müssen bestätigt werden und werden markiert", async () => {
     const { db, bot, aufrufe, letzterText } = testBot();
     await bot.handleUpdate(befehl("/waage 80 25 40", PRIVAT));
