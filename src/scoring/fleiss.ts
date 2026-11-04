@@ -48,9 +48,9 @@ export const SCHRITTE = {
   minFaktor: 0.5,
   /** 130 Schritte pro Minute ≈ 6 MET, mehr ist Joggen. */
   maxFaktor: 3,
-  /** Plausible Eingaben pro Minute. */
+  /** Plausible Eingaben pro Minute. Über 140 ist kein Gehen mehr, sondern Joggen oder Schritte vom ganzen Tag. */
   minProMinute: 30,
-  maxProMinute: 200,
+  maxProMinute: 140,
 } as const;
 
 /**
@@ -68,9 +68,11 @@ export function schrittFaktor(minuten: number, schritte: number): number {
 export function pruefeSchritte(minuten: number, schritte: number): string | null {
   if (!Number.isInteger(schritte) || schritte <= 0) return "Schritte bitte als ganze Zahl.";
   const proMinute = schritte / minuten;
-  if (proMinute < SCHRITTE.minProMinute || proMinute > SCHRITTE.maxProMinute) {
-    return `${schritte} Schritte in ${minuten} min sind ${Math.round(proMinute)} pro Minute, das passt nicht (erlaubt ${SCHRITTE.minProMinute} bis ${SCHRITTE.maxProMinute}).`;
+  const was = `${schritte.toLocaleString("de-DE")} Schritte in ${minuten} min wären ${Math.round(proMinute)} pro Minute`;
+  if (proMinute > SCHRITTE.maxProMinute) {
+    return `${was}, das ist kein Spazieren mehr (höchstens ${SCHRITTE.maxProMinute}). Nur die Schritte vom Spaziergang selbst zählen, nicht die vom ganzen Tag.`;
   }
+  if (proMinute < SCHRITTE.minProMinute) return `${was}, das passt nicht (mindestens ${SCHRITTE.minProMinute}).`;
   return null;
 }
 

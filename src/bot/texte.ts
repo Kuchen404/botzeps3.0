@@ -11,7 +11,7 @@ So läuft's:
 Befehle:
 /start – anmelden
 /sport 45 Joggen – Training eintragen (wird in der Gruppe gepostet), auch „gestern“ oder „vorgestern“ am Ende
-/sport 60 Spazierengehen 7200 – Spaziergang mit Schritten, dann zählt das Tempo
+/sport 60 Spazierengehen 7200 – Spaziergang mit seinen Schritten (nicht vom ganzen Tag), dann zählt das Tempo
 /sport – dasselbe mit Knöpfen
 /waage 82,4 18,5 41,2 – Gewicht, Körperfett %, Skelettmuskel % (sonst Muskelrate) (nur privat)
 /ohnewaage – ohne Körperfettwaage mitmachen, Fortschritt = Median der Gruppe (bis Ende der Kalibrierwoche, zurück mit /ohnewaage aus)

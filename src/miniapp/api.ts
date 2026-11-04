@@ -323,6 +323,9 @@ export async function bearbeiteApi(db: Db, a: Anfrage, gruppenpost: Gruppenpost,
     if (!b.success || !DAUERN.includes(b.data.minuten)) return fehler(400, "Ungültige Anfrage");
     const e = eintrag(db, "t", b.data.id, nutzer.id);
     if (!e || !aenderbar(e, tag)) return fehler(403, "Geht nicht (mehr).");
+    // Mit Schritten hängt der Faktor an der Dauer: kürzer machen darf das Tempo nicht unglaubwürdig machen
+    const falsch = e.schritte ? pruefeSchritte(b.data.minuten, e.schritte) : null;
+    if (falsch) return fehler(400, falsch);
     aendereTrainingsdauer(db, e, nutzer.id, b.data.minuten);
     if (e.gruppeChat && e.gruppenNachricht) await gruppenpost(e.gruppeChat, e.gruppenNachricht, korrekturText(nutzer.name, e, b.data.minuten));
     return { status: 200, json: { ok: true } };
