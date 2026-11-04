@@ -8,6 +8,8 @@ export interface BerichtZusatz {
   bosse?: readonly { name: string; kampf: BossKampf }[];
   /** Rote Laterne dieser Woche, mit Zähler über die Season (diese Woche eingerechnet) */
   laterne?: readonly LaterneTraeger[];
+  /** Kuschelsportler der Woche: fast nur Training mit dem kleinsten Faktor */
+  lauwarm?: { name: string; minuten: number };
 }
 
 export interface LaterneTraeger {
@@ -162,6 +164,10 @@ export function wochenbericht(
   } else if (verfehlt.length > 0 && verfehlt.length < staende.length) {
     const opfer = verfehlt[Math.min(Math.floor(zufall() * verfehlt.length), verfehlt.length - 1)]!;
     extra.push(fuelle(waehleSpruch("wochenziel_verfehlt", undefined, zufall), { name: opfer.name }));
+  }
+  // Plus höchstens ein Spruch für den Kuschelsportler der Woche
+  if (zusatz.lauwarm) {
+    extra.push(fuelle(waehleSpruch("lauwarm_woche", undefined, zufall), { name: zusatz.lauwarm.name, minuten: z(zusatz.lauwarm.minuten) }));
   }
 
   const hinweis =

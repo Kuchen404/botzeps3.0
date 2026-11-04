@@ -1,5 +1,5 @@
 import type { Db } from "./db/index.js";
-import { type SeasonZeile, bossPin, bosseDerSeason, kuendigeBossAn, seasonNachId, setzeBossPin } from "./db/season-repo.js";
+import { type SeasonZeile, bossPin, bosseDerSeason, kuendigeBossAn, ladeTeilnehmer, seasonNachId, setzeBossPin } from "./db/season-repo.js";
 import { alleTrainings, vergebeErfolge } from "./db/erfolg-repo.js";
 import { BOSS_ANKUENDIGUNG, BOSS_NAMEN, BOSS_STUFEN, type BossStufe, STUFEN, bossAnzeigename, bossKampf, bossLebenspunkte, bossWoche, lebensbalken, SCHWAECHE_FAKTOR } from "./scoring/boss.js";
 import { type ErfolgArt, finaleErfolge, trainingsErfolge, wochenErfolge } from "./scoring/erfolge.js";
@@ -14,7 +14,8 @@ import { diagrammPng, gruppenDiagramm, punkteverlauf } from "./bericht/punktever
 import { type Extras, type Vorwoche, finale, wochenbericht } from "./bericht/texte.js";
 import { lokalesDatum, plusTage, tageZwischen, zeitpunktIn } from "./scoring/datum.js";
 import { FORTSCHRITT } from "./scoring/fortschritt.js";
-import { kalibrierFenster, roteLaterne, seasonEnde } from "./scoring/season.js";
+import { kalibrierFenster, roteLaterne, seasonEnde, wocheVon } from "./scoring/season.js";
+import { kuschelsportler, lauwarmBilanz } from "./scoring/lauwarm.js";
 import { laternen } from "./db/laterne-repo.js";
 import type { LaterneTraeger } from "./bericht/texte.js";
 import { log } from "./log.js";
@@ -184,6 +185,18 @@ export async function fuehreAus(
   return ausgefuehrt;
 }
 
+/** Wer die Woche überwiegend mit Kuschelsport (kleinster Faktor) gefüllt hat, oder undefined. */
+function kuschelsportlerDerWoche(db: Db, s: SeasonZeile, woche: number): { name: string; minuten: number } | undefined {
+  const k = kuschelsportler(
+    ladeTeilnehmer(db, s).map((tn) => ({
+      id: tn.id,
+      name: tn.name,
+      bilanz: lauwarmBilanz(tn.trainings.filter((t) => wocheVon(s, t.datum) === woche)),
+    })),
+  );
+  return k && { name: k.name, minuten: k.bilanz.minuten };
+}
+
 async function berichte(db: Db, senden: Sender, t: TerminZeile, zeitzone: string, foto?: FotoSender, zusatz: ZeitplanExtras = {}): Promise<boolean> {
   const s = t.season === null ? undefined : seasonNachId(db, t.season);
   const gruppe = s ? gruppeNachId(db, s.gruppe) : undefined;
@@ -242,6 +255,7 @@ async function berichte(db: Db, senden: Sender, t: TerminZeile, zeitzone: string
     const bericht = wochenbericht({ name: s.name, wochen: s.wochen, wochenzielLast: s.wochenziel_last }, woche, staende, vorwoche, teams, Math.random, {
       bosse: kaempfe.filter((k) => k.kampf.woche === woche),
       laterne,
+      lauwarm: kuschelsportlerDerWoche(db, s, woche),
     });
     text = bericht.text;
     for (const z of bericht.sprueche) vorlagen.set(z.id, z.vorlage);

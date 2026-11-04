@@ -145,6 +145,38 @@ describe("Zeitplan", () => {
     expect(finale).toContain("Laternenkönig der Season: Peter mit 3 Roten Laternen");
   });
 
+  it("Faktor-Minimalisten: Spruch beim 3. Kuschel-Eintrag der Woche und im Wochenbericht", async () => {
+    const t = await aufbau();
+    const { bot, berichte, lauf } = t;
+    tag("2026-10-13");
+    await bot.handleUpdate(befehl("/sport 100 Joggen"));
+    await bot.handleUpdate(befehl("/sport 40 Yoga", GRUPPE, PETER));
+    expect(t.letzterText()).not.toContain("🐌");
+    await bot.handleUpdate(befehl("/sport 30 Dehnen", GRUPPE, PETER));
+    expect(t.letzterText()).not.toContain("🐌");
+    tag("2026-10-14");
+    await bot.handleUpdate(befehl("/sport 50 Spazierengehen", GRUPPE, PETER));
+    expect(t.letzterText()).toMatch(/🐌 .*Peter/);
+    await bot.handleUpdate(befehl("/sport 30 Yoga", GRUPPE, PETER));
+    expect(t.letzterText()).not.toContain("🐌");
+    await lauf("2026-10-18T18:00:30Z");
+    expect(berichte()[0]).toMatch(/🐌 .*Peter/);
+    expect(berichte()[0]).toContain("150 Minuten");
+    expect(berichte()[0]).not.toMatch(/🐌 .*Kevin/);
+  });
+
+  it("kein Kuschel-Spruch bei gemischtem Training", async () => {
+    const t = await aufbau();
+    const { bot, berichte, lauf } = t;
+    tag("2026-10-13");
+    for (const sport of ["40 Yoga", "60 Joggen", "30 Dehnen", "45 Krafttraining", "50 Spazierengehen"]) {
+      await bot.handleUpdate(befehl(`/sport ${sport}`, GRUPPE, PETER));
+      expect(t.letzterText()).not.toContain("🐌");
+    }
+    await lauf("2026-10-18T18:00:30Z");
+    expect(berichte()[0]).not.toContain("🐌");
+  });
+
   it("keine Rote Laterne, wenn alle gleich faul waren", async () => {
     const { berichte, lauf } = await aufbau();
     await lauf("2026-10-18T18:00:30Z");

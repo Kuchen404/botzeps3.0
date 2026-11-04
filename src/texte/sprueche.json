@@ -1,5 +1,5 @@
 {
-  "_info": "Spruchsammlung für Botzeps (derber Ton). Platzhalter: {name}, {platz}, {punkte}, {abstand} (Punkte zum Vordermann bzw. Verfolger), {minuten}, {sportart}, {serie} (Wochen in Folge mit erreichtem Ziel), {opfer} (wer überholt wurde), {rang} (neuer Rang), {boss} (Name des Bosses). Der Bot wählt pro Person zufällig einen Spruch aus der passenden Kategorie und nimmt nicht zweimal hintereinander denselben.",
+  "_info": "Spruchsammlung für Botzeps (derber Ton). Platzhalter: {name}, {platz}, {punkte}, {abstand} (Punkte zum Vordermann bzw. Verfolger), {minuten}, {sportart}, {serie} (Wochen in Folge mit erreichtem Ziel), {opfer} (wer überholt wurde), {rang} (neuer Rang), {boss} (Name des Bosses). „lauwarm“ kommt beim Trainingspost an Faktor-Minimalisten (fast nur Sport mit Faktor ×1 oder weniger), „lauwarm_woche“ im Wochenbericht; dort ist {minuten} die Summe der Kuschel-Minuten. Der Bot wählt pro Person zufällig einen Spruch aus der passenden Kategorie und nimmt nicht zweimal hintereinander denselben.",
   "platz1": [
     "{name} thront mit {punkte} Punkten ganz oben. Der Rest guckt nur auf seinen Hintern.",
     "Platz 1: {name}. Wer {name} einholen will, muss früher aufstehen. Viel früher.",
@@ -159,5 +159,30 @@
     "🏮 Selbst die Fernbedienung hat mehr Bewegung gesehen als {name}. Rote Laterne.",
     "🏮 {name} hat die Woche im Energiesparmodus verbracht. Dafür gibt's die Rote Laterne.",
     "🏮 {name} trägt die Laterne. Sieht man im Dunkeln wenigstens, wo die Couch steht."
+  ],
+  "lauwarm": [
+    "🐌 {name} schon wieder mit {sportart}. Schweiß ist bei dir ein Gerücht, oder?",
+    "🐌 Noch mal {sportart}, {name}? Der Faktor-Minimalist schlägt wieder zu.",
+    "🐌 {name} sammelt Punkte wie Oma Rabattmarken: langsam, gemütlich und ohne ins Schwitzen zu kommen.",
+    "🐌 {name} und {sportart}, eine große Liebesgeschichte. Der Puls schläft dabei leider durch.",
+    "🐌 Wieder {sportart}. {name}, das ist kein Training, das ist Wellnessurlaub mit Punkteausgabe.",
+    "🐌 {name} trainiert nach dem Motto: Hauptsache, die Frisur sitzt hinterher noch.",
+    "🐌 {name} hat das Kuschelsport-Abo verlängert. Kündigungsfrist: nie.",
+    "🐌 {name} trägt wieder {sportart} ein. Die Gefahr, dabei zu schwitzen, lag bei exakt null.",
+    "🐌 {name}, bei deinem Trainingsplan merkt nicht mal der Kreislauf, dass was los ist.",
+    "🐌 {name} bewegt sich gerade so viel, dass der Bot es noch Sport nennen muss.",
+    "🐌 Faktor-Fuchs {name} hat wieder zugeschlagen: viele Minuten, wenig Mühe, null Schweiß.",
+    "🐌 {name} macht {sportart}, als gäbe es für Anstrengung Punktabzug. Gibt es nicht. Nur so als Info.",
+    "🐌 Ein Joggingschuh weint leise im Schrank von {name}. Schon wieder {sportart}.",
+    "🐌 {name}, irgendwann musst du auch mal was machen, wobei man nicht nebenbei telefonieren kann."
+  ],
+  "lauwarm_woche": [
+    "🐌 Kuschelsportler der Woche: {name} mit {minuten} Minuten auf kleinster Flamme. Hat das eigentlich jemand Sport genannt?",
+    "🐌 {name} hat diese Woche {minuten} Minuten im Schongang verbracht. Die Muskeln haben davon aus der Zeitung erfahren.",
+    "🐌 Lauwarm-Pokal für {name}: {minuten} Minuten Bewegung im Rentnertempo. Herzlichen Glückwunsch, Opa.",
+    "🐌 {name} trainiert wie ein Bausparvertrag: viele kleine Beträge, nie was Spannendes. {minuten} Minuten Wohlfühlprogramm.",
+    "🐌 {name}, {minuten} Minuten Wellness sind kein Training. Nächste Woche mal was, wobei man schwitzt?",
+    "🐌 {name} hat die Woche fast nur mit Kuschelsport bestritten. {minuten} Minuten, und der Puls hat nicht einmal hochgeguckt.",
+    "🐌 Goldene Schnecke für {name}: {minuten} Minuten mit dem kleinsten Faktor. Masse statt Klasse, aber ohne Masse beim Muskel."
   ]
 }
