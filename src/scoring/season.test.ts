@@ -17,7 +17,8 @@ import {
   type Teilnehmer,
 } from "./season.js";
 
-const season: SeasonEinstellungen = { ...STANDARD_SEASON, start: "2026-10-12" }; // Montag
+// Wochenziel 300 wie in den Rechenbeispielen des Konzepts; der Standard (450) ändert an der Mechanik nichts
+const season: SeasonEinstellungen = { ...STANDARD_SEASON, wochenzielLast: 300, start: "2026-10-12" }; // Montag
 
 /** Je eine Woche 300 Last (3 × 50 min Krafttraining) ab Wochenstart. */
 function zielwoche(wochenstart: string): Training[] {

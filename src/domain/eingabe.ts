@@ -1,4 +1,5 @@
 /** Zerlegt Eingaben wie `/sport 45 Joggen gestern` und `/waage 82,4 18,5 41,2`. */
+import { pruefeSchritte } from "../scoring/fleiss.js";
 
 export const GRENZEN = {
   minuten: { min: 5, max: 240 },
@@ -16,7 +17,15 @@ export type Ergebnis<T> = { ok: true; wert: T } | { ok: false; fehler: string };
 export interface SportEingabe {
   minuten?: number;
   sportart?: string;
+  /** Schritte beim Spazieren, die zweite Zahl: `/sport 60 Spazierengehen 7200 Schritte` */
+  schritte?: number;
   tageZurueck: number;
+}
+
+/** Schritte als ganze Zahl, auch mit Tausenderpunkt („7.200“). */
+function schrittZahl(text: string): number | null {
+  if (/^\d{1,3}([.,]\d{3})+$/.test(text)) return Number(text.replace(/[.,]/g, ""));
+  return /^\d+$/.test(text) ? Number(text) : null;
 }
 
 function zahl(text: string): number | null {
@@ -33,16 +42,23 @@ function tageZurueck(woerter: string[]): number {
   return 0;
 }
 
-/** `45 Joggen`, `Joggen 45`, `45`, `Joggen`, jeweils optional mit `gestern`/`vorgestern` am Ende. */
+/**
+ * `45 Joggen`, `Joggen 45`, `45`, `Joggen`, jeweils optional mit `gestern`/`vorgestern` am Ende.
+ * Eine zweite Zahl sind Schritte: `60 Spazierengehen 7200` oder `… 7.200 Schritte`.
+ */
 export function parseSport(text: string): Ergebnis<SportEingabe> {
   const woerter = text.trim().split(/\s+/).filter(Boolean);
   const tage = tageZurueck(woerter);
   let minuten: number | undefined;
+  let schritte: number | undefined;
   const rest: string[] = [];
   for (const wort of woerter) {
     const z = zahl(wort.replace(/min$/i, ""));
-    if (z !== null && minuten === undefined) minuten = z;
+    const s = schrittZahl(wort);
+    if (minuten === undefined && z !== null && !/^\d{1,3}([.,]\d{3})+$/.test(wort)) minuten = z;
     else if (/^min(uten)?$/i.test(wort) && minuten !== undefined) continue;
+    else if (minuten !== undefined && schritte === undefined && s !== null) schritte = s;
+    else if (/^schritte?$/i.test(wort) && schritte !== undefined) continue;
     else rest.push(wort);
   }
   if (minuten !== undefined) {
@@ -51,10 +67,19 @@ export function parseSport(text: string): Ergebnis<SportEingabe> {
       return { ok: false, fehler: `Dauer muss zwischen ${GRENZEN.minuten.min} und ${GRENZEN.minuten.max} Minuten liegen.` };
     }
   }
+  if (schritte !== undefined && minuten !== undefined) {
+    const falsch = pruefeSchritte(minuten, schritte);
+    if (falsch) return { ok: false, fehler: falsch };
+  }
   const sportart = rest.join(" ") || undefined;
   return {
     ok: true,
-    wert: { tageZurueck: tage, ...(minuten !== undefined ? { minuten } : {}), ...(sportart ? { sportart } : {}) },
+    wert: {
+      tageZurueck: tage,
+      ...(minuten !== undefined ? { minuten } : {}),
+      ...(sportart ? { sportart } : {}),
+      ...(schritte !== undefined ? { schritte } : {}),
+    },
   };
 }
 

@@ -7,7 +7,8 @@ import { fuelle } from "./texte/sprueche.js";
 import { BOSS_NERVOES, bossBeben, bossTeaser, bossTexte } from "./boss/texte.js";
 import { steckbriefSvg } from "./boss/plakat.js";
 import { alsPng } from "./diagramm/png.js";
-import { gruppeNachId } from "./db/repo.js";
+import { gruppeNachId, sportartenDerGruppe } from "./db/repo.js";
+import { faktorenAnkuendigung } from "./bericht/faktoren.js";
 import { berechneStand, berechneTeams } from "./bericht/stand.js";
 import { diagrammPng, gruppenDiagramm, punkteverlauf } from "./bericht/punkteverlauf.js";
 import { type Extras, type Vorwoche, finale, wochenbericht } from "./bericht/texte.js";
@@ -72,7 +73,18 @@ export const ERINNERUNG = { tageOhneTraining: 3, tageOhneMessung: 4 } as const;
 
 interface TerminZeile {
   id: number;
-  art: "wochenbericht" | "finale" | "erinnerung" | "boss1" | "boss2" | "boss1_spott" | "boss2_spott" | "minispiel" | "minispiel_lage" | "countdown";
+  art:
+    | "wochenbericht"
+    | "finale"
+    | "erinnerung"
+    | "boss1"
+    | "boss2"
+    | "boss1_spott"
+    | "boss2_spott"
+    | "minispiel"
+    | "minispiel_lage"
+    | "countdown"
+    | "faktoren_neu";
   season: number | null;
   nutzer: number | null;
   faellig_am: string;
@@ -161,7 +173,9 @@ export async function fuehreAus(
                   ? await meldeMinispielLage(db, senden, t, jetzt, zeitzone)
                   : t.art === "countdown"
                     ? await zaehleRunter(db, senden, t, jetzt, zeitzone)
-                    : await berichte(db, senden, t, zeitzone, foto, extras);
+                    : t.art === "faktoren_neu"
+                      ? await kuendigeFaktorenAn(db, senden, t)
+                      : await berichte(db, senden, t, zeitzone, foto, extras);
       if (gesendet) ausgefuehrt++;
     } catch (err) {
       log.error(`Termin ${t.id} (${t.art}) fehlgeschlagen`, err);
@@ -391,6 +405,15 @@ async function spotte(db: Db, senden: Sender, t: TerminZeile, stufe: BossStufe, 
   const namen = kampf.drueckeberger.map((id) => name.get(id)!);
   const spott = fuelle(bossTexte(boss.name).spott, { namen: namen.length ? namen.join(", ") : "ihr alle" });
   await senden(gruppe.telegram_chat_id, `🗣 ${anzeige}: „${spott}“\n🐉 ${lebensbalken(kampf)} noch ${(kampf.lebenspunkte - kampf.schaden).toLocaleString("de-DE")} von ${kampf.lebenspunkte.toLocaleString("de-DE")} Lebenspunkten`);
+  return true;
+}
+
+/** Einmalige Ankündigung der Faktoren nach MET − 3 in Seasons, die bei der Umstellung liefen. */
+async function kuendigeFaktorenAn(db: Db, senden: Sender, t: TerminZeile): Promise<boolean> {
+  const s = t.season === null ? undefined : seasonNachId(db, t.season);
+  const gruppe = s ? gruppeNachId(db, s.gruppe) : undefined;
+  if (!s || !gruppe) return false;
+  await senden(gruppe.telegram_chat_id, faktorenAnkuendigung(sportartenDerGruppe(db, gruppe.id), s.wochenziel_last), { appKnopf: true });
   return true;
 }
 

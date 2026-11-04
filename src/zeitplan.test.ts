@@ -64,8 +64,8 @@ describe("Zeitplan", () => {
   it("Wochenberichte genau einmal, mit Veränderung zur Vorwoche, dann das Finale", async () => {
     const { db, bot, berichte, fotos, gesendet, lauf } = await aufbau();
     tag("2026-10-14");
-    await bot.handleUpdate(befehl("/sport 100 Joggen"));
-    await bot.handleUpdate(befehl("/sport 30 Yoga", GRUPPE, PETER));
+    await bot.handleUpdate(befehl("/sport 100 Joggen")); // 100 × 4,5 = 450, genau das Wochenziel
+    await bot.handleUpdate(befehl("/sport 45 Yoga", GRUPPE, PETER));
 
     await lauf("2026-10-18T17:59:00Z");
     expect(berichte()).toEqual([]);
@@ -77,7 +77,7 @@ describe("Zeitplan", () => {
     expect(woche1.text).toContain("Wochenbericht „Herbst“, Woche 1 von 3");
     expect(woche1.text).toContain("1. Kevin: 10 ✅");
     expect(woche1.text).toContain("2. Peter: 1");
-    expect(woche1.text).toContain("Fleiß der Woche: Kevin mit 300 Lastpunkten");
+    expect(woche1.text).toContain("Fleiß der Woche: Kevin mit 450 Lastpunkten");
     expect(woche1.text).not.toContain("Nächste Woche ist die letzte");
     // Kurz halten: Erfolge kamen schon beim Trainingspost, Wochenziel steht als ✅ an den Namen
     expect(woche1.text).not.toContain("Erfolge");
@@ -93,7 +93,7 @@ describe("Zeitplan", () => {
     tag("2026-10-20");
     await bot.handleUpdate(befehl("/sport 120 Fußball", GRUPPE, PETER));
     tag("2026-10-21");
-    await bot.handleUpdate(befehl("/sport 30 Fußball", GRUPPE, PETER));
+    await bot.handleUpdate(befehl("/sport 60 Fußball", GRUPPE, PETER)); // 180 × 4 = 720, gedeckelt bei 675
     await lauf("2026-10-25T19:00:30Z");
     expect(berichte().at(-1)!).toContain("1. Peter: 16 ⬆1 ✅");
     expect(berichte().at(-1)!).toContain("2. Kevin: 10 ⬇1");
@@ -108,10 +108,10 @@ describe("Zeitplan", () => {
     expect(finale).toContain("Finale „Herbst“");
     expect(finale).toContain("Mr. Slimfast: Kevin (−10 % Fett)");
     expect(finale).toContain("Der 30er-Bizeps: Kevin (+2,5 % Muskel)");
-    expect(finale).toContain("Die Maschine: Peter (480 Lastpunkte)");
+    expect(finale).toContain("Die Maschine: Peter (765 Lastpunkte)");
     expect(finale).toContain("Der Dauerbrenner: Kevin, Peter (1 Woche)");
     expect(finale).toContain("Der Statistiker: Kevin (5 Messungen)");
-    expect(finale).toContain("Rückblick: zusammen 4,7 Stunden Sport");
+    expect(finale).toContain("Rückblick: zusammen 5,4 Stunden Sport");
     expect(db.prepare("SELECT COUNT(*) AS n FROM auszeichnung").get()).toEqual({ n: 7 }); // Dauerbrenner doppelt
     expect(fotos).toHaveLength(3);
   });
@@ -173,6 +173,20 @@ describe("Zeitplan", () => {
     await lauf("2026-10-19T07:00:00Z");
     expect(berichte()).toHaveLength(1);
     expect(berichte()[0]).toContain("Woche 1 von 3");
+  });
+
+  it("kündigt die neue Wertung einmal in der Gruppe an, mit Stunden fürs Wochenziel", async () => {
+    const { db, berichte, gesendet, lauf } = await aufbau();
+    db.prepare("INSERT INTO termin (art, season, nutzer, faellig_am) VALUES ('faktoren_neu', 1, NULL, '2026-10-13T10:00:00.000Z')").run();
+    await lauf("2026-10-13T10:00:30Z");
+    await lauf("2026-10-13T10:01:30Z");
+    const ankuendigung = berichte().filter((b) => b.startsWith("📢 Neue Wertung"));
+    expect(ankuendigung).toHaveLength(1);
+    expect(ankuendigung[0]).toContain("Wochenziel (jetzt 450 Lastpunkte)");
+    expect(ankuendigung[0]).toContain("×6 Spinning: 1¼ Std.");
+    expect(ankuendigung[0]).toContain("×4,5 Joggen, Squash, Tanzen sportlich: 1¾ Std.");
+    expect(ankuendigung[0]).toContain("×0,5 Spazierengehen: 15 Std.");
+    expect(gesendet.find((g) => g.text.startsWith("📢"))?.appKnopf).toBe(true);
   });
 
   it("ein Termin aus einem alten Season-Plan verfällt", async () => {

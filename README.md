@@ -7,7 +7,7 @@ Grundlage ist das Konzept „Botzeps neu“ (Stand 06.10.2026).
 
 Dieses Grundgerüst enthält:
 
-- **Wertung** (`src/scoring/`) als reine, getestete Funktionen nach Konzept Kapitel 3: Fleiß (Minuten × Faktor, Wochenziel 300, Deckel 15, Serienbonus), Fortschritt (relative Fett- und Muskelmasse, Kalibrierwoche, 7-Tage-Mittel, Untergrenze −50), Gewichtung, Rangliste mit Tiebreak, „Fleiß der Woche“, Teams mit Team-Bonus.
+- **Wertung** (`src/scoring/`) als reine, getestete Funktionen nach Konzept Kapitel 3: Fleiß (Minuten × Faktor, Wochenziel 450, Deckel 15, Serienbonus), Fortschritt (relative Fett- und Muskelmasse, Kalibrierwoche, 7-Tage-Mittel, Untergrenze −50), Gewichtung, Rangliste mit Tiebreak, „Fleiß der Woche“, Teams mit Team-Bonus.
 - **Datenbank** (SQLite, `src/db/`) mit Migrationen und dem Datenmodell aus Kapitel 9.
 - **Bot** (grammY, `src/bot/`): `/start` (privat anmelden, in der Gruppe mit „Ich bin dabei“-Knopf), `/sportarten`, `/einfuehrung` (Fleiß und Fortschritt kurz erklärt, kommt auch beim Anlegen einer Season), `/hilfe`.
 - **Training** mit `/sport 45 Joggen` oder `/sport` mit Knöpfen (eigene letzte Sportarten zuerst), optional `gestern`/`vorgestern`. Jedes Training wird in der Gruppe gepostet.
@@ -125,8 +125,10 @@ Eine Sicherung aus Telegram zurückspielen: die Datei auf den Server laden, mit 
 ```
 Gesamt = Fleiß × (Gewicht Fleiß / 50) + Fortschritt × (Gewicht Fortschritt / 50)      (Standard 50/50 → 1 : 1)
 
-Fleiß pro Woche = 10 × min(Last / 300, 1,5) + Serienbonus
-  Last = Σ min(Minuten, 120) × Faktor (leicht 1, mittel 2, intensiv 3), pro Tag die 2 stärksten Einheiten
+Fleiß pro Woche = 10 × min(Last / 450, 1,5) + Serienbonus
+  Last = Σ min(Minuten, 120) × Faktor, pro Tag die 2 stärksten Einheiten
+  Faktor = MET − 3 aus dem 2024 Adult Compendium (pacompendium.com), auf 0,5 gerundet, ×1 bis ×6
+           (Alltag wie Spazieren oder Garten ab ×0,5). Spazieren mit Schritten: (Schritte/min − 100) / 10, ×0,5 bis ×3
   Serienbonus: 3. Woche in Folge mit Ziel +1, 4. Woche +2, ab 5. Woche +3
 
 Fortschritt = 10 × Fettabbau % + 30 × Muskelaufbau %   (mindestens −50)

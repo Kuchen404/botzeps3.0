@@ -28,10 +28,23 @@ export function migriere(db: Db): number[] {
   const neu: number[] = [];
   for (const m of MIGRATIONEN) {
     if (vorhanden.has(m.version)) continue;
-    db.transaction(() => {
-      db.exec(m.sql);
-      db.prepare("INSERT INTO schema_version (version, name) VALUES (?, ?)").run(m.version, m.name);
-    })();
+    // Tabellen mit Verweisen neu anlegen geht nur ohne Fremdschlüsselprüfung (SQLite, ALTER TABLE, Abschnitt 7),
+    // und die lässt sich nicht innerhalb einer Transaktion umschalten.
+    const fkVorher = db.pragma("foreign_keys", { simple: true }) as number;
+    if (m.ohneFremdschluessel) db.pragma("foreign_keys = OFF");
+    try {
+      db.transaction(() => {
+        if (m.sql) db.exec(m.sql);
+        m.aus?.(db);
+        if (m.ohneFremdschluessel) {
+          const kaputt = db.pragma("foreign_key_check") as unknown[];
+          if (kaputt.length > 0) throw new Error(`Migration ${m.version}: ${kaputt.length} kaputte Verweise`);
+        }
+        db.prepare("INSERT INTO schema_version (version, name) VALUES (?, ?)").run(m.version, m.name);
+      })();
+    } finally {
+      if (m.ohneFremdschluessel) db.pragma(`foreign_keys = ${fkVorher ? "ON" : "OFF"}`);
+    }
     neu.push(m.version);
   }
   return neu;

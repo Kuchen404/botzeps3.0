@@ -9,15 +9,15 @@ export interface Rang {
   ab: number;
 }
 
-/** Bei 300 Lastpunkten pro Woche: Lauch nach gut 3 Wochen, Hantelschubser nach einer Season, Botzeps nach Jahren. */
+/** Bei 450 Lastpunkten pro Woche: Lauch nach gut 3 Wochen, Hantelschubser nach einer Season, Botzeps nach Jahren. */
 export const RAENGE: readonly Rang[] = [
   { name: "Couchkartoffel", emoji: "🛋", ab: 0 },
-  { name: "Lauch", emoji: "🥬", ab: 1_000 },
-  { name: "Hantelschubser", emoji: "🏋️", ab: 3_000 },
-  { name: "Pumper", emoji: "💪", ab: 7_500 },
-  { name: "Kampfsau", emoji: "🐗", ab: 15_000 },
-  { name: "Maschine", emoji: "🤖", ab: 30_000 },
-  { name: "Botzeps", emoji: "🦍", ab: 60_000 },
+  { name: "Lauch", emoji: "🥬", ab: 1_500 },
+  { name: "Hantelschubser", emoji: "🏋️", ab: 4_500 },
+  { name: "Pumper", emoji: "💪", ab: 11_000 },
+  { name: "Kampfsau", emoji: "🐗", ab: 22_500 },
+  { name: "Maschine", emoji: "🤖", ab: 45_000 },
+  { name: "Botzeps", emoji: "🦍", ab: 90_000 },
 ];
 
 /** Index des Rangs in `RAENGE` für eine lebenslange Last. */

@@ -1,7 +1,7 @@
 export const HILFE = `Botzeps 3.0 – Sport in der Gruppe, mit Punkten und ohne Gnade.
 
 So läuft's:
-• Fleiß: Jede Einheit zählt als Minuten × Faktor der Sportart (leicht ×1, mittel ×2, intensiv ×3). Wochenziel 300, das gibt 10 Punkte, maximal 15.
+• Fleiß: Jede Einheit zählt als Minuten × Faktor der Sportart, je anstrengender, desto mehr (Spazieren ×0,5, Krafttraining ×3, Joggen ×4,5, Spinning ×6). Wochenziel 450, das gibt 10 Punkte, maximal 15. Alle Faktoren: /sportarten
 • Fortschritt: Fett- und Muskelmasse von der Waage, relativ zum Startwert aus der Kalibrierwoche. Keine Körperfettwaage? /ohnewaage, dann zählt der Median der Gruppe.
 • Jeden Sonntag um 20 Uhr kommt der Wochenbericht, am Ende das Finale mit Sonderpreisen.
 • Boss-Wochen: In der 2. und der vorletzten Woche greift ein Boss an. Prügelt ihn mit euren Trainings weg, dann gibt's Bonuspunkte für alle, die mitgemacht haben.
@@ -11,6 +11,7 @@ So läuft's:
 Befehle:
 /start – anmelden
 /sport 45 Joggen – Training eintragen (wird in der Gruppe gepostet), auch „gestern“ oder „vorgestern“ am Ende
+/sport 60 Spazierengehen 7200 – Spaziergang mit Schritten, dann zählt das Tempo
 /sport – dasselbe mit Knöpfen
 /waage 82,4 18,5 41,2 – Gewicht, Körperfett %, Skelettmuskel % (sonst Muskelrate) (nur privat)
 /ohnewaage – ohne Körperfettwaage mitmachen, Fortschritt = Median der Gruppe (bis Ende der Kalibrierwoche, zurück mit /ohnewaage aus)
@@ -24,7 +25,7 @@ Befehle:
 /teams – Teams anzeigen, vor dem Start auslosen (Ersteller oder Admins)
 /team Name – Team beitreten oder gründen (bis zum Start)
 /sportarten – welche Sportart wie zählt
-/sportart Name – neue Sportart vorschlagen, die Gruppe stimmt über die Stufe ab
+/sportart Name – neue Sportart vorschlagen, die Gruppe stimmt ab, wie anstrengend sie ist
 /erinnerungen – an, aus oder Uhrzeit (z. B. /erinnerungen 18:30)
 /einfuehrung – was Fleiß und Fortschritt sind, kurz erklärt
 /hype – eine Woche Vorfreude vor dem Start, jeden Abend ein Beitrag (Admins, /hype stop bricht ab)
@@ -51,7 +52,7 @@ export function einfuehrung(s: EinfuehrungSeason, datum: (iso: string) => string
     `📖 So läuft ${s.name ? `die Season „${s.name}“` : "Botzeps"}: zwei Säulen, am Ende gewinnt die höchste Summe.`,
     "",
     "💪 Fleiß: was du tust",
-    `Jede Einheit zählt Minuten × Faktor der Sportart (leicht ×1, mittel ×2, intensiv ×3). ${s.wochenzielLast} Lastpunkte pro Woche sind das Ziel und bringen 10 Punkte, mehr als 15 gibt's nicht. Das sind z. B. 100 Minuten Joggen. Wer das Ziel 3 Wochen am Stück packt, kriegt Bonus.`,
+    `Jede Einheit zählt Minuten × Faktor der Sportart, je anstrengender, desto mehr: Spazieren ×0,5, Yoga ×1, Krafttraining ×3, Joggen ×4,5, Spinning ×6 (alle: /sportarten). ${s.wochenzielLast} Lastpunkte pro Woche sind das Ziel und bringen 10 Punkte, mehr als 15 gibt's nicht. Das sind z. B. ${Math.round(s.wochenzielLast / 4.5)} Minuten Joggen oder ${Math.round(s.wochenzielLast / 3)} Minuten Krafttraining. Wer das Ziel 3 Wochen am Stück packt, kriegt Bonus.`,
     "",
     "⚖️ Fortschritt: was dein Körper draus macht",
     `In der Kalibrierwoche${kalibrierung} wiegst du dich mindestens 3× per /waage (privat), das ist dein Startwert. Danach zählt, wie viel Fett du davon verlierst und wie viel Muskel du zulegst, in Prozent deiner eigenen Werte. Wer schwerer ist, hat also keinen Vorteil. 1 % weniger Fett bringt 10 Punkte, 1 % mehr Muskel 30. Wer sich mästet, rutscht ins Minus (höchstens −50). Keine Körperfettwaage? Vor dem Start /ohnewaage, dann bekommst du den Median der Gruppe.`,

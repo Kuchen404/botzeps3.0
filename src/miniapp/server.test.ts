@@ -94,11 +94,11 @@ describe("Mini App", () => {
       expect(status).toBe(200);
       const s = json.seasons[0];
       expect(s).toMatchObject({ name: "Herbst", gruppe: "Pumper", laeuft: true, woche: 1, anzahl: 2 });
-      expect(s.ich).toMatchObject({ platz: 1, gesamt: 110, fleiss: 10, fortschritt: 100, wochenLast: 300, zielErreicht: true });
+      expect(s.ich).toMatchObject({ platz: 1, gesamt: 110, fleiss: 10, fortschritt: 100, wochenLast: 450, zielErreicht: true });
       expect(s.ich.fettKg).toEqual({ start: 27, aktuell: 24.3 });
       expect(s.rangliste).toEqual([
         { platz: 1, name: "Kevin", gesamt: 110, ich: true, laterne: false, marke: null },
-        { platz: 2, name: "Peter", gesamt: 1, ich: false, laterne: false, marke: null },
+        { platz: 2, name: "Peter", gesamt: 0.7, ich: false, laterne: false, marke: null },
       ]);
       expect(s.verlauf.x).toEqual(["Start", "Mo 12.10.", "Di 13.10.", "Mi 14.10.", "Do 15.10.", "Fr 16.10.", "Sa 17.10.", "So 18.10."]);
       expect(s.verlauf.achse).toEqual(["Start", null, null, null, null, null, null, "W1"]);
@@ -131,12 +131,12 @@ describe("Mini App", () => {
         woche: 2,
         aktiv: true,
         lebenspunkte: 650,
-        schaden: 330,
+        schaden: 480,
         besiegt: false,
         bonus: 5,
         schwaeche: null,
         kaempfer: [
-          { name: "Kevin", schaden: 300, ich: true },
+          { name: "Kevin", schaden: 450, ich: true },
           { name: "Peter", schaden: 30, ich: false },
         ],
         drueckeberger: [],
@@ -183,7 +183,8 @@ describe("Mini App", () => {
       expect(e.gruppen).toHaveLength(1);
       expect(e.gruppen[0]).toMatchObject({ chat: GRUPPE.id, name: "Pumper" });
       // Zuletzt benutzte Sportart zuerst
-      expect(e.gruppen[0].sportarten[0]).toMatchObject({ name: "Joggen", faktor: 3 });
+      expect(e.gruppen[0].sportarten[0]).toMatchObject({ name: "Joggen", faktor: 4.5 });
+      expect(e.gruppen[0].sportarten.find((s: { name: string }) => s.name === "Spazierengehen")).toMatchObject({ faktor: 0.5, nachSchritten: true });
       expect(e.letzteMessung).toEqual({ gewichtKg: 90, fettPct: 27, muskelPct: 40 });
       const yoga = e.gruppen[0].sportarten.find((s: { name: string }) => s.name === "Yoga");
 
@@ -197,10 +198,48 @@ describe("Mini App", () => {
       expect((await holen("/api/training", KEVIN, { chat: GRUPPE.id, sportart: yoga.id, minuten: 4, tage: 0 })).status).toBe(400);
       expect((await holen("/api/training", KEVIN, { chat: GRUPPE.id, sportart: yoga.id, minuten: 30, tage: 3 })).status).toBe(400);
       expect((await holen("/api/training", KEVIN, { chat: -1, sportart: yoga.id, minuten: 30, tage: 0 })).status).toBe(403);
+      // Spazieren mit Schritten: Faktor aus dem Tempo, unplausible Schritte abgelehnt
+      const spazieren = e.gruppen[0].sportarten.find((s: { name: string }) => s.name === "Spazierengehen");
+      const flott = await holen("/api/training", KEVIN, { chat: GRUPPE.id, sportart: spazieren.id, minuten: 60, tage: 0, schritte: 7800 });
+      expect(flott.json.text).toBe("Eingetragen: 60 min Spazierengehen, 180 Lastpunkte. In „Pumper“ gepostet.");
+      expect(posts.at(-1)?.text).toContain("(7.800 Schritte, 130 pro Minute: ×3)");
+      expect((await holen("/api/training", KEVIN, { chat: GRUPPE.id, sportart: spazieren.id, minuten: 60, tage: 0, schritte: 99_999 })).status).toBe(400);
+      // Schritte bei anderen Sportarten werden ignoriert
+      const mitYoga = await holen("/api/training", KEVIN, { chat: GRUPPE.id, sportart: yoga.id, minuten: 60, tage: 0, schritte: 7800 });
+      expect(mitYoga.json.text).toContain("60 Lastpunkte");
+
       // Wer nicht in der Gruppe ist, darf dort nichts eintragen
       const fremd = { id: 99, first_name: "Fremd" };
       expect((await holen("/api/training", fremd, { chat: GRUPPE.id, sportart: yoga.id, minuten: 30, tage: 0 })).status).toBe(403);
       expect((await holen("/api/eingabe", fremd)).json.gruppen).toEqual([]);
+    } finally {
+      server.close();
+    }
+  });
+
+  it("Variante umstellen: locker ↔ sportlich, nach 2 Tagen nur bei Einträgen von vor der Teilung", async () => {
+    const { server, holen, posts, db, bot } = await aufbau();
+    try {
+      await bot.handleUpdate(befehl("/sport 60 Radfahren locker"));
+      const eintraege = (await holen("/api/eintraege")).json.eintraege;
+      const rad = eintraege.find((e: { sportart?: string }) => e.sportart === "Radfahren locker");
+      expect(rad).toMatchObject({ variante: "Radfahren sportlich", umstellbar: true });
+      expect(eintraege.find((e: { sportart?: string }) => e.sportart === "Joggen").umstellbar).toBe(false);
+
+      expect((await holen("/api/eintrag/variante", PETER, { id: rad.id })).status).toBe(403);
+      expect((await holen("/api/eintrag/variante", KEVIN, { id: rad.id })).status).toBe(200);
+      expect(posts.at(-1)?.text).toBe("Kevin: 60 min Radfahren sportlich (korrigiert von Radfahren locker)");
+      expect(db.prepare("SELECT faktor FROM training WHERE id = ?").get(rad.id)).toEqual({ faktor: 5 });
+
+      // Nach 2 Tagen nicht mehr, außer der Eintrag stammt von vor der Teilung
+      tag("2026-10-20");
+      expect((await holen("/api/eintrag/variante", KEVIN, { id: rad.id })).status).toBe(403);
+      db.prepare("UPDATE training SET variante_offen = 1 WHERE id = ?").run(rad.id);
+      const offen = (await holen("/api/eintraege")).json.eintraege.find((e: { id: number; art: string }) => e.art === "t" && e.id === rad.id);
+      expect(offen).toMatchObject({ aenderbar: false, umstellbar: true, variante: "Radfahren locker" });
+      expect((await holen("/api/eintrag/variante", KEVIN, { id: rad.id })).status).toBe(200);
+      expect(db.prepare("SELECT faktor, variante_offen AS offen FROM training WHERE id = ?").get(rad.id)).toEqual({ faktor: 1, offen: 0 });
+      expect((await holen("/api/eintrag/variante", KEVIN, { id: rad.id })).status).toBe(403);
     } finally {
       server.close();
     }
@@ -247,9 +286,9 @@ describe("Mini App", () => {
     try {
       const r = await holen("/api/ruhm");
       expect(r.status).toBe(200);
-      expect(r.json.rang).toMatchObject({ name: "Couchkartoffel", ab: 0, naechster: { name: "Lauch", ab: 1000 } });
+      expect(r.json.rang).toMatchObject({ name: "Couchkartoffel", ab: 0, naechster: { name: "Lauch", ab: 1500 } });
       expect(r.json.rang.last).toBeGreaterThan(0);
-      expect(r.json.rang.naechster.fehlen).toBe(1000 - r.json.rang.last);
+      expect(r.json.rang.naechster.fehlen).toBe(1500 - r.json.rang.last);
       expect(r.json.raenge).toHaveLength(7);
       expect(r.json.erfolge).toHaveLength(14);
       expect(r.json.erfolge.find((e: { art: string }) => e.art === "erste_einheit")).toMatchObject({

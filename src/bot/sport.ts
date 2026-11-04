@@ -4,21 +4,23 @@ import {
   type GruppeZeile,
   type NutzerZeile,
   type SportartZeile,
+  findeSportart,
   gruppeNachId,
   gruppenDesNutzers,
   setzeGruppenNachricht,
   speichereNutzer,
   speichereTraining,
   sportartNachId,
-  sportartNachName,
   sportartenFuerAuswahl,
   trageMitgliedEin,
+  trainingsFaktor,
 } from "../db/repo.js";
 import { GRENZEN, parseSport } from "../domain/eingabe.js";
 import { sportartName } from "../domain/neue-sportart.js";
 import { nimmAnAktuellerSeasonTeil } from "../db/season-repo.js";
 import { plusTage } from "../scoring/datum.js";
-import { einheitsLast } from "../scoring/fleiss.js";
+import { einheitsLast, pruefeSchritte } from "../scoring/fleiss.js";
+import { faktorText } from "../domain/sportarten.js";
 import { fuelle, waehleSpruch } from "../texte/sprueche.js";
 import { log } from "../log.js";
 import { meldungenNachTraining, mitMeldungen } from "../bericht/nach-training.js";
@@ -35,6 +37,14 @@ export function trainingsPostText(name: string, minuten: number, sportart: strin
   return fuelle(letzterSpruch, { name, minuten, sportart });
 }
 
+/** „7.200 Schritte, 120 pro Minute: ×2“ für Spaziergänge mit Schritten. */
+export function schritteText(minuten: number, schritte: number, faktor: number): string {
+  return `${schritte.toLocaleString("de-DE")} Schritte, ${Math.round(schritte / minuten)} pro Minute: ${faktorText(faktor)}`;
+}
+
+/** Hinweis nach einem Spaziergang ohne Schritte. */
+export const SCHRITTE_TIPP = "Tipp: Mit Schritten zählt das Tempo, flott gehen bringt bis ×3. Beispiel: /sport 60 Spazierengehen 7200";
+
 /**
  * Speichert ein Training und baut den Gruppenpost samt Meldungen (Ziel, Boss, Erfolge).
  * Posten muss der Aufrufer, die Nachricht-id dann mit `setzeGruppenNachricht` merken.
@@ -45,23 +55,41 @@ export function trageTrainingEin(
   sportart: SportartZeile,
   minuten: number,
   tage: number,
-): { trainingId: number; post: string; last: number } {
+  schritte?: number | null,
+): { trainingId: number; post: string; last: number; hinweis: string } {
   const datum = plusTage(heute(nutzer.zeitzone), -tage);
-  const trainingId = speichereTraining(db, { nutzer: nutzer.id, datum, minuten, sportart, erstelltAm: uhr.jetzt().toISOString() });
+  const mitSchritten = sportart.nach_schritten && schritte ? schritte : null;
+  const trainingId = speichereTraining(db, {
+    nutzer: nutzer.id,
+    datum,
+    minuten,
+    sportart,
+    schritte: mitSchritten,
+    erstelltAm: uhr.jetzt().toISOString(),
+  });
+  const faktor = trainingsFaktor(sportart, minuten, mitSchritten);
   const meldungen = meldungenNachTraining(db, trainingId, heute(gruppenZeitzone()));
-  const post = mitMeldungen(`${trainingsPostText(nutzer.name, minuten, sportart.name)}${TAG_TEXT[tage]}`, meldungen);
-  return { trainingId, post, last: einheitsLast({ minuten, faktor: sportart.faktor }) };
+  const zusatz = mitSchritten ? ` (${schritteText(minuten, mitSchritten, faktor)})` : "";
+  const post = mitMeldungen(`${trainingsPostText(nutzer.name, minuten, sportart.name)}${TAG_TEXT[tage]}${zusatz}`, meldungen);
+  const hinweis = schritte && !sportart.nach_schritten
+    ? " Schritte zählen nur beim Spazieren, hier zählt die Dauer."
+    : sportart.nach_schritten && !mitSchritten
+      ? `\n${SCHRITTE_TIPP}`
+      : "";
+  return { trainingId, post, last: einheitsLast({ minuten, faktor }), hinweis };
 }
 
 interface Auswahl {
   telegramId: number;
   tage: number;
   minuten?: number;
+  schritte?: number;
 }
 
-/** Callback-Daten: `sp:<telegramId>:<tage>:<minuten|0>[:<sportartId>]`, höchstens 64 Byte. */
+/** Callback-Daten: `sp:<telegramId>:<tage>:<minuten|0>[:<sportartId>[:<schritte>]]`, höchstens 64 Byte. */
 function knopfDaten(a: Auswahl, sportartId?: number): string {
-  return ["sp", a.telegramId, a.tage, a.minuten ?? 0, ...(sportartId ? [sportartId] : [])].join(":");
+  const rest = sportartId ? [sportartId, ...(a.schritte ? [a.schritte] : [])] : [];
+  return ["sp", a.telegramId, a.tage, a.minuten ?? 0, ...rest].join(":");
 }
 
 function sportKnoepfe(sportarten: SportartZeile[], a: Auswahl): InlineKeyboard {
@@ -119,19 +147,20 @@ export function sportModul(db: Db): Composer<Context> {
       return { text: `${sportart.name}${TAG_TEXT[a.tage]}: wie lange?`, tastatur: dauerKnoepfe(sportart, a) };
     }
 
-    const { trainingId, post, last } = trageTrainingEin(db, nutzer, sportart, a.minuten, a.tage);
+    const { trainingId, post, last, hinweis } = trageTrainingEin(db, nutzer, sportart, a.minuten, a.tage, a.schritte);
 
     if (ctx.chat?.id === gruppe.telegram_chat_id) {
+      // In der Gruppe kein Tipp unter jedem Spaziergang, das wäre Spam
       return { text: post, postFuer: trainingId };
     }
     try {
       const gesendet = await ctx.api.sendMessage(gruppe.telegram_chat_id, post);
       setzeGruppenNachricht(db, trainingId, gesendet.message_id);
-      return { text: `Eingetragen: ${a.minuten} min ${sportart.name}${TAG_TEXT[a.tage]}, ${last} Lastpunkte. In „${gruppe.name}“ gepostet.` };
+      return { text: `Eingetragen: ${a.minuten} min ${sportart.name}${TAG_TEXT[a.tage]}, ${last} Lastpunkte. In „${gruppe.name}“ gepostet.${hinweis}` };
     } catch (err) {
       log.warn(`Training ${trainingId} konnte nicht in Gruppe ${gruppe.id} gepostet werden`, err);
       return {
-        text: `Eingetragen: ${a.minuten} min ${sportart.name}, ${last} Lastpunkte. Posten in „${gruppe.name}“ hat nicht geklappt, bin ich da noch drin?`,
+        text: `Eingetragen: ${a.minuten} min ${sportart.name}, ${last} Lastpunkte. Posten in „${gruppe.name}“ hat nicht geklappt, bin ich da noch drin?${hinweis}`,
       };
     }
   }
@@ -149,10 +178,24 @@ export function sportModul(db: Db): Composer<Context> {
       await ctx.reply("Du bist in keiner Botzeps-Gruppe. Erst in der Gruppe /start und auf „Ich bin dabei“ drücken.");
       return;
     }
-    const a: Auswahl = { telegramId: ctx.from.id, tage: eingabe.wert.tageZurueck, ...(eingabe.wert.minuten ? { minuten: eingabe.wert.minuten } : {}) };
+    if (eingabe.wert.schritte && !eingabe.wert.minuten) {
+      await ctx.reply("Für Schritte brauche ich auch die Dauer. Beispiel: /sport 60 Spazierengehen 7200");
+      return;
+    }
+    const a: Auswahl = {
+      telegramId: ctx.from.id,
+      tage: eingabe.wert.tageZurueck,
+      ...(eingabe.wert.minuten ? { minuten: eingabe.wert.minuten } : {}),
+      ...(eingabe.wert.schritte ? { schritte: eingabe.wert.schritte } : {}),
+    };
     let sportart: SportartZeile | undefined;
     if (eingabe.wert.sportart) {
-      sportart = sportartNachName(db, gruppe.id, eingabe.wert.sportart);
+      const gefunden = findeSportart(db, gruppe.id, eingabe.wert.sportart);
+      sportart = gefunden.treffer;
+      if (!sportart && gefunden.varianten.length) {
+        await ctx.reply(`${eingabe.wert.sportart} gibt's locker und sportlich. Welche?`, { reply_markup: sportKnoepfe(gefunden.varianten, a) });
+        return;
+      }
       if (!sportart) {
         const liste = sportartenFuerAuswahl(db, gruppe.id, nutzer.id);
         const kb = sportKnoepfe(liste, a);
@@ -169,15 +212,19 @@ export function sportModul(db: Db): Composer<Context> {
     if (antwort.postFuer) setzeGruppenNachricht(db, antwort.postFuer, gesendet.message_id);
   });
 
-  modul.callbackQuery(/^sp:(\d+):(\d):(\d+)(?::(\d+))?$/, async (ctx) => {
-    const [, telegramId, tage, minuten, sportartId] = ctx.match;
+  modul.callbackQuery(/^sp:(\d+):(\d):(\d+)(?::(\d+)(?::(\d+))?)?$/, async (ctx) => {
+    const [, telegramId, tage, minuten, sportartId, schritte] = ctx.match;
     if (Number(telegramId) !== ctx.from.id) {
       await ctx.answerCallbackQuery({ text: "Finger weg, das sind nicht deine Knöpfe.", show_alert: true });
       return;
     }
     // Callback-Daten kommen vom Client, also dieselben Grenzen wie bei der Texteingabe
     const min = Number(minuten);
-    if (Number(tage) > GRENZEN.maxTageZurueck || (min !== 0 && (min < GRENZEN.minuten.min || min > GRENZEN.minuten.max))) {
+    if (
+      Number(tage) > GRENZEN.maxTageZurueck ||
+      (min !== 0 && (min < GRENZEN.minuten.min || min > GRENZEN.minuten.max)) ||
+      (schritte && (!min || pruefeSchritte(min, Number(schritte))))
+    ) {
       await ctx.answerCallbackQuery({ text: "Ungültig, bitte /sport neu starten." });
       return;
     }
@@ -188,7 +235,12 @@ export function sportModul(db: Db): Composer<Context> {
       await ctx.answerCallbackQuery({ text: "Das hat sich erledigt, bitte /sport neu starten." });
       return;
     }
-    const a: Auswahl = { telegramId: ctx.from.id, tage: Number(tage), ...(Number(minuten) ? { minuten: Number(minuten) } : {}) };
+    const a: Auswahl = {
+      telegramId: ctx.from.id,
+      tage: Number(tage),
+      ...(Number(minuten) ? { minuten: Number(minuten) } : {}),
+      ...(schritte ? { schritte: Number(schritte) } : {}),
+    };
     const antwort = await weiter(ctx, a, sportart, gruppe);
     await ctx.answerCallbackQuery();
     await ctx.editMessageText(antwort.text, antwort.tastatur ? { reply_markup: antwort.tastatur } : {});

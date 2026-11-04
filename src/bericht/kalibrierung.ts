@@ -54,7 +54,7 @@ export function erklaerung(s: CountdownSeason): string[] {
     "Immer gleich wiegen: morgens, nach dem Klo, vor Essen und Trinken, dieselbe Waage.",
     "",
     "🧮 DIE PUNKTE",
-    `💪 Fleiß: Minuten × Faktor der Sportart (×1, ×2, ×3). ${s.wochenziel_last} Lastpunkte pro Woche bringen 10 Punkte, mehr als 15 gibt's nicht. Trainings zählen ab ${d(s.start)}, vorher nicht.`,
+    `💪 Fleiß: Minuten × Faktor der Sportart (Spazieren ×0,5 bis Spinning ×6, alle: /sportarten). ${s.wochenziel_last} Lastpunkte pro Woche bringen 10 Punkte, mehr als 15 gibt's nicht. Trainings zählen ab ${d(s.start)}, vorher nicht.`,
     "⚖️ Fortschritt: Aus Gewicht und Prozenten rechnet der Bot eure Fett- und Muskelmasse in kg. Gezählt wird, wie viel Prozent davon ihr gegenüber dem Startwert verliert bzw. zulegt:",
     `• 1 % weniger Fett = ${FORTSCHRITT.punkteProProzentFett} Punkte`,
     `• 1 % mehr Muskel = ${FORTSCHRITT.punkteProProzentMuskel} Punkte`,
@@ -77,7 +77,7 @@ function haeppchen(s: CountdownSeason, tagImFenster: number): string[] {
       ];
     case 2:
       return [
-        "💪 Fleiß, kurz erklärt: Minuten × Faktor. 45 Minuten Joggen (×3) sind 135 Lastpunkte, 45 Minuten Spazieren (×1) sind 45.",
+        "💪 Fleiß, kurz erklärt: Minuten × Faktor. 45 Minuten Joggen (×4,5) sind 203 Lastpunkte, 45 Minuten Spazieren (×0,5) nur 23. Mit Schritten zählt beim Spazieren das Tempo.",
         `${s.wochenziel_last} Lastpunkte pro Woche sind das Ziel. Welche Sportart wie zählt: /sportarten. Fehlt eure? /sportart Name, die Gruppe stimmt ab.`,
       ];
     case 3:

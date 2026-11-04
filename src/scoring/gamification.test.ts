@@ -8,15 +8,15 @@ import { werteWochen } from "./fleiss.js";
 describe("Ränge", () => {
   it("steigen mit der lebenslangen Last", () => {
     expect(rangFuer(0).name).toBe("Couchkartoffel");
-    expect(rangFuer(999).name).toBe("Couchkartoffel");
-    expect(rangFuer(1_000).name).toBe("Lauch");
+    expect(rangFuer(1_499).name).toBe("Couchkartoffel");
+    expect(rangFuer(1_500).name).toBe("Lauch");
     expect(rangFuer(1_000_000).name).toBe("Botzeps");
-    expect(rangIndex(3_000)).toBe(2);
+    expect(rangIndex(4_500)).toBe(2);
   });
 
   it("zeigen, was bis zum nächsten Rang fehlt", () => {
-    expect(naechsterRang(400)).toMatchObject({ rang: { name: "Lauch" }, fehlen: 600 });
-    expect(naechsterRang(60_000)).toBeNull();
+    expect(naechsterRang(400)).toMatchObject({ rang: { name: "Lauch" }, fehlen: 1100 });
+    expect(naechsterRang(90_000)).toBeNull();
   });
 });
 
@@ -34,7 +34,7 @@ describe("Erfolge", () => {
   });
 
   it("aus Wochen und Finale", () => {
-    expect(wochenErfolge(werteWochen([300, 450, 300, 300, 300]), 300)).toEqual(["wochenziel", "deckel", "serie_5"]);
+    expect(wochenErfolge(werteWochen([300, 450, 300, 300, 300], 300), 300)).toEqual(["wochenziel", "deckel", "serie_5"]);
     expect(wochenErfolge(werteWochen([100]), 300)).toEqual([]);
     expect(finaleErfolge(1)).toEqual(["champion", "podest"]);
     expect(finaleErfolge(3)).toEqual(["podest"]);

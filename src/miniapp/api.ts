@@ -2,7 +2,7 @@ import { z } from "zod";
 import { bossSvg } from "../boss/figur.js";
 import type { Db } from "../db/index.js";
 import { type NutzerZeile, gruppenDesNutzers, messMittel, setzeGruppenNachricht, speichereNutzer, sportartNachId, sportartenFuerAuswahl } from "../db/repo.js";
-import { type Eintrag, aendereTrainingsdauer, eintrag, letzteEintraege, loescheEintrag } from "../db/verlauf-repo.js";
+import { type Eintrag, aendereTrainingsdauer, eintrag, letzteEintraege, loescheEintrag, wechsleVariante } from "../db/verlauf-repo.js";
 import { berechneStand, berechneTeams } from "../bericht/stand.js";
 import { eigenesDiagramm, punkteverlauf } from "../bericht/punkteverlauf.js";
 import { DAUERN, aenderbar, korrekturText } from "../bot/verlauf.js";
@@ -14,6 +14,7 @@ import { GRENZEN, istSprung, pruefeWaage } from "../domain/eingabe.js";
 import { nimmAnAktuellerSeasonTeil } from "../db/season-repo.js";
 import { log } from "../log.js";
 import { plusTage } from "../scoring/datum.js";
+import { pruefeSchritte } from "../scoring/fleiss.js";
 import { type TeilnehmerStand, seasonEnde, wocheVon } from "../scoring/season.js";
 import { type Boss, bosseDerSeason } from "../db/season-repo.js";
 import { bossAnzeigename, bossEmoji, bossKampf, bossSchadenVon } from "../scoring/boss.js";
@@ -191,9 +192,14 @@ function ruhm(db: Db, nutzerId: number) {
   };
 }
 
+/** Darf auf die andere Variante (locker ↔ sportlich) umgestellt werden? */
+function umstellbar(e: Eintrag, tag: string): boolean {
+  return Boolean(e.variante) && (aenderbar(e, tag) || Boolean(e.varianteOffen));
+}
+
 function eintragJson(e: Eintrag, tag: string) {
-  const { gruppenNachricht: _g, gruppeChat: _c, ...rest } = e;
-  return { ...rest, aenderbar: aenderbar(e, tag) };
+  const { gruppenNachricht: _g, gruppeChat: _c, varianteOffen: _v, ...rest } = e;
+  return { ...rest, aenderbar: aenderbar(e, tag), umstellbar: umstellbar(e, tag) };
 }
 
 /** Was das Eintragen-Formular braucht: Gruppen mit Sportarten (zuletzt benutzte zuerst) und die letzte Messung. */
@@ -208,7 +214,12 @@ function eingabe(db: Db, nutzer: NutzerZeile) {
     gruppen: gruppenDesNutzers(db, nutzer.id).map((g) => ({
       chat: g.telegram_chat_id,
       name: g.name,
-      sportarten: sportartenFuerAuswahl(db, g.id, nutzer.id).map((s) => ({ id: s.id, name: s.name, faktor: s.faktor })),
+      sportarten: sportartenFuerAuswahl(db, g.id, nutzer.id).map((s) => ({
+        id: s.id,
+        name: s.name,
+        faktor: s.faktor,
+        ...(s.nach_schritten ? { nachSchritten: true } : {}),
+      })),
     })),
     dauern: DAUERN,
     minuten: GRENZEN.minuten,
@@ -222,6 +233,8 @@ const TrainingSchema = z.object({
   sportart: z.number().int().positive(),
   minuten: z.number().int().min(GRENZEN.minuten.min).max(GRENZEN.minuten.max),
   tage: TageSchema,
+  /** Nur beim Spazieren: Schritte bestimmen den Faktor */
+  schritte: z.number().int().positive().nullable().optional(),
 });
 const MessungSchema = z.object({
   gewichtKg: z.number(),
@@ -234,6 +247,7 @@ const MessungSchema = z.object({
 
 const LoeschenSchema = z.object({ art: z.enum(["t", "m"]), id: z.number().int().positive() });
 const DauerSchema = z.object({ id: z.number().int().positive(), minuten: z.number().int() });
+const IdSchema = z.object({ id: z.number().int().positive() });
 const EinstellungenSchema = z.object({
   erinnerungen: z.boolean().optional(),
   uhrzeit: z
@@ -265,8 +279,11 @@ export async function bearbeiteApi(db: Db, a: Anfrage, gruppenpost: Gruppenpost,
     const gruppe = gruppenDesNutzers(db, nutzer.id).find((g) => g.telegram_chat_id === b.data.chat);
     const sportart = sportartNachId(db, b.data.sportart);
     if (!gruppe || !sportart || sportart.gruppe !== gruppe.id) return fehler(403, "Gruppe oder Sportart passt nicht.");
+    const schritte = sportart.nach_schritten ? (b.data.schritte ?? null) : null;
+    const falsch = schritte ? pruefeSchritte(b.data.minuten, schritte) : null;
+    if (falsch) return fehler(400, falsch);
     nimmAnAktuellerSeasonTeil(db, gruppe.id, nutzer.id, heute(gruppenZeitzone()));
-    const { trainingId, post, last } = trageTrainingEin(db, nutzer, sportart, b.data.minuten, b.data.tage);
+    const { trainingId, post, last } = trageTrainingEin(db, nutzer, sportart, b.data.minuten, b.data.tage, schritte);
     const was = `${b.data.minuten} min ${sportart.name}${TAG_TEXT[b.data.tage]}, ${last} Lastpunkte`;
     try {
       setzeGruppenNachricht(db, trainingId, await gruppensenden(gruppe.telegram_chat_id, post));
@@ -308,6 +325,18 @@ export async function bearbeiteApi(db: Db, a: Anfrage, gruppenpost: Gruppenpost,
     if (!e || !aenderbar(e, tag)) return fehler(403, "Geht nicht (mehr).");
     aendereTrainingsdauer(db, e, nutzer.id, b.data.minuten);
     if (e.gruppeChat && e.gruppenNachricht) await gruppenpost(e.gruppeChat, e.gruppenNachricht, korrekturText(nutzer.name, e, b.data.minuten));
+    return { status: 200, json: { ok: true } };
+  }
+  if (a.methode === "POST" && a.pfad === "/api/eintrag/variante") {
+    const b = IdSchema.safeParse(a.body);
+    if (!b.success) return fehler(400, "Ungültige Anfrage");
+    const e = eintrag(db, "t", b.data.id, nutzer.id);
+    if (!e || !umstellbar(e, tag)) return fehler(403, "Geht nicht (mehr).");
+    const neu = wechsleVariante(db, e, nutzer.id);
+    if (!neu) return fehler(403, "Geht nicht (mehr).");
+    if (e.gruppeChat && e.gruppenNachricht) {
+      await gruppenpost(e.gruppeChat, e.gruppenNachricht, `${nutzer.name}: ${e.minuten} min ${neu.name} (korrigiert von ${e.sportart})`);
+    }
     return { status: 200, json: { ok: true } };
   }
   if (a.methode === "POST" && a.pfad === "/api/einstellungen") {

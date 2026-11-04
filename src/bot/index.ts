@@ -116,7 +116,7 @@ export function erstelleBot(token: string, db: Db, botInfo?: UserFromGetMe, opti
   bot.command("sportarten", async (ctx) => {
     const gruppe = istGruppe(ctx) ? gruppenId(db, ctx) : null;
     const liste = gruppe === null ? STANDARD_SPORTARTEN : sportartenDerGruppe(db, gruppe);
-    await ctx.reply(`So zählt jede Sportart (Minuten × Faktor):\n\n${sportartenText(liste)}`);
+    await ctx.reply(`So zählt jede Sportart (Minuten × Faktor, Faktor = MET − 3 laut Compendium):\n\n${sportartenText(liste)}`);
   });
 
   bot.catch((err) => {

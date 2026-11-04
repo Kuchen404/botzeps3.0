@@ -16,14 +16,22 @@ import {
   type GruppeZeile,
   gruppeNachId,
   gruppenDesNutzers,
+  findeSportart,
   setzeGruppenNachricht,
   speichereNutzer,
-  sportartNachName,
   trageMitgliedEin,
 } from "../db/repo.js";
 import { GRENZEN } from "../domain/eingabe.js";
-import { compendiumVorschlag, noetigeStimmen, sportartName } from "../domain/neue-sportart.js";
-import { STUFEN } from "../domain/sportarten.js";
+import {
+  COMPENDIUM_LINK,
+  OHNE_STIMMEN,
+  VERGLEICHE,
+  compendiumVorschlag,
+  erlaubteFaktoren,
+  noetigeStimmen,
+  sportartName,
+} from "../domain/neue-sportart.js";
+import { faktorText } from "../domain/sportarten.js";
 import { plusTage } from "../scoring/datum.js";
 import type { Faktor } from "../scoring/fleiss.js";
 import { log } from "../log.js";
@@ -37,14 +45,29 @@ function mitglieder(db: Db, gruppeId: number): number {
   return (db.prepare("SELECT COUNT(*) AS n FROM gruppe_mitglied WHERE gruppe = ?").get(gruppeId) as { n: number }).n;
 }
 
-function stufe(f: Faktor): string {
-  return `${STUFEN[f]} (×${f})`;
+/** Alte Knöpfe von vor der Umstellung schicken noch Stufe 1, 2 oder 3. */
+const ALTE_KNOEPFE: Record<number, Faktor> = { 1: 1, 2: 2.5, 3: 4.5 };
+
+/** Callback-Wert eines Faktors: ×10 als ganze Zahl (4,5 → 45). */
+function knopfWert(f: Faktor): number {
+  return Math.round(f * 10);
+}
+
+/** Faktor aus dem Callback-Wert, oder null, wenn er in dieser Abstimmung nicht wählbar ist. */
+export function faktorAusKnopf(wert: number, vorschlag: Faktor | null): Faktor | null {
+  const f = ALTE_KNOEPFE[wert] ?? wert / 10;
+  return erlaubteFaktoren(vorschlag).includes(f) ? f : null;
 }
 
 export function abstimmungsText(db: Db, a: AbstimmungZeile): string {
-  const vorschlag = compendiumVorschlag(a.name);
-  const zeilen = [`🗳 Neue Sportart „${a.name}“: wie anstrengend? Gezählt wird Minuten × Faktor.`];
-  if (vorschlag) zeilen.push(`Vorschlag laut Compendium: ${stufe(vorschlag.faktor)}, ${String(vorschlag.met).replace(".", ",")} MET`);
+  const v = compendiumVorschlag(a.name);
+  const zeilen = [`🗳 Neue Sportart „${a.name}“: Wie anstrengend ist das? So wie …`];
+  zeilen.push(
+    v
+      ? `📖 Laut Tabelle: ${faktorText(v.faktor)} (${String(v.met).replace(".", ",")} MET). Bei Gleichstand gilt die Tabelle.`
+      : `📖 Steht nicht in der Tabelle. Bei Gleichstand gilt der niedrigere Wert, ohne Stimmen ${faktorText(OHNE_STIMMEN)}.`,
+  );
+  zeilen.push(`Selbst nachschauen: ${COMPENDIUM_LINK} (englisch, Faktor = MET − 3)`);
   zeilen.push(
     `Entschieden, sobald ${noetigeStimmen(mitglieder(db, a.gruppe))} abgestimmt haben, spätestens nach ${ABSTIMMUNG_STUNDEN} Stunden.`,
   );
@@ -55,12 +78,18 @@ export function abstimmungsText(db: Db, a: AbstimmungZeile): string {
 function knoepfe(db: Db, a: AbstimmungZeile): InlineKeyboard {
   const s = stimmen(db, a.id);
   const kb = new InlineKeyboard();
-  for (const f of [1, 2, 3] as const) kb.text(`${stufe(f)}: ${s.filter((x) => x === f).length}`, `sv:${a.id}:${f}`);
+  erlaubteFaktoren(a.vorschlag).forEach((f, i) => {
+    const vergleich = VERGLEICHE.find((v) => v.faktor === f);
+    const tabelle = a.vorschlag === f ? " 📖" : "";
+    const titel = vergleich ? `${vergleich.emoji} ${vergleich.wie} ${faktorText(f)}` : `📖 Tabelle ${faktorText(f)}`;
+    kb.text(`${titel}${vergleich ? tabelle : ""}: ${s.filter((x) => x === f).length}`, `sv:${a.id}:${knopfWert(f)}`);
+    if (i % 2 === 1) kb.row();
+  });
   return kb;
 }
 
 export function ergebnisText(e: Entscheidung): string {
-  return `✅ Entschieden: ${e.sportart.name} zählt ab sofort als ${stufe(e.sportart.faktor)}.`;
+  return `✅ Entschieden: ${e.sportart.name} zählt ab sofort ${faktorText(e.sportart.faktor)}.`;
 }
 
 export function abstimmungsModul(db: Db): Composer<Context> {
@@ -76,8 +105,9 @@ export function abstimmungsModul(db: Db): Composer<Context> {
   ): Promise<string> {
     const name = sportartName(eingabe);
     if (!name) return "Ungültiger Name. Nur Buchstaben, Zahlen, Leerzeichen und Bindestrich, höchstens 20 Zeichen.";
-    const vorhanden = sportartNachName(db, gruppe.id, name);
-    if (vorhanden) return `${vorhanden.name} gibt's schon: ${stufe(vorhanden.faktor)}. /sport ${training?.minuten ?? 45} ${vorhanden.name}`;
+    const { treffer: vorhanden, varianten } = findeSportart(db, gruppe.id, name);
+    if (vorhanden) return `${vorhanden.name} gibt's schon: ${faktorText(vorhanden.faktor)}. /sport ${training?.minuten ?? 45} ${vorhanden.name}`;
+    if (varianten.length) return `${name} gibt's schon als ${varianten.map((v) => `${v.name} (${faktorText(v.faktor)})`).join(" und ")}.`;
     if (offeneAbstimmung(db, gruppe.id, name)) return `Über ${name} wird in „${gruppe.name}“ schon abgestimmt.`;
     const zeitzone = (db.prepare("SELECT zeitzone FROM nutzer WHERE id = ?").get(nutzerId) as { zeitzone: string }).zeitzone;
     const a = legeAbstimmungAn(db, {
@@ -91,6 +121,7 @@ export function abstimmungsModul(db: Db): Composer<Context> {
     });
     const nachricht = await ctx.api.sendMessage(gruppe.telegram_chat_id, abstimmungsText(db, a), {
       reply_markup: knoepfe(db, a),
+      link_preview_options: { is_disabled: true },
     });
     setzeNachricht(db, a.id, nachricht.message_id);
     const inGruppe = ctx.chat?.id === gruppe.telegram_chat_id;
@@ -103,7 +134,11 @@ export function abstimmungsModul(db: Db): Composer<Context> {
   /** Nach der Entscheidung: Ergebnis zeigen und das wartende Training posten. */
   async function verkuende(ctx: Context, a: AbstimmungZeile, e: Entscheidung): Promise<void> {
     try {
-      if (a.nachricht_id) await ctx.api.editMessageText(e.gruppeChat, a.nachricht_id, `${abstimmungsText(db, a)}\n\n${ergebnisText(e)}`);
+      if (a.nachricht_id) {
+        await ctx.api.editMessageText(e.gruppeChat, a.nachricht_id, `${abstimmungsText(db, a)}\n\n${ergebnisText(e)}`, {
+          link_preview_options: { is_disabled: true },
+        });
+      }
       else await ctx.api.sendMessage(e.gruppeChat, ergebnisText(e));
     } catch (err) {
       log.debug("Abstimmungsnachricht nicht aktualisiert", err);
@@ -128,7 +163,7 @@ export function abstimmungsModul(db: Db): Composer<Context> {
     }
     const name = argumente(ctx).trim();
     if (!name) {
-      await ctx.reply("Neue Sportart vorschlagen: /sportart Name, z. B. /sportart Handball. Die Gruppe stimmt dann über die Stufe ab.");
+      await ctx.reply("Neue Sportart vorschlagen: /sportart Name, z. B. /sportart Handball. Die Gruppe stimmt dann ab, wie anstrengend sie ist.");
       return;
     }
     const antwort = await starte(ctx, gruppe, name, nutzer.id);
@@ -158,18 +193,23 @@ export function abstimmungsModul(db: Db): Composer<Context> {
     await ctx.editMessageText(antwort);
   });
 
-  modul.callbackQuery(/^sv:(\d+):([123])$/, async (ctx) => {
-    const [, id, faktor] = ctx.match;
+  modul.callbackQuery(/^sv:(\d+):(\d{1,3})$/, async (ctx) => {
+    const [, id, wert] = ctx.match;
     const a = abstimmungNachId(db, Number(id));
     const gruppe = a ? gruppeNachId(db, a.gruppe) : undefined;
     if (!a || !gruppe || a.beendet_am || ctx.chat?.id !== gruppe.telegram_chat_id) {
       await ctx.answerCallbackQuery({ text: "Die Abstimmung ist vorbei." });
       return;
     }
+    const faktor = faktorAusKnopf(Number(wert), a.vorschlag);
+    if (faktor === null) {
+      await ctx.answerCallbackQuery({ text: "Ungültiger Knopf." });
+      return;
+    }
     const nutzer = speichereNutzer(db, ctx.from.id, anzeigename(ctx));
     trageMitgliedEin(db, gruppe.id, nutzer.id);
-    stimmeAb(db, a.id, nutzer.id, Number(faktor) as Faktor);
-    await ctx.answerCallbackQuery({ text: `Stimme gezählt: ${stufe(Number(faktor) as Faktor)}` });
+    stimmeAb(db, a.id, nutzer.id, faktor);
+    await ctx.answerCallbackQuery({ text: `Stimme gezählt: ${faktorText(faktor)}` });
     if (istEntschieden(db, a)) {
       const e = beendeAbstimmung(db, a.id, uhr.jetzt().toISOString());
       if (e) await verkuende(ctx, a, e);

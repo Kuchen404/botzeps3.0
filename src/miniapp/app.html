@@ -536,7 +536,7 @@ function waageTab() {
 }
 
 var TAGE = [{ wert: 0, text: "Heute" }, { wert: 1, text: "Gestern" }, { wert: 2, text: "Vorgestern" }];
-var training = { chat: null, sportart: null, minuten: null, tage: 0, status: "" };
+var training = { chat: null, sportart: null, minuten: null, schritte: null, tage: 0, status: "" };
 var messung = { gewichtKg: "", fettPct: "", muskelPct: "", muskelKg: false, tage: 0, status: "" };
 
 // Einheit für Muskeln merken: Standard %, wer einmal kg wählt, behält kg.
@@ -607,6 +607,16 @@ function trainingKarte() {
   eigene.addEventListener("input", function () { training.minuten = eigene.value ? Number(eigene.value) : null; knopf.disabled = !bereit(); });
   dauerChips.appendChild(eigene);
   kinder.push(feld("Dauer", dauerChips));
+  // Beim Spazieren zählt mit Schritten das Tempo: 110 pro Minute ×1, 120 ×2, 130 ×3
+  var gewaehlt = gruppe.sportarten.find(function (x) { return x.id === training.sportart; });
+  if (gewaehlt && gewaehlt.nachSchritten) {
+    var schritte = el("input", { type: "number", inputmode: "numeric", min: "1", placeholder: "z. B. 7200", "aria-label": "Schritte" });
+    if (training.schritte) schritte.value = String(training.schritte);
+    schritte.addEventListener("input", function () { training.schritte = schritte.value ? Number(schritte.value) : null; });
+    kinder.push(feld("Schritte (freiwillig, zählt das Tempo: flott bis ×3)", schritte));
+  } else {
+    training.schritte = null;
+  }
   kinder.push(feld("Wann", chips(TAGE, training.tage, function (w) { training.tage = w; })));
 
   function bereit() { return training.sportart != null && training.minuten >= e.minuten.min && training.minuten <= e.minuten.max; }
@@ -614,9 +624,9 @@ function trainingKarte() {
   var knopf = el("button", { type: "button", class: "knopf", text: "Eintragen", onclick: function () {
     if (!bereit()) { status.textContent = "Dauer bitte zwischen " + e.minuten.min + " und " + e.minuten.max + " Minuten."; return; }
     knopf.disabled = true; status.textContent = "Trägt ein …";
-    api("/api/training", { chat: training.chat, sportart: training.sportart, minuten: training.minuten, tage: training.tage }).then(function (j) {
+    api("/api/training", { chat: training.chat, sportart: training.sportart, minuten: training.minuten, tage: training.tage, schritte: training.schritte }).then(function (j) {
       erfolg();
-      training.status = j.text; training.minuten = null; training.tage = 0;
+      training.status = j.text; training.minuten = null; training.schritte = null; training.tage = 0;
       return neuLaden();
     }).catch(function (f) { knopf.disabled = false; status.textContent = f.message; });
   } });
@@ -676,11 +686,15 @@ function eintraegeTab() {
   if (!eintraege.eintraege.length) return formulare.concat([karte(null, [el("p", { text: "Noch nichts eingetragen." })])]);
   var liste = eintraege.eintraege.map(function (e) {
     var text = e.art === "t"
-      ? "🏃 " + datum(e.datum) + " " + e.minuten + " min " + e.sportart
+      ? "🏃 " + datum(e.datum) + " " + e.minuten + " min " + e.sportart + (e.schritte ? " (" + e.schritte.toLocaleString("de-DE") + " Schritte)" : "")
       : "⚖️ " + datum(e.datum) + " " + zahl(e.gewichtKg) + " kg · " + zahl(e.fettPct) + " % · " + zahl(e.muskelPct) + " %";
-    var aktionen = null;
+    var kinder = [];
+    if (e.umstellbar) {
+      kinder.push(el("button", { class: "knopf", text: "War " + e.variante.split(" ").pop(), onclick: function () {
+        aendere("/api/eintrag/variante", { id: e.id });
+      } }));
+    }
     if (e.aenderbar) {
-      var kinder = [];
       if (e.art === "t") {
         var auswahl = el("select", { "aria-label": "Neue Dauer" }, [el("option", { value: "", text: "Dauer ändern" })].concat(
           eintraege.dauern.filter(function (d) { return d !== e.minuten; }).map(function (d) { return el("option", { value: String(d), text: d + " min" }); })));
@@ -693,8 +707,8 @@ function eintraegeTab() {
       kinder.push(el("button", { class: "knopf weg", text: "Löschen", onclick: function () {
         bestaetige("Wirklich löschen?", function () { aendere("/api/eintrag/loeschen", { art: e.art, id: e.id }); });
       } }));
-      aktionen = el("div", { class: "aktionen" }, kinder);
     }
+    var aktionen = kinder.length ? el("div", { class: "aktionen" }, kinder) : null;
     return el("div", { class: "eintrag" }, [el("div", { text: text }), aktionen]);
   });
   return formulare.concat([karte("Letzte Einträge", liste.concat([el("p", { class: "hint", text: "Ändern und löschen geht bis 2 Tage zurück." })]))]);
