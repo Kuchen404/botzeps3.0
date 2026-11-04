@@ -57,6 +57,12 @@
   .feld > .hint { display: block; margin-bottom: 4px; }
   .chips input, .werte input { font-size: 16px; padding: 4px 8px; border-radius: 14px; border: 1px solid var(--hint); background: var(--bg); color: var(--text); }
   .chips input { width: 84px; }
+  .chips input.breit { width: 140px; }
+  /* Zahlenfelder wie die Knöpfe: ohne Pfeile, Fokus in der Knopffarbe statt Browser-Rahmen */
+  .chips input, .werte input { -moz-appearance: textfield; appearance: textfield; }
+  .chips input::-webkit-inner-spin-button, .chips input::-webkit-outer-spin-button,
+  .werte input::-webkit-inner-spin-button, .werte input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  .chips input:focus, .werte input:focus { outline: none; border-color: var(--button); box-shadow: 0 0 0 1px var(--button); }
   .chips select { width: auto; margin: 0; padding: 4px 8px; border-radius: 14px; border: 1px solid var(--hint); font-size: 13px; }
   .chips select.aktiv { background: var(--button); color: var(--button-text); border-color: var(--button); }
   .werte { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px; }
@@ -610,10 +616,10 @@ function trainingKarte() {
   // Beim Spazieren zählt mit Schritten das Tempo: 110 pro Minute ×1, 120 ×2, 130 ×3
   var gewaehlt = gruppe.sportarten.find(function (x) { return x.id === training.sportart; });
   if (gewaehlt && gewaehlt.nachSchritten) {
-    var schritte = el("input", { type: "number", inputmode: "numeric", min: "1", placeholder: "z. B. 7200", "aria-label": "Schritte" });
+    var schritte = el("input", { type: "number", inputmode: "numeric", min: "1", placeholder: "z. B. 7200", "aria-label": "Schritte", class: "breit" });
     if (training.schritte) schritte.value = String(training.schritte);
     schritte.addEventListener("input", function () { training.schritte = schritte.value ? Number(schritte.value) : null; });
-    kinder.push(feld("Schritte (freiwillig, zählt das Tempo: flott bis ×3)", schritte));
+    kinder.push(feld("Schritte (freiwillig, zählt das Tempo: flott bis ×3)", el("div", { class: "chips" }, [schritte])));
   } else {
     training.schritte = null;
   }
