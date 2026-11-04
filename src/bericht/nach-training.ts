@@ -8,6 +8,7 @@ import { rangIndex, rangText, RAENGE } from "../scoring/raenge.js";
 import { type Teilnehmer, type TeilnehmerStand, seasonEnde, seasonStand, wocheVon } from "../scoring/season.js";
 import { fuelle, waehleSpruch } from "../texte/sprueche.js";
 import { minispielMeldungen } from "../minispiel/ablauf.js";
+import { lauwarmBeimPost, lauwarmBilanz } from "../scoring/lauwarm.js";
 
 const z = (x: number) => x.toLocaleString("de-DE", { maximumFractionDigits: 0 });
 
@@ -41,7 +42,7 @@ function ueberholte(vorher: readonly TeilnehmerStand[], nachher: readonly Teilne
 
 /**
  * Meldungen, die an den Gruppenpost eines neuen Trainings angehängt werden:
- * Überholmanöver, Boss-Schaden, Minispiel, Rangaufstieg und neue Erfolge.
+ * Überholmanöver, Boss-Schaden, Minispiel, Spott für Faktor-Minimalisten, Rangaufstieg und neue Erfolge.
  */
 export function meldungenNachTraining(db: Db, trainingId: number, tag: string, zufall: () => number = Math.random): string[] {
   const t = db
@@ -96,6 +97,12 @@ export function meldungenNachTraining(db: Db, trainingId: number, tag: string, z
       }
     }
     zeilen.push(...minispielMeldungen(db, s, trainingId, t.nutzer, t.datum, tag));
+
+    // Faktor-Minimalisten gelegentlich aufziehen (jeder 3. Kuschel-Eintrag der Woche)
+    const meineWoche = teilnehmer.find((tn) => tn.id === id)!.trainings.filter((x) => wocheVon(s, x.datum) === woche);
+    if (lauwarmBeimPost(t, lauwarmBilanz(meineWoche))) {
+      zeilen.push(fuelle(waehleSpruch("lauwarm", undefined, zufall), { name: t.name, sportart: t.sportartName }));
+    }
     erfolge.push(...wochenErfolge(ich.wochen, s.wochenziel_last));
   }
 
