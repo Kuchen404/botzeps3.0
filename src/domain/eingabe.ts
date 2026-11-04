@@ -1,5 +1,4 @@
 /** Zerlegt Eingaben wie `/sport 45 Joggen gestern` und `/waage 82,4 18,5 41,2`. */
-import { pruefeSchritte } from "../scoring/fleiss.js";
 
 export const GRENZEN = {
   minuten: { min: 5, max: 240 },
@@ -67,10 +66,8 @@ export function parseSport(text: string): Ergebnis<SportEingabe> {
       return { ok: false, fehler: `Dauer muss zwischen ${GRENZEN.minuten.min} und ${GRENZEN.minuten.max} Minuten liegen.` };
     }
   }
-  if (schritte !== undefined && minuten !== undefined) {
-    const falsch = pruefeSchritte(minuten, schritte);
-    if (falsch) return { ok: false, fehler: falsch };
-  }
+  // Ob das Tempo passt, hängt an der Sportart (nur beim Spazieren zählen Schritte) und wird dort geprüft
+  if (schritte !== undefined && (!Number.isInteger(schritte) || schritte <= 0)) return { ok: false, fehler: "Schritte bitte als ganze Zahl." };
   const sportart = rest.join(" ") || undefined;
   return {
     ok: true,

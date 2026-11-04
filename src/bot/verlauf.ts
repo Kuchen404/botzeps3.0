@@ -4,6 +4,7 @@ import { speichereNutzer } from "../db/repo.js";
 import { type Eintrag, aendereTrainingsdauer, eintrag, letzteEintraege, loescheEintrag } from "../db/verlauf-repo.js";
 import { GRENZEN } from "../domain/eingabe.js";
 import { plusTage } from "../scoring/datum.js";
+import { pruefeSchritte } from "../scoring/fleiss.js";
 import { log } from "../log.js";
 import { anzeigename, datumDe, heute, istGruppe, uhr, zahlDe } from "./kontext.js";
 
@@ -131,6 +132,11 @@ export function verlaufModul(db: Db): Composer<Context> {
     }
     const ok = await pruefe(ctx, "t", Number(id));
     if (!ok) return;
+    const falsch = ok.e.schritte ? pruefeSchritte(minuten, ok.e.schritte) : null;
+    if (falsch) {
+      await ctx.answerCallbackQuery({ text: falsch, show_alert: true });
+      return;
+    }
     aendereTrainingsdauer(db, ok.e, ok.nutzer.id, minuten);
     const neu = { ...ok.e, minuten };
     await gruppenpost(ctx, ok.e, korrekturText(ok.nutzer.name, ok.e, minuten));

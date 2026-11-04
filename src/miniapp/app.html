@@ -619,7 +619,7 @@ function trainingKarte() {
     var schritte = el("input", { type: "number", inputmode: "numeric", min: "1", placeholder: "z. B. 7200", "aria-label": "Schritte", class: "breit" });
     if (training.schritte) schritte.value = String(training.schritte);
     schritte.addEventListener("input", function () { training.schritte = schritte.value ? Number(schritte.value) : null; });
-    kinder.push(feld("Schritte (freiwillig, zählt das Tempo: flott bis ×3)", el("div", { class: "chips" }, [schritte])));
+    kinder.push(feld("Schritte von diesem Spaziergang (nicht vom ganzen Tag, flott bis ×3)", el("div", { class: "chips" }, [schritte])));
   } else {
     training.schritte = null;
   }

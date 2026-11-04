@@ -89,6 +89,20 @@ describe("/verlauf", () => {
     expect(db.prepare("SELECT minuten FROM training WHERE id = ?").get(id)).toEqual({ minuten: 60 });
   });
 
+  it("Spaziergang mit Schritten: kürzer machen nur, solange das Tempo zum Gehen passt", async () => {
+    const { db, bot, aufrufe } = testBot();
+    tag("2026-10-14");
+    await bot.handleUpdate(befehl("/sport 60 Spazierengehen 7800"));
+    const { id } = db.prepare("SELECT id FROM training").get() as { id: number };
+    await bot.handleUpdate(knopf(`vt:${id}:45`, PRIVAT));
+    const antwort = aufrufe.filter((a) => a.methode === "answerCallbackQuery").at(-1)?.payload;
+    expect(antwort).toMatchObject({ show_alert: true });
+    expect(String(antwort?.text)).toContain("173 pro Minute, das ist kein Spazieren mehr");
+    expect(db.prepare("SELECT minuten, faktor FROM training").get()).toEqual({ minuten: 60, faktor: 3 });
+    await bot.handleUpdate(knopf(`vt:${id}:90`, PRIVAT));
+    expect(db.prepare("SELECT minuten, faktor FROM training").get()).toEqual({ minuten: 90, faktor: 0.5 });
+  });
+
   it("in der Gruppe nur ein Link in den privaten Chat", async () => {
     const { bot, letzterText } = testBot();
     await bot.handleUpdate(befehl("/verlauf", GRUPPE));
