@@ -17,7 +17,7 @@ describe("/sport", () => {
   it("in der Gruppe: trägt ein, postet dort und meldet automatisch an", async () => {
     const { db, bot, letzterText } = testBot();
     await bot.handleUpdate(befehl("/sport 45 joggen"));
-    expect(trainings(db)).toEqual([{ datum: heute(), minuten: 45, faktor: 3, sportart: "Joggen", post: 1001 }]);
+    expect(trainings(db)).toEqual([{ datum: heute(), minuten: 45, faktor: 4.5, sportart: "Joggen", post: 1001 }]);
     expect(letzterText()).toContain("Kevin");
     expect(db.prepare("SELECT COUNT(*) AS n FROM gruppe_mitglied").get()).toEqual({ n: 1 });
   });
@@ -30,7 +30,7 @@ describe("/sport", () => {
     expect(post?.payload.chat_id).toBe(GRUPPE.id);
     expect(String(post?.payload.text)).toContain("(gestern)");
     expect(bestaetigung?.payload.chat_id).toBe(PRIVAT.id);
-    expect(bestaetigung?.payload.text).toBe("Eingetragen: 60 min Krafttraining (gestern), 120 Lastpunkte. In „Pumper“ gepostet.");
+    expect(bestaetigung?.payload.text).toBe("Eingetragen: 60 min Krafttraining (gestern), 180 Lastpunkte. In „Pumper“ gepostet.");
     expect(trainings(db)[0]).toMatchObject({ datum: plusTage(heute(), -1), post: post ? 1002 : null });
   });
 
@@ -86,6 +86,56 @@ describe("/sport", () => {
     await bot.handleUpdate(knopf(`sp:42:9:45:${joggen.id}`));
     await bot.handleUpdate(knopf(`sp:42:0:999:${joggen.id}`));
     expect(trainings(db)).toHaveLength(1);
+  });
+
+  it("Spazieren mit Schritten: Faktor aus dem Tempo, im Post stehen die Schritte", async () => {
+    const { db, bot, letzterText } = testBot();
+    await bot.handleUpdate(befehl("/sport 60 Spazierengehen 7.200 Schritte"));
+    expect(trainings(db)).toMatchObject([{ minuten: 60, faktor: 2, sportart: "Spazierengehen" }]);
+    expect(letzterText()).toContain("(7.200 Schritte, 120 pro Minute: ×2)");
+    expect(db.prepare("SELECT schritte FROM training").get()).toEqual({ schritte: 7200 });
+  });
+
+  it("Spazieren ohne Schritte: ×0,5 und privat ein Tipp", async () => {
+    const { db, bot, gesendet } = testBot();
+    await bot.handleUpdate(knopf("mitmachen"));
+    await bot.handleUpdate(befehl("/sport 60 spazieren", PRIVAT));
+    expect(trainings(db)).toMatchObject([{ faktor: 0.5, sportart: "Spazierengehen" }]);
+    const bestaetigung = String(gesendet().at(-1)?.payload.text);
+    expect(bestaetigung).toContain("30 Lastpunkte");
+    expect(bestaetigung).toContain("Mit Schritten zählt das Tempo");
+  });
+
+  it("Schritte bei anderen Sportarten zählen nicht, unplausible werden abgelehnt", async () => {
+    const { db, bot, letzterText } = testBot();
+    await bot.handleUpdate(befehl("/sport 60 Spazierengehen 100000"));
+    expect(letzterText()).toContain("das passt nicht");
+    await bot.handleUpdate(befehl("/sport 45 Joggen 7000"));
+    expect(trainings(db)).toMatchObject([{ faktor: 4.5, sportart: "Joggen" }]);
+    expect(db.prepare("SELECT schritte FROM training").get()).toEqual({ schritte: null });
+  });
+
+  it("Schritte überleben die Knöpfe", async () => {
+    const { db, bot, aufrufe } = testBot();
+    await bot.handleUpdate(befehl("/sport 60 7800"));
+    const spazieren = knoepfe(aufrufe).find((k) => k.text === "Spazierengehen")!;
+    await bot.handleUpdate(knopf(spazieren.daten));
+    expect(trainings(db)).toMatchObject([{ minuten: 60, faktor: 3, sportart: "Spazierengehen" }]);
+  });
+
+  it("Radfahren gibt's locker und sportlich: Auswahl statt Abstimmung", async () => {
+    const { db, bot, aufrufe, letzterText } = testBot();
+    await bot.handleUpdate(befehl("/sport 60 Radfahren"));
+    expect(letzterText()).toBe("Radfahren gibt's locker und sportlich. Welche?");
+    expect(knoepfe(aufrufe).map((k) => k.text)).toEqual(["Radfahren locker", "Radfahren sportlich"]);
+    await bot.handleUpdate(knopf(knoepfe(aufrufe)[1]!.daten));
+    expect(trainings(db)).toMatchObject([{ minuten: 60, faktor: 5, sportart: "Radfahren sportlich" }]);
+  });
+
+  it("Aliase: „laufen“ ist Joggen", async () => {
+    const { db, bot } = testBot();
+    await bot.handleUpdate(befehl("/sport 30 laufen"));
+    expect(trainings(db)).toMatchObject([{ minuten: 30, sportart: "Joggen" }]);
   });
 
   it("lehnt unplausible Dauer ab", async () => {

@@ -66,12 +66,12 @@ describe("Gamification", () => {
     expect(gesendet.some((g) => g.includes("BOSS"))).toBe(false);
     await lauf("2026-10-19T07:00:30Z"); // 9 Uhr Sommerzeit
     const ankuendigung = gesendet.find((g) => g.includes("BOSS-WOCHE"));
-    expect(ankuendigung).toContain("650 Lebenspunkte");
+    expect(ankuendigung).toContain("1.000 Lebenspunkte"); // 2 × 450 × 1,1, auf 50 gerundet
     expect(ankuendigung).toContain("+5 Punkte");
 
     tag("2026-10-20");
     await bot.handleUpdate(befehl("/sport 120 Joggen"));
-    expect(letzterText()).toContain("noch 290 von 650 Lebenspunkten");
+    expect(letzterText()).toContain("noch 460 von 1.000 Lebenspunkten"); // 120 min × 4,5
     await bot.handleUpdate(befehl("/sport 120 Joggen", GRUPPE, PETER));
     expect(letzterText()).toContain("💀");
 
@@ -80,12 +80,12 @@ describe("Gamification", () => {
 
     await lauf("2026-10-25T19:00:30Z"); // Bericht Woche 2, Winterzeit
     const bericht = gesendet.find((g) => g.includes("Woche 2 von 4"));
-    expect(bericht).toContain("besiegt (720 Schaden)! +5 für: Kevin, Peter");
+    expect(bericht).toContain("besiegt (1.080 Schaden)! +5 für: Kevin, Peter");
 
     await lauf("2026-10-26T08:00:30Z");
     const zurueck = gesendet.at(-1)!;
     expect(zurueck).toContain("IST ZURÜCK");
-    expect(zurueck).toContain("(aufgepumpt) hat 900 Lebenspunkte");
+    expect(zurueck).toContain("(aufgepumpt) hat 1.350 Lebenspunkte");
     expect(zurueck).toContain("+10 Punkte");
   });
 
@@ -96,7 +96,7 @@ describe("Gamification", () => {
     await bot.handleUpdate(befehl("/sport 30 Yoga"));
     await lauf("2026-10-25T19:00:30Z");
     const bericht = gesendet.find((g) => g.includes("Woche 2 von 4"))!;
-    expect(bericht).toContain("(30 von 650 Schaden)");
+    expect(bericht).toContain("(30 von 1.000 Schaden)");
     expect(bericht.split("\n").filter((z) => z.includes("Peter")).length).toBeGreaterThan(1);
   });
 
@@ -107,9 +107,9 @@ describe("Gamification", () => {
     await bot.handleUpdate(befehl("/erfolge", PRIVAT));
     expect(letzterText()).toContain("✅ Erster Schweißtropfen");
     expect(letzterText()).toContain("🔒 Champion");
-    expect(letzterText()).toContain("Rang: 🛋 Couchkartoffel (360 Lastpunkte insgesamt, noch 640 bis 🥬 Lauch)");
+    expect(letzterText()).toContain("Rang: 🛋 Couchkartoffel (540 Lastpunkte insgesamt, noch 960 bis 🥬 Lauch)");
     await bot.handleUpdate(befehl("/ruhmeshalle"));
-    expect(letzterText()).toContain("Kevin: 360 Lastpunkte");
+    expect(letzterText()).toContain("Kevin: 540 Lastpunkte");
     expect(letzterText()).toContain("Längste Einheit: Kevin, 120 min Joggen");
   });
   it("epischer Auftritt: Teaser, Beben, Vorzeichen, Steckbrief mit Drohung, angepinnt bis zum Bericht", async () => {
@@ -148,7 +148,7 @@ describe("Gamification", () => {
 
     tag("2026-10-20");
     await bot.handleUpdate(befehl("/sport 120 Joggen"));
-    await lauf("2026-10-22T16:00:30Z"); // Donnerstag 18 Uhr: 360 von 650, er wird nervös
+    await lauf("2026-10-22T16:00:30Z"); // Donnerstag 18 Uhr: 540 von 1.000, er wird nervös
     expect(log.at(-1)).toContain("wird nervös");
 
     await lauf("2026-10-25T19:00:30Z"); // Bericht Woche 2 löst den Pin
@@ -165,7 +165,7 @@ describe("Gamification", () => {
     const spott = gesendet.at(-1)!;
     expect(spott).toMatch(/^🗣 .*: „/);
     expect(spott).toContain("Peter");
-    expect(spott).toContain("noch 620 von 650 Lebenspunkten");
+    expect(spott).toContain("noch 970 von 1.000 Lebenspunkten");
     await bot.handleUpdate(befehl("/sport 120 Joggen"));
     expect(letzterText()).toContain("blutet");
   });
@@ -177,7 +177,7 @@ describe("Gamification", () => {
     tag("2026-10-20");
     await bot.handleUpdate(befehl("/sport 120 Joggen"));
     expect(letzterText()).toContain("💥 Volltreffer! Joggen ist die Schwäche");
-    expect(letzterText()).toContain("💀"); // 2 × 360 Schaden reicht für 650 Lebenspunkte
+    expect(letzterText()).toContain("💀"); // 2 × 540 Schaden reicht für 1.000 Lebenspunkte
     await bot.handleUpdate(befehl("/stand", PRIVAT));
     expect(letzterText()).toContain("Boss-Bonus: +5 Punkte");
   });

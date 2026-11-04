@@ -1,6 +1,6 @@
 import type { Db } from "./index.js";
-import { STANDARD_SPORTARTEN, type Sportart } from "../domain/sportarten.js";
-import type { Faktor } from "../scoring/fleiss.js";
+import { STANDARD_SPORTARTEN, type Sportart, sucheSportart, varianten } from "../domain/sportarten.js";
+import { type Faktor, schrittFaktor } from "../scoring/fleiss.js";
 
 export interface NutzerZeile {
   id: number;
@@ -33,8 +33,8 @@ export function speichereGruppe(db: Db, chatId: number, name: string): number {
     const { id } = db
       .prepare("INSERT INTO gruppe (telegram_chat_id, name) VALUES (?, ?) RETURNING id")
       .get(chatId, name) as { id: number };
-    const neueSportart = db.prepare("INSERT INTO sportart (gruppe, name, faktor, kriterium) VALUES (?, ?, ?, ?)");
-    for (const s of STANDARD_SPORTARTEN) neueSportart.run(id, s.name, s.faktor, s.kriterium ?? null);
+    const neueSportart = db.prepare("INSERT INTO sportart (gruppe, name, faktor, kriterium, nach_schritten) VALUES (?, ?, ?, ?, ?)");
+    for (const s of STANDARD_SPORTARTEN) neueSportart.run(id, s.name, s.faktor, s.kriterium ?? null, s.nachSchritten ? 1 : 0);
     return id;
   })();
 }
@@ -47,9 +47,14 @@ export function trageMitgliedEin(db: Db, gruppeId: number, nutzerId: number): bo
 
 export function sportartenDerGruppe(db: Db, gruppeId: number): Sportart[] {
   const zeilen = db
-    .prepare("SELECT name, faktor, kriterium FROM sportart WHERE gruppe = ? ORDER BY name")
-    .all(gruppeId) as { name: string; faktor: Faktor; kriterium: string | null }[];
-  return zeilen.map((z) => ({ name: z.name, faktor: z.faktor, ...(z.kriterium ? { kriterium: z.kriterium } : {}) }));
+    .prepare("SELECT name, faktor, kriterium, nach_schritten FROM sportart WHERE gruppe = ? ORDER BY name")
+    .all(gruppeId) as { name: string; faktor: Faktor; kriterium: string | null; nach_schritten: number }[];
+  return zeilen.map((z) => ({
+    name: z.name,
+    faktor: z.faktor,
+    ...(z.kriterium ? { kriterium: z.kriterium } : {}),
+    ...(z.nach_schritten ? { nachSchritten: true } : {}),
+  }));
 }
 
 export interface SportartZeile {
@@ -58,6 +63,8 @@ export interface SportartZeile {
   name: string;
   faktor: Faktor;
   kriterium: string | null;
+  /** 1: Faktor kann aus Schritten pro Minute kommen (Spazieren) */
+  nach_schritten: number;
 }
 
 export interface GruppeZeile {
@@ -92,22 +99,36 @@ export function gruppeNachId(db: Db, id: number): GruppeZeile | undefined {
 }
 
 export function sportartNachId(db: Db, id: number): SportartZeile | undefined {
-  return db.prepare("SELECT id, gruppe, name, faktor, kriterium FROM sportart WHERE id = ?").get(id) as
+  return db.prepare("SELECT id, gruppe, name, faktor, kriterium, nach_schritten FROM sportart WHERE id = ?").get(id) as
     | SportartZeile
     | undefined;
 }
 
 export function sportartNachName(db: Db, gruppeId: number, name: string): SportartZeile | undefined {
   return db
-    .prepare("SELECT id, gruppe, name, faktor, kriterium FROM sportart WHERE gruppe = ? AND name = ? COLLATE NOCASE")
+    .prepare("SELECT id, gruppe, name, faktor, kriterium, nach_schritten FROM sportart WHERE gruppe = ? AND name = ? COLLATE NOCASE")
     .get(gruppeId, name.trim()) as SportartZeile | undefined;
+}
+
+/**
+ * Sportart zu einer Eingabe: genauer Name oder Alias („laufen“ → Joggen). Gibt es nur
+ * Varianten („Radfahren“ → locker und sportlich), kommen die zurück.
+ */
+export function findeSportart(db: Db, gruppeId: number, eingabe: string): { treffer?: SportartZeile; varianten: SportartZeile[] } {
+  const direkt = sportartNachName(db, gruppeId, eingabe);
+  if (direkt) return { treffer: direkt, varianten: [] };
+  const alle = db
+    .prepare("SELECT id, gruppe, name, faktor, kriterium, nach_schritten FROM sportart WHERE gruppe = ? ORDER BY faktor, name")
+    .all(gruppeId) as SportartZeile[];
+  const alias = sucheSportart(alle, eingabe);
+  return alias ? { treffer: alias, varianten: [] } : { varianten: varianten(alle, eingabe) };
 }
 
 /** Sportarten der Gruppe, die eigenen zuletzt genutzten zuerst, danach alphabetisch. */
 export function sportartenFuerAuswahl(db: Db, gruppeId: number, nutzerId: number): SportartZeile[] {
   return db
     .prepare(
-      `SELECT s.id, s.gruppe, s.name, s.faktor, s.kriterium FROM sportart s
+      `SELECT s.id, s.gruppe, s.name, s.faktor, s.kriterium, s.nach_schritten FROM sportart s
        LEFT JOIN (
          SELECT sportart, MAX(erstellt_am) AS zuletzt FROM training
          WHERE nutzer = ? AND geloescht_am IS NULL GROUP BY sportart
@@ -131,21 +152,31 @@ export interface NeuesTraining {
   nutzer: number;
   datum: string;
   minuten: number;
-  sportart: SportartZeile;
+  sportart: Pick<SportartZeile, "id" | "name" | "faktor" | "nach_schritten">;
+  /** Schritte, nur bei Sportarten mit `nach_schritten`; bestimmen dann den Faktor. */
+  schritte?: number | null;
   /** ISO-Zeitpunkt der Eingabe; ohne Angabe die Uhr der Datenbank. */
   erstelltAm?: string;
 }
 
+/** Faktor eines Trainings: aus den Schritten, wenn die Sportart das kann, sonst der der Sportart. */
+export function trainingsFaktor(sportart: Pick<SportartZeile, "faktor" | "nach_schritten">, minuten: number, schritte?: number | null): Faktor {
+  return sportart.nach_schritten && schritte ? schrittFaktor(minuten, schritte) : sportart.faktor;
+}
+
 /** Speichert ein Training mit dem aktuellen Faktor der Sportart. Gibt die id zurück. */
 export function speichereTraining(db: Db, t: NeuesTraining): number {
+  const schritte = t.sportart.nach_schritten && t.schritte ? t.schritte : null;
   return db.transaction(() => {
     const { id } = db
       .prepare(
-        `INSERT INTO training (nutzer, datum, minuten, sportart, faktor, erstellt_am)
-         VALUES (?, ?, ?, ?, ?, COALESCE(?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))) RETURNING id`,
+        `INSERT INTO training (nutzer, datum, minuten, sportart, faktor, schritte, erstellt_am)
+         VALUES (?, ?, ?, ?, ?, ?, COALESCE(?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))) RETURNING id`,
       )
-      .get(t.nutzer, t.datum, t.minuten, t.sportart.id, t.sportart.faktor, t.erstelltAm ?? null) as { id: number };
-    protokolliere(db, "training", id, t.nutzer, { datum: t.datum, minuten: t.minuten, sportart: t.sportart.name });
+      .get(t.nutzer, t.datum, t.minuten, t.sportart.id, trainingsFaktor(t.sportart, t.minuten, schritte), schritte, t.erstelltAm ?? null) as {
+      id: number;
+    };
+    protokolliere(db, "training", id, t.nutzer, { datum: t.datum, minuten: t.minuten, sportart: t.sportart.name, ...(schritte ? { schritte } : {}) });
     return id;
   })();
 }

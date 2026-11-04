@@ -38,9 +38,13 @@ describe("Abstimmung über neue Sportarten", () => {
     expect(abstimmung.payload.chat_id).toBe(GRUPPE.id);
     expect(String(abstimmung.payload.text)).toContain("Entschieden, sobald 2 abgestimmt haben");
     expect(String(abstimmung.payload.text)).toContain("(45 min)");
+    expect(String(abstimmung.payload.text)).toContain("Wie anstrengend ist das? So wie …");
+    expect(String(abstimmung.payload.text)).toContain("Steht nicht in der Tabelle");
+    expect(String(abstimmung.payload.text)).toContain("https://pacompendium.com");
     expect(letzterText()).toContain("Abstimmung über Quidditch läuft");
 
     const stimmen = knoepfe([abstimmung]);
+    expect(stimmen.map((k) => k.text)).toEqual(["🧘 Yoga ×1: 0", "🥾 Wandern ×2,5: 0", "🏋️ Kraft ×3: 0", "🏃 Joggen ×4,5: 0", "🚴 Spinning ×6: 0"]);
     await bot.handleUpdate(knopf(stimmen[2]!.daten, GRUPPE, KEVIN));
     expect(sportart(db, "Quidditch")).toBeUndefined();
     await bot.handleUpdate(knopf(stimmen[2]!.daten, GRUPPE, PETER));
@@ -49,7 +53,7 @@ describe("Abstimmung über neue Sportarten", () => {
     expect(trainings(db)).toMatchObject([{ datum: heute(), minuten: 45, faktor: 3, sportart: "Quidditch" }]);
     expect((trainings(db)[0] as { post: number }).post).toBeGreaterThan(1000);
     const bearbeitet = aufrufe.filter((a) => a.methode === "editMessageText").at(-1)!;
-    expect(String(bearbeitet.payload.text)).toContain("✅ Entschieden: Quidditch zählt ab sofort als");
+    expect(String(bearbeitet.payload.text)).toContain("✅ Entschieden: Quidditch zählt ab sofort ×3.");
     expect(letzterText()).toContain("Kevin");
 
     // Danach ist die Abstimmung zu.
@@ -67,8 +71,39 @@ describe("Abstimmung über neue Sportarten", () => {
     await bot.handleUpdate(knopf(stimmen[0]!.daten, GRUPPE, KEVIN));
     expect(sportart(db, "Bouldern")).toBeUndefined();
     await bot.handleUpdate(knopf(stimmen[1]!.daten, GRUPPE, PETER));
-    // 1:1 → Compendium-Vorschlag oder mittel
-    expect(sportart(db, "Bouldern")).toBeDefined();
+    // 1:1 ohne den Vorschlag (×6) → der niedrigere Wert
+    expect(sportart(db, "Bouldern")).toEqual({ name: "Bouldern", faktor: 1 });
+  });
+
+  it("Vorschlag aus der Tabelle bekommt einen eigenen Knopf und gewinnt bei Gleichstand", async () => {
+    const { db, bot, aufrufe } = testBot();
+    await dreierGruppe(bot);
+    await bot.handleUpdate(befehl("/sportart Tennis"));
+    const nachricht = aufrufe.filter((a) => a.methode === "sendMessage").at(-1)!;
+    expect(String(nachricht.payload.text)).toContain("📖 Laut Tabelle: ×4 (6,8 MET)");
+    const stimmen = knoepfe([nachricht]);
+    expect(stimmen.map((k) => k.text)).toContain("📖 Tabelle ×4: 0");
+    await bot.handleUpdate(knopf(stimmen.find((k) => k.text.startsWith("📖"))!.daten, GRUPPE, KEVIN));
+    await bot.handleUpdate(knopf(stimmen.find((k) => k.text.startsWith("🏋️"))!.daten, GRUPPE, PETER));
+    expect(sportart(db, "Tennis")).toEqual({ name: "Tennis", faktor: 4 });
+  });
+
+  it("alte Knöpfe von vor der Umstellung zählen weiter, fremde Werte nicht", async () => {
+    const { db, bot } = testBot();
+    await dreierGruppe(bot);
+    await bot.handleUpdate(befehl("/sportart Quidditch"));
+    const { id } = db.prepare("SELECT id FROM abstimmung").get() as { id: number };
+    await bot.handleUpdate(knopf(`sv:${id}:77`, GRUPPE, KEVIN));
+    expect(db.prepare("SELECT COUNT(*) AS n FROM stimme").get()).toEqual({ n: 0 });
+    await bot.handleUpdate(knopf(`sv:${id}:2`, GRUPPE, KEVIN));
+    await bot.handleUpdate(knopf(`sv:${id}:2`, GRUPPE, PETER));
+    expect(sportart(db, "Quidditch")).toEqual({ name: "Quidditch", faktor: 2.5 });
+  });
+
+  it("Radfahren steht nicht zur Abstimmung, das gibt's locker und sportlich", async () => {
+    const { bot, letzterText } = testBot();
+    await bot.handleUpdate(befehl("/sportart Radfahren"));
+    expect(letzterText()).toBe("Radfahren gibt's schon als Radfahren locker (×1) und Radfahren sportlich (×5).");
   });
 
   it("/sportart: vorhandene Sportart und doppelte Abstimmung", async () => {
@@ -132,7 +167,7 @@ describe("Abstimmung über neue Sportarten", () => {
       await beendeAbgelaufeneAbstimmungen(db, senden, new Date("2026-10-07T10:00:00Z"));
       expect(gesendet[0]).toEqual({
         chat: GRUPPE.id,
-        text: "✅ Entschieden: Quidditch zählt ab sofort als leicht (×1). (Abstimmung nach 24 Stunden beendet)",
+        text: "✅ Entschieden: Quidditch zählt ab sofort ×1. (Abstimmung nach 24 Stunden beendet)",
       });
       expect(gesendet[1]?.text).toContain("Kevin");
       expect(trainings(db)).toMatchObject([{ minuten: 30, faktor: 1, sportart: "Quidditch", post: 7002 }]);

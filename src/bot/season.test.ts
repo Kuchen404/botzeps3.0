@@ -159,7 +159,7 @@ describe("/rangliste und /stand", () => {
     tag("2026-10-14");
     await bot.handleUpdate(befehl("/waage 90 27 40", PRIVAT));
     await bot.handleUpdate(befehl("/sport 100 Joggen"));
-    await bot.handleUpdate(befehl("/sport 30 Yoga", GRUPPE, PETER));
+    await bot.handleUpdate(befehl("/sport 45 Yoga", GRUPPE, PETER));
 
     await bot.handleUpdate(befehl("/rangliste"));
     const rangliste = letzterText();
@@ -173,7 +173,7 @@ describe("/rangliste und /stand", () => {
     await bot.handleUpdate(befehl("/stand", PRIVAT));
     const privat = letzterText();
     expect(privat).toContain("Platz 1 von 2 mit 110 Punkten");
-    expect(privat).toContain("Diese Woche: 300 von 300 Lastpunkten ✅");
+    expect(privat).toContain("Diese Woche: 450 von 450 Lastpunkten ✅");
     expect(privat).toContain("Fett 27 → 24,3 kg (−10 %)");
 
     await bot.handleUpdate(befehl("/stand"));

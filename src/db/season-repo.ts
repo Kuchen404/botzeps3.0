@@ -1,6 +1,6 @@
 import type { Db } from "./index.js";
 import { teileKleinstemTeamZu } from "./team-repo.js";
-import type { Faktor } from "../scoring/fleiss.js";
+import { type Faktor, FLEISS } from "../scoring/fleiss.js";
 import type { Messung } from "../scoring/fortschritt.js";
 import { type SeasonEinstellungen, type Teilnehmer, kalibrierFenster, seasonEnde } from "../scoring/season.js";
 import { type BossEinstellung, type BossStufe, bossWoche } from "../scoring/boss.js";
@@ -112,8 +112,8 @@ export function legeSeasonAn(
 ): SeasonZeile {
   return db.transaction(() => {
     const { id } = db
-      .prepare("INSERT INTO season (gruppe, name, start, erstellt_von) VALUES (?, ?, ?, ?) RETURNING id")
-      .get(s.gruppe, s.name, s.start, s.erstelltVon) as { id: number };
+      .prepare("INSERT INTO season (gruppe, name, start, erstellt_von, wochenziel_last) VALUES (?, ?, ?, ?, ?) RETURNING id")
+      .get(s.gruppe, s.name, s.start, s.erstelltVon, FLEISS.wochenzielLast) as { id: number };
     db.prepare(
       `INSERT INTO teilnahme (season, nutzer, beitritt)
        SELECT ?, nutzer, ? FROM gruppe_mitglied WHERE gruppe = ?`,

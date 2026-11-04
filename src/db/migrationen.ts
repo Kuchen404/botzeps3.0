@@ -1,8 +1,21 @@
+import type Database from "better-sqlite3";
+import { faktorenNachMet } from "./migration-faktoren.js";
+
+export interface Migration {
+  version: number;
+  name: string;
+  sql?: string;
+  /** Umrechnungen, die SQL allein nicht kann; läuft in derselben Transaktion nach `sql`. */
+  aus?: (db: Database.Database) => void;
+  /** Für Tabellen, auf die andere verweisen: Fremdschlüssel aus, danach `foreign_key_check`. */
+  ohneFremdschluessel?: boolean;
+}
+
 /**
  * Datenbank-Migrationen, in dieser Reihenfolge genau einmal ausgeführt.
  * Bestehende Einträge nie ändern, nur neue anhängen.
  */
-export const MIGRATIONEN: readonly { version: number; name: string; sql: string }[] = [
+export const MIGRATIONEN: readonly Migration[] = [
   {
     version: 1,
     name: "grundschema",
@@ -288,5 +301,76 @@ export const MIGRATIONEN: readonly { version: number; name: string; sql: string 
       ALTER TABLE messung_neu RENAME TO messung;
       CREATE INDEX messung_nutzer_datum ON messung (nutzer, datum);
     `,
+  },
+  {
+    version: 12,
+    name: "faktoren_nach_met",
+    // Faktor = MET − 3 statt Stufen 1/2/3: Faktoren als Kommazahl, Schritte beim Spazieren,
+    // Radfahren/Tanzen/Schwimmen geteilt in locker und sportlich. Neu angelegt werden alle
+    // Tabellen mit CHECK (faktor IN (1, 2, 3)); sportart und abstimmung haben Verweise auf sich.
+    ohneFremdschluessel: true,
+    sql: `
+      CREATE TABLE sportart_neu (
+        id             INTEGER PRIMARY KEY,
+        gruppe         INTEGER NOT NULL REFERENCES gruppe(id) ON DELETE CASCADE,
+        name           TEXT    NOT NULL,
+        faktor         REAL    NOT NULL CHECK (faktor > 0 AND faktor <= 10),
+        kriterium      TEXT,
+        nach_schritten INTEGER NOT NULL DEFAULT 0, -- Faktor aus Schritten pro Minute (Spazieren)
+        UNIQUE (gruppe, name COLLATE NOCASE)
+      );
+      INSERT INTO sportart_neu (id, gruppe, name, faktor, kriterium) SELECT id, gruppe, name, faktor, kriterium FROM sportart;
+      DROP TABLE sportart;
+      ALTER TABLE sportart_neu RENAME TO sportart;
+
+      CREATE TABLE training_neu (
+        id          INTEGER PRIMARY KEY,
+        nutzer      INTEGER NOT NULL REFERENCES nutzer(id) ON DELETE CASCADE,
+        datum       TEXT    NOT NULL,                     -- lokales Datum, YYYY-MM-DD
+        minuten     INTEGER NOT NULL CHECK (minuten BETWEEN 5 AND 240),
+        sportart    INTEGER NOT NULL REFERENCES sportart(id),
+        faktor      REAL    NOT NULL CHECK (faktor > 0 AND faktor <= 10), -- Faktor beim Eintragen, falls die Sportart später geändert wird
+        schritte    INTEGER CHECK (schritte > 0),
+        gruppen_nachricht_id INTEGER,
+        erstellt_am TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+        geloescht_am TEXT,
+        -- Vor der Teilung eingetragen (Radfahren → locker): darf einmal auf sportlich umgestellt werden
+        variante_offen INTEGER NOT NULL DEFAULT 0
+      );
+      INSERT INTO training_neu (id, nutzer, datum, minuten, sportart, faktor, gruppen_nachricht_id, erstellt_am, geloescht_am)
+        SELECT id, nutzer, datum, minuten, sportart, faktor, gruppen_nachricht_id, erstellt_am, geloescht_am FROM training;
+      DROP TABLE training;
+      ALTER TABLE training_neu RENAME TO training;
+      CREATE INDEX training_nutzer_datum ON training (nutzer, datum);
+
+      CREATE TABLE abstimmung_neu (
+        id            INTEGER PRIMARY KEY,
+        gruppe        INTEGER NOT NULL REFERENCES gruppe(id) ON DELETE CASCADE,
+        name          TEXT    NOT NULL,
+        vorschlag     REAL    CHECK (vorschlag > 0 AND vorschlag <= 10),
+        antragsteller INTEGER NOT NULL REFERENCES nutzer(id),
+        minuten       INTEGER,
+        datum         TEXT,
+        nachricht_id  INTEGER,
+        erstellt_am   TEXT    NOT NULL,
+        beendet_am    TEXT,
+        ergebnis      REAL    CHECK (ergebnis > 0 AND ergebnis <= 10)
+      );
+      INSERT INTO abstimmung_neu SELECT id, gruppe, name, vorschlag, antragsteller, minuten, datum, nachricht_id, erstellt_am, beendet_am, ergebnis FROM abstimmung;
+      DROP TABLE abstimmung;
+      ALTER TABLE abstimmung_neu RENAME TO abstimmung;
+      CREATE UNIQUE INDEX abstimmung_offen ON abstimmung (gruppe, name COLLATE NOCASE) WHERE beendet_am IS NULL;
+
+      CREATE TABLE stimme_neu (
+        abstimmung INTEGER NOT NULL REFERENCES abstimmung(id) ON DELETE CASCADE,
+        nutzer     INTEGER NOT NULL REFERENCES nutzer(id) ON DELETE CASCADE,
+        faktor     REAL    NOT NULL CHECK (faktor > 0 AND faktor <= 10),
+        PRIMARY KEY (abstimmung, nutzer)
+      );
+      INSERT INTO stimme_neu SELECT abstimmung, nutzer, faktor FROM stimme;
+      DROP TABLE stimme;
+      ALTER TABLE stimme_neu RENAME TO stimme;
+    `,
+    aus: (db) => faktorenNachMet(db, new Date()),
   },
 ];

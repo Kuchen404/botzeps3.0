@@ -2,8 +2,8 @@ import { type IsoDatum } from "./datum.js";
 
 /** Grenzen und Ziele der Fleiß-Säule (Konzept 3.2). */
 export const FLEISS = {
-  /** Lastpunkte pro Woche, die als Ziel gelten (≈ 150 min moderat). */
-  wochenzielLast: 300,
+  /** Lastpunkte pro Woche, die als Ziel gelten (≈ 150 min Krafttraining ×3 oder 100 min Joggen ×4,5). */
+  wochenzielLast: 450,
   /** Punkte für genau erreichtes Wochenziel. */
   punkteProZiel: 10,
   /** Deckel: mehr als 150 % des Ziels zählt nicht. */
@@ -18,21 +18,60 @@ export const FLEISS = {
   maxSerieBonus: 3,
 } as const;
 
-export type Faktor = 1 | 2 | 3;
+/**
+ * Faktor einer Sportart: MET-Wert laut Compendium minus 3, also nur die Anstrengung
+ * über dem Alltag, in Schritten von 0,5 (siehe domain/sportarten.ts).
+ */
+export type Faktor = number;
 
 export interface Training {
   datum: IsoDatum;
   minuten: number;
-  /** Faktor der Sportart zum Zeitpunkt des Eintrags (1 leicht, 2 mittel, 3 intensiv). */
+  /** Faktor zum Zeitpunkt des Eintrags (Sportart oder, beim Spazieren, aus den Schritten). */
   faktor: Faktor;
   /** id der Sportart, für die Schwäche eines Bosses */
   sportartId?: number;
 }
 
-/** Last einer einzelnen Einheit: Minuten (gedeckelt) × Faktor. */
+/** Last einer einzelnen Einheit: Minuten (gedeckelt) × Faktor, auf ganze Punkte gerundet. */
 export function einheitsLast(training: Pick<Training, "minuten" | "faktor">): number {
   const minuten = Math.max(0, Math.min(training.minuten, FLEISS.maxMinutenProEinheit));
-  return minuten * training.faktor;
+  return Math.round(minuten * training.faktor);
+}
+
+/** Grenzen für Schritte beim Spazieren: Faktor aus dem Tempo (Schritte pro Minute). */
+export const SCHRITTE = {
+  /** Unter diesem Tempo bleibt es beim Grundfaktor (≈ 3 MET laut CADENCE-Adults). */
+  abProMinute: 100,
+  /** Je 10 Schritte pro Minute mehr ≈ 1 MET mehr, also +1 Faktor. */
+  proFaktor: 10,
+  minFaktor: 0.5,
+  /** 130 Schritte pro Minute ≈ 6 MET, mehr ist Joggen. */
+  maxFaktor: 3,
+  /** Plausible Eingaben pro Minute. */
+  minProMinute: 30,
+  maxProMinute: 200,
+} as const;
+
+/**
+ * Faktor eines Spaziergangs aus Minuten und Schritten: (Schritte pro Minute − 100) / 10,
+ * auf 0,5 gerundet, zwischen 0,5 und 3. 90/min → 0,5, 110/min → 1, 120/min → 2, 130/min → 3.
+ */
+export function schrittFaktor(minuten: number, schritte: number): number {
+  const proMinute = schritte / minuten;
+  const roh = (proMinute - SCHRITTE.abProMinute) / SCHRITTE.proFaktor;
+  const gerundet = Math.round(roh * 2) / 2;
+  return Math.min(SCHRITTE.maxFaktor, Math.max(SCHRITTE.minFaktor, gerundet));
+}
+
+/** Passen die Schritte zur Dauer? null wenn ja, sonst der Fehlertext. */
+export function pruefeSchritte(minuten: number, schritte: number): string | null {
+  if (!Number.isInteger(schritte) || schritte <= 0) return "Schritte bitte als ganze Zahl.";
+  const proMinute = schritte / minuten;
+  if (proMinute < SCHRITTE.minProMinute || proMinute > SCHRITTE.maxProMinute) {
+    return `${schritte} Schritte in ${minuten} min sind ${Math.round(proMinute)} pro Minute, das passt nicht (erlaubt ${SCHRITTE.minProMinute} bis ${SCHRITTE.maxProMinute}).`;
+  }
+  return null;
 }
 
 /**

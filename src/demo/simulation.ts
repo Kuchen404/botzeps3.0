@@ -40,7 +40,7 @@ export const FAKE_PROFILE: readonly Profil[] = [
     name: "Yoga-Yvonne",
     trainingsQuote: fest(0.6),
     minuten: [45, 75],
-    sportarten: ["Yoga", "Pilates", "Schwimmen"],
+    sportarten: ["Yoga", "Pilates", "Schwimmen locker"],
     start: { gewichtKg: 64, fettPct: 26, muskelPct: 34 },
     proTag: { gewichtKg: -0.02, fettPct: -0.03, muskelPct: 0.01 },
   },
@@ -57,7 +57,7 @@ export const FAKE_PROFILE: readonly Profil[] = [
     // Eine Woche Vollgas, eine Woche nichts
     trainingsQuote: (tag) => (Math.floor(tag / 7) % 2 === 0 ? 0.85 : 0.1),
     minuten: [30, 90],
-    sportarten: ["Fußball", "Radfahren", "Squash"],
+    sportarten: ["Fußball", "Radfahren sportlich", "Squash"],
     start: { gewichtKg: 81, fettPct: 24, muskelPct: 37 },
     proTag: { gewichtKg: -0.01, fettPct: -0.02, muskelPct: 0.01 },
   },
@@ -69,7 +69,7 @@ export function autopilotProfil(name: string): Profil {
     name,
     trainingsQuote: fest(0.5),
     minuten: [30, 70],
-    sportarten: ["Joggen", "Krafttraining", "Radfahren"],
+    sportarten: ["Joggen", "Krafttraining", "Radfahren locker"],
     start: { gewichtKg: 85, fettPct: 24, muskelPct: 37 },
     proTag: { gewichtKg: -0.03, fettPct: -0.04, muskelPct: 0.02 },
   };
