@@ -112,6 +112,8 @@ export interface Fortschrittswertung {
   punkte: number;
   /** Ohne Waage: Punkte sind der Median der Gruppe, die Prozente bleiben 0. */
   ausGruppe?: boolean;
+  /** Im Finale ohne Messung in der letzten Woche: keine positiven Punkte. */
+  ohneAbschlussmessung?: boolean;
 }
 
 /**

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { aendereSeason } from "./db/season-repo.js";
+import { aendereSeason, seasonNachId } from "./db/season-repo.js";
+import { berechneStand } from "./bericht/stand.js";
 import { uhr } from "./bot/kontext.js";
 import { GRUPPE, PETER, PRIVAT, befehl, knopf, testBot } from "./bot/testhilfe.js";
 import { fuehreAus, plane } from "./zeitplan.js";
@@ -398,5 +399,26 @@ describe("Zeitplan bei Fehlern", () => {
     expect(
       db.prepare("SELECT versuche, erledigt_am IS NOT NULL AS fertig FROM termin WHERE art = 'wochenbericht' ORDER BY faellig_am LIMIT 1").get(),
     ).toEqual({ versuche: 5, fertig: 1 });
+  });
+});
+
+describe("Endstand nach dem Finale", () => {
+  it("ein Nachtrag für Sonntag ändert den Sieger nicht mehr", async () => {
+    const { db, bot, berichte, lauf, letzterText } = await aufbau();
+    tag("2026-11-01");
+    await bot.handleUpdate(befehl("/sport 30 Joggen", PETER_PRIVAT, PETER));
+    await lauf("2026-11-01T19:00:30Z");
+    expect(berichte().at(-1)).toContain("Finale");
+    const s = seasonNachId(db, 1)!;
+    const vorher = berechneStand(db, s, "2026-11-02").map((st) => ({ name: st.name, gesamt: st.gesamt, platz: st.platz }));
+    expect(vorher[0]?.name).toBe("Peter");
+
+    // Montag: Kevin trägt für Sonntag ordentlich nach, erlaubt bis 2 Tage zurück
+    tag("2026-11-02");
+    await bot.handleUpdate(befehl("/sport 240 Joggen gestern", PRIVAT));
+    const nachher = berechneStand(db, s, "2026-11-02").map((st) => ({ name: st.name, gesamt: st.gesamt, platz: st.platz }));
+    expect(nachher).toEqual(vorher);
+    await bot.handleUpdate(befehl("/rangliste"));
+    expect(letzterText().indexOf("Peter")).toBeLessThan(letzterText().indexOf("Kevin"));
   });
 });

@@ -62,6 +62,13 @@ export interface TeilnehmerStand {
   platz: number;
 }
 
+/** Ob in der letzten Season-Woche gemessen wurde (Pflicht fürs Finale). */
+export function hatAbschlussmessung(s: Pick<SeasonEinstellungen, "start" | "wochen">, messungen: readonly { datum: IsoDatum }[]): boolean {
+  const ende = seasonEnde(s);
+  const von = plusTage(ende, -6);
+  return messungen.some((m) => imZeitraum(m.datum, von, ende));
+}
+
 /** Letzter Tag der Season (inklusive). */
 export function seasonEnde(s: Pick<SeasonEinstellungen, "start" | "wochen">): IsoDatum {
   return plusTage(s.start, s.wochen * 7 - 1);
@@ -137,7 +144,12 @@ export function teilnehmerStand(
   const start = startwert(t.messungen, fenster.von, fenster.bis);
   // Aktuelle Werte erst nach der Kalibrierung, sonst wäre der Fortschritt trivial 0.
   const aktuell = start && bis > fenster.bis ? aktuellerWert(t.messungen, bis, plusTage(fenster.bis, 1)) : null;
-  const fw = start && aktuell ? fortschritt(start, aktuell) : null;
+  let fw = start && aktuell ? fortschritt(start, aktuell) : null;
+  // Pflichtmessung fürs Finale: Wer in der letzten Woche nicht auf die Waage steigt,
+  // behält keine alten guten Werte; schlechte bleiben, sonst lohnte sich das Weglassen
+  if (fw && bis >= ende && fw.punkte > 0 && !hatAbschlussmessung(s, t.messungen)) {
+    fw = { fettAbbauPct: 0, muskelAufbauPct: 0, punkte: 0, ohneAbschlussmessung: true };
+  }
 
   const gesamt = fleissGewichtet + (fw?.punkte ?? 0) * gewichtsFaktor(s.gewichtFortschritt);
 

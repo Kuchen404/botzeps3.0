@@ -64,13 +64,22 @@ export function zeitplanExtras(
   };
 }
 
+/** Hinweis im letzten Wochenbericht vor dem Finale. */
+export const PFLICHTMESSUNG =
+  "⚖️ Nächste Woche ist Finale. Pflicht: mindestens einmal auf die Waage. Wer in der letzten Woche nicht misst, kriegt 0 Fortschrittspunkte, alte gute Werte zählen dann nicht mehr.";
+
 /** Pause zwischen den Etappen des Boss-Auftritts. */
 export const BOSS_ETAPPE_MS = 4000;
 /** Spott des Bosses am Donnerstag der Boss-Woche. */
 export const BOSS_SPOTT = { tag: 3, uhrzeit: "18:00" } as const;
 
 const ERINNERUNG_VERFALL_MS = 2 * 60 * 60 * 1000;
-export const ERINNERUNG = { tageOhneTraining: 3, tageOhneMessung: 4 } as const;
+export const ERINNERUNG = {
+  tageOhneTraining: 3,
+  tageOhneMessung: 4,
+  /** Ab so vielen Tagen vor Season-Ende erinnert der Bot an die Pflichtmessung fürs Finale (Freitag). */
+  abschlussTageVorher: 2,
+} as const;
 
 interface TerminZeile {
   id: number;
@@ -306,6 +315,7 @@ async function berichte(db: Db, senden: Sender, t: TerminZeile, zeitzone: string
       lauwarm: kuschelsportlerDerWoche(db, s, woche),
     });
     text = bericht.text;
+    if (woche === s.wochen - 2) text += `\n\n${PFLICHTMESSUNG}`;
     for (const z of bericht.sprueche) vorlagen.set(z.id, z.vorlage);
   }
 
@@ -631,7 +641,11 @@ export function erinnerungsText(
   }
   const messung = letztes("messung");
   const seitMessung = messung ? tageZwischen(messung, heute) : Infinity;
-  if (!nutzer.ohneWaage && heute > fenster.bis && seitMessung >= ERINNERUNG.tageOhneMessung) {
+  // Letzte Woche: ohne Abschlussmessung keine Fortschrittspunkte im Finale
+  const letzteWoche = plusTage(seasonEnde(s), -6);
+  if (!nutzer.ohneWaage && heute >= plusTage(seasonEnde(s), -ERINNERUNG.abschlussTageVorher) && !(messung && messung >= letzteWoche)) {
+    meckern.push(`Pflicht fürs Finale: Bis zum Finale einmal auf die Waage, sonst gibt's 0 Fortschrittspunkte. /waage`);
+  } else if (!nutzer.ohneWaage && heute > fenster.bis && seitMessung >= ERINNERUNG.tageOhneMessung) {
     meckern.push(`Seit ${messung ? `${seitMessung} Tagen` : "Ewigkeiten"} nicht auf der Waage. Angst vor der Wahrheit? /waage`);
   }
   if (meckern.length === 0) return null;
