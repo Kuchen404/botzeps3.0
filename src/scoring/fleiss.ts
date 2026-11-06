@@ -8,10 +8,11 @@ export const FLEISS = {
   punkteProZiel: 10,
   /** Deckel: mehr als 150 % des Ziels zählt nicht. */
   maxZielAnteil: 1.5,
-  /** Pro Einheit zählen höchstens so viele Minuten. */
-  maxMinutenProEinheit: 120,
-  /** Pro Tag zählen höchstens so viele Einheiten. */
-  maxEinheitenProTag: 2,
+  /**
+   * Pro Tag zählen höchstens so viele Minuten, egal in wie viele Einträge aufgeteilt.
+   * Sind es mehr, zählen die Minuten mit dem höchsten Faktor zuerst.
+   */
+  maxMinutenProTag: 240,
   /** Ab dieser Serienlänge (Wochen in Folge mit Ziel) gibt es Bonus. */
   serieBonusAb: 3,
   /** Höchster Serienbonus pro Woche. */
@@ -33,9 +34,9 @@ export interface Training {
   sportartId?: number;
 }
 
-/** Last einer einzelnen Einheit: Minuten (gedeckelt) × Faktor, auf ganze Punkte gerundet. */
+/** Last einer einzelnen Einheit für sich: Minuten (höchstens ein Tagesdeckel) × Faktor, auf ganze Punkte gerundet. */
 export function einheitsLast(training: Pick<Training, "minuten" | "faktor">): number {
-  const minuten = Math.max(0, Math.min(training.minuten, FLEISS.maxMinutenProEinheit));
+  const minuten = Math.max(0, Math.min(training.minuten, FLEISS.maxMinutenProTag));
   return Math.round(minuten * training.faktor);
 }
 
@@ -75,22 +76,29 @@ export function pruefeSchritte(minuten: number, schritte: number): string | null
 }
 
 /**
- * Summe der Last aller Trainings. Pro Tag zählen nur die zwei Einheiten
- * mit der höchsten Last, damit Eintragen in Häppchen nichts bringt.
+ * Summe der Last aller Trainings. Pro Tag zählen höchstens 240 Minuten, die mit dem
+ * höchsten Faktor zuerst. So bringt Aufteilen nichts: 240 min am Stück zählen genauso
+ * wie 2 × 120 oder 4 × 60, und Häppchen über den Deckel hinaus zählen nicht.
  */
-export function gesamtLast(trainings: readonly Training[]): number {
-  const proTag = new Map<IsoDatum, number[]>();
+export function gesamtLast(trainings: readonly Pick<Training, "datum" | "minuten" | "faktor">[]): number {
+  const proTag = new Map<IsoDatum, Pick<Training, "minuten" | "faktor">[]>();
   for (const t of trainings) {
     const liste = proTag.get(t.datum) ?? [];
-    liste.push(einheitsLast(t));
+    liste.push(t);
     proTag.set(t.datum, liste);
   }
   let summe = 0;
-  for (const lasten of proTag.values()) {
-    lasten.sort((a, b) => b - a);
-    for (const last of lasten.slice(0, FLEISS.maxEinheitenProTag)) {
-      summe += last;
+  for (const liste of proTag.values()) {
+    const sortiert = [...liste].sort((a, b) => b.faktor - a.faktor);
+    let frei = FLEISS.maxMinutenProTag;
+    let tagesLast = 0;
+    for (const t of sortiert) {
+      if (frei <= 0) break;
+      const minuten = Math.max(0, Math.min(t.minuten, frei));
+      tagesLast += minuten * t.faktor;
+      frei -= minuten;
     }
+    summe += Math.round(tagesLast);
   }
   return summe;
 }

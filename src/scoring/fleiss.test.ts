@@ -24,19 +24,42 @@ describe("Fleiß", () => {
     expect(pruefeSchritte(60, 1000)).toContain("passt nicht");
   });
 
-  it("deckelt eine Einheit bei 120 Minuten", () => {
-    expect(einheitsLast({ minuten: 240, faktor: 1 })).toBe(120);
+  it("zählt eine lange Einheit bis zum Tagesdeckel von 240 Minuten", () => {
+    expect(einheitsLast({ minuten: 240, faktor: 1 })).toBe(240);
+    expect(gesamtLast([{ datum: "2026-10-12", minuten: 240, faktor: 1 }])).toBe(240);
   });
 
-  it("zählt pro Tag nur die zwei stärksten Einheiten", () => {
+  it("Aufteilen bringt nichts: ein langer Eintrag zählt wie mehrere Teile", () => {
+    const tag = "2026-10-12";
+    const am = (minuten: number) => ({ datum: tag, minuten, faktor: 2 });
+    const amStueck = gesamtLast([am(240)]);
+    expect(gesamtLast([am(120), am(120)])).toBe(amStueck);
+    expect(gesamtLast([am(60), am(60), am(60), am(60)])).toBe(amStueck);
+    // Über den Deckel hinaus zählt nichts, auch nicht in Häppchen
+    expect(gesamtLast([am(120), am(120), am(30), am(30)])).toBe(amStueck);
+  });
+
+  it("zählt bei mehr als 240 Minuten am Tag die mit dem höchsten Faktor zuerst", () => {
     const tag = "2026-10-12";
     const last = gesamtLast([
-      { datum: tag, minuten: 10, faktor: 1 },
+      { datum: tag, minuten: 120, faktor: 1 },
       { datum: tag, minuten: 60, faktor: 3 },
-      { datum: tag, minuten: 30, faktor: 2 },
+      { datum: tag, minuten: 100, faktor: 2 },
       { datum: "2026-10-13", minuten: 20, faktor: 1 },
     ]);
-    expect(last).toBe(180 + 60 + 20);
+    // 60 × 3 + 100 × 2 + 80 × 1 (Rest bis 240) + 20 am nächsten Tag
+    expect(last).toBe(180 + 200 + 80 + 20);
+  });
+
+  it("verschiedene Sportarten am selben Tag zählen alle, solange der Deckel nicht erreicht ist", () => {
+    const tag = "2026-10-12";
+    expect(
+      gesamtLast([
+        { datum: tag, minuten: 30, faktor: 1 },
+        { datum: tag, minuten: 60, faktor: 3 },
+        { datum: tag, minuten: 30, faktor: 2 },
+      ]),
+    ).toBe(30 + 180 + 60);
   });
 
   it("vergibt 10 Punkte für das Wochenziel (450) und deckelt bei 15", () => {

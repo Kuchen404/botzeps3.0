@@ -34,6 +34,18 @@ describe("/sport", () => {
     expect(trainings(db)[0]).toMatchObject({ datum: plusTage(heute(), -1), post: post ? 1002 : null });
   });
 
+  it("privat: meldet den Tagesdeckel, wenn nur ein Teil zählt", async () => {
+    const { bot, letzterText } = testBot();
+    await bot.handleUpdate(knopf("mitmachen"));
+    await bot.handleUpdate(befehl("/sport 200 Krafttraining", PRIVAT));
+    expect(letzterText()).toContain("600 Lastpunkte. In");
+    await bot.handleUpdate(befehl("/sport 60 Krafttraining", PRIVAT));
+    // Nur noch 40 der 60 Minuten passen unter die 240 am Tag
+    expect(letzterText()).toBe(
+      "Eingetragen: 60 min Krafttraining, 120 Lastpunkte. In „Pumper“ gepostet. Tagesdeckel: mehr als 240 min am Tag zählen nicht.",
+    );
+  });
+
   it("privat ohne Gruppe: Hinweis, nichts gespeichert", async () => {
     const { db, bot, letzterText } = testBot();
     await bot.handleUpdate(befehl("/sport 45 Joggen", PRIVAT));
