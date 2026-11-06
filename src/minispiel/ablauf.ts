@@ -96,8 +96,9 @@ export async function kuendigeMinispielAn(
   const fuehrender = berechneStand(db, s, plusTage(t.datum, -1))[0]?.id ?? null;
   const w = spielWoche(s, t.woche);
   const daten = stelleAuf(art, spieler, { ziel: w.ziel, fuehrender });
-  setzeMinispielDaten(db, s.id, t.woche, daten);
   const nachricht = await senden(gruppe.telegram_chat_id, minispielAnkuendigung(daten, spieler, w, s.berichtszeit));
+  // Erst nach dem Senden festhalten, sonst käme die Ankündigung bei einem neuen Versuch nach einem Fehler nie
+  setzeMinispielDaten(db, s.id, t.woche, daten);
   if (nachricht && pinnen.anpinnen) {
     try {
       await pinnen.anpinnen(gruppe.telegram_chat_id, nachricht);

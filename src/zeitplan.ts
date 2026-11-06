@@ -89,6 +89,40 @@ interface TerminZeile {
   season: number | null;
   nutzer: number | null;
   faellig_am: string;
+  versuche: number;
+  /** Bei einem Wiederholungsversuch: schon gesendete Nachrichten, Nummer des Sendens → message_id */
+  gesendet: string | null;
+}
+
+/**
+ * Wiederholungen nach einem Fehler (z. B. Telegram nicht erreichbar): Abstände nach dem
+ * 1., 2., … Fehlschlag. Danach gibt der Termin auf.
+ */
+export const WIEDERHOLUNG_MS = [60_000, 5 * 60_000, 15 * 60_000, 60 * 60_000, 3 * 60 * 60_000] as const;
+
+/**
+ * Merkt sich für einen Termin, welche Nachrichten schon raus sind (nach Reihenfolge des Sendens).
+ * Bei einem neuen Versuch werden die übersprungen, so kommt nach einem Fehler mittendrin
+ * nicht alles doppelt. Ginge die Antwort von Telegram verloren, käme diese eine Nachricht doppelt.
+ */
+function mitSchritten(db: Db, t: TerminZeile, senden: Sender, foto?: FotoSender): { senden: Sender; foto?: FotoSender } {
+  const erledigt = new Map<number, number | null>(
+    Object.entries(t.gesendet ? (JSON.parse(t.gesendet) as Record<string, number | null>) : {}).map(([k, v]) => [Number(k), v]),
+  );
+  const merke = db.prepare("UPDATE termin SET gesendet = ? WHERE id = ?");
+  let nummer = 0;
+  const schritt = async (senden: () => Promise<number | void>): Promise<number | void> => {
+    const k = nummer++;
+    if (erledigt.has(k)) return erledigt.get(k) ?? undefined;
+    const id = await senden();
+    erledigt.set(k, typeof id === "number" ? id : null);
+    merke.run(JSON.stringify(Object.fromEntries(erledigt)), t.id);
+    return id;
+  };
+  return {
+    senden: (chat, text, optionen) => schritt(() => senden(chat, text, optionen)),
+    foto: foto && ((chat, png, beschriftung) => schritt(() => foto(chat, png, beschriftung))),
+  };
 }
 
 /** Fälligkeit des Berichts zu Woche `woche` (letzter Tag der Woche, Berichtszeit). */
@@ -153,33 +187,47 @@ export async function fuehreAus(
   extras: ZeitplanExtras = {},
 ): Promise<number> {
   const faellig = db
-    .prepare("SELECT id, art, season, nutzer, faellig_am FROM termin WHERE erledigt_am IS NULL AND faellig_am <= ? ORDER BY faellig_am, id")
-    .all(jetzt.toISOString()) as TerminZeile[];
+    .prepare(
+      `SELECT id, art, season, nutzer, faellig_am, versuche, gesendet FROM termin
+       WHERE erledigt_am IS NULL AND faellig_am <= ? AND (naechster_versuch IS NULL OR naechster_versuch <= ?)
+       ORDER BY faellig_am, id`,
+    )
+    .all(jetzt.toISOString(), jetzt.toISOString()) as TerminZeile[];
   const erledige = db.prepare("UPDATE termin SET erledigt_am = ? WHERE id = ? AND erledigt_am IS NULL");
+  const nochmal = db.prepare("UPDATE termin SET erledigt_am = NULL, versuche = ?, naechster_versuch = ? WHERE id = ?");
   let ausgefuehrt = 0;
   for (const t of faellig) {
-    // Erst als erledigt markieren: lieber einmal verpasst als doppelt gesendet
+    // Erst als erledigt markieren, damit ein zweiter Durchlauf ihn nicht gleichzeitig sendet;
+    // schlägt er fehl, wird er wieder freigegeben und später erneut versucht
     if (erledige.run(jetzt.toISOString(), t.id).changes === 0) continue;
+    const { senden: sende, foto: fotografiere } = mitSchritten(db, t, senden, foto);
+    const wiederholung = t.versuche > 0;
     try {
       const gesendet =
         t.art === "erinnerung"
-          ? await erinnere(db, senden, t, jetzt)
+          ? await erinnere(db, sende, t, jetzt)
           : t.art === "boss1" || t.art === "boss2"
-            ? await kuendigeAn(db, senden, t, t.art === "boss1" ? 1 : 2, zeitzone, foto, extras)
+            ? await kuendigeAn(db, sende, t, t.art === "boss1" ? 1 : 2, zeitzone, fotografiere, extras, wiederholung)
             : t.art === "boss1_spott" || t.art === "boss2_spott"
-              ? await spotte(db, senden, t, t.art === "boss1_spott" ? 1 : 2, zeitzone)
+              ? await spotte(db, sende, t, t.art === "boss1_spott" ? 1 : 2, zeitzone)
               : t.art === "minispiel"
-                ? await kuendigeMinispielAn(db, senden, t, jetzt, zeitzone, extras)
+                ? await kuendigeMinispielAn(db, sende, t, jetzt, zeitzone, extras)
                 : t.art === "minispiel_lage"
-                  ? await meldeMinispielLage(db, senden, t, jetzt, zeitzone)
+                  ? await meldeMinispielLage(db, sende, t, jetzt, zeitzone)
                   : t.art === "countdown"
-                    ? await zaehleRunter(db, senden, t, jetzt, zeitzone)
+                    ? await zaehleRunter(db, sende, t, jetzt, zeitzone)
                     : t.art === "faktoren_neu"
-                      ? await kuendigeFaktorenAn(db, senden, t)
-                      : await berichte(db, senden, t, zeitzone, foto, extras);
+                      ? await kuendigeFaktorenAn(db, sende, t)
+                      : await berichte(db, sende, t, zeitzone, fotografiere, extras);
       if (gesendet) ausgefuehrt++;
     } catch (err) {
-      log.error(`Termin ${t.id} (${t.art}) fehlgeschlagen`, err);
+      const abstand = WIEDERHOLUNG_MS[t.versuche];
+      if (abstand === undefined) {
+        log.error(`Termin ${t.id} (${t.art}) nach ${t.versuche + 1} Versuchen aufgegeben`, err);
+      } else {
+        nochmal.run(t.versuche + 1, new Date(jetzt.getTime() + abstand).toISOString(), t.id);
+        log.error(`Termin ${t.id} (${t.art}) fehlgeschlagen, neuer Versuch in ${Math.round(abstand / 60_000)} min`, err);
+      }
     }
   }
   return ausgefuehrt;
@@ -328,6 +376,7 @@ async function kuendigeAn(
   zeitzone: string,
   foto: FotoSender | undefined,
   extras: ZeitplanExtras,
+  wiederholung = false,
 ): Promise<boolean> {
   const s = t.season === null ? undefined : seasonNachId(db, t.season);
   const gruppe = s ? gruppeNachId(db, s.gruppe) : undefined;
@@ -335,14 +384,20 @@ async function kuendigeAn(
   if (!s || !gruppe || bossZeitpunkt(s, stufe, zeitzone)?.toISOString() !== t.faellig_am) return false;
   const teilnehmer = (db.prepare("SELECT COUNT(*) AS n FROM teilnahme WHERE season = ?").get(s.id) as { n: number }).n;
   if (teilnehmer === 0) return false;
-  const frueher = bosseDerSeason(db, s).find((b) => b.stufe === 1);
-  const name = frueher?.name ?? BOSS_NAMEN[Math.floor(Math.random() * BOSS_NAMEN.length)]!;
-  const lebenspunkte = bossLebenspunkte(stufe, teilnehmer, s.wochenziel_last);
+  const bosse = bosseDerSeason(db, s);
+  const frueher = stufe === 1 ? undefined : bosse.find((b) => b.stufe === 1);
+  // Beim erneuten Versuch nach einem Fehler steht der Boss schon fest: denselben weiter ankündigen
+  const schon = bosse.find((b) => b.stufe === stufe);
+  if (schon && !wiederholung) return false;
+  const name = schon?.name ?? frueher?.name ?? BOSS_NAMEN[Math.floor(Math.random() * BOSS_NAMEN.length)]!;
+  const lebenspunkte = schon?.lebenspunkte ?? bossLebenspunkte(stufe, teilnehmer, s.wochenziel_last);
   // Zufällige Schwäche aus den Sportarten der Gruppe, beim zweiten Auftritt möglichst eine andere
   const sportarten = db.prepare("SELECT id, name FROM sportart WHERE gruppe = ? ORDER BY id").all(s.gruppe) as { id: number; name: string }[];
   const auswahl = sportarten.length > 1 ? sportarten.filter((sp) => sp.id !== frueher?.schwaeche) : sportarten;
-  const schwaeche = auswahl.length ? auswahl[Math.floor(Math.random() * auswahl.length)]! : null;
-  if (!kuendigeBossAn(db, s.id, stufe, name, lebenspunkte, schwaeche?.id ?? null)) return false;
+  const schwaeche = schon
+    ? schon.schwaeche === null ? null : { id: schon.schwaeche, name: schon.schwaecheName ?? "" }
+    : auswahl.length ? auswahl[Math.floor(Math.random() * auswahl.length)]! : null;
+  if (!schon && !kuendigeBossAn(db, s.id, stufe, name, lebenspunkte, schwaeche?.id ?? null)) return false;
 
   // Der Boss nimmt sich den Letzten der Rangliste vor
   const tag = lokalesDatum(new Date(t.faellig_am), zeitzone);

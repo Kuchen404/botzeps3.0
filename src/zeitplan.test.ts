@@ -330,3 +330,73 @@ describe("Erinnerungen", () => {
   });
 });
 
+
+describe("Zeitplan bei Fehlern", () => {
+  it("versucht einen fehlgeschlagenen Bericht später noch einmal", async () => {
+    const { db, lauf } = await aufbau();
+    const gesendet: string[] = [];
+    let kaputt = true;
+    const senden = async (_chat: number, text: string) => {
+      if (kaputt) throw new Error("Telegram nicht erreichbar");
+      gesendet.push(text);
+      return gesendet.length;
+    };
+    await lauf("2026-10-18T17:00:00Z"); // plant alles, Bericht noch nicht fällig
+    const bericht = () =>
+      db.prepare("SELECT erledigt_am, versuche, naechster_versuch FROM termin WHERE art = 'wochenbericht' ORDER BY faellig_am LIMIT 1").get();
+
+    await fuehreAus(db, senden, new Date("2026-10-18T18:00:30Z"), TZ);
+    expect(gesendet).toEqual([]);
+    expect(bericht()).toEqual({ erledigt_am: null, versuche: 1, naechster_versuch: "2026-10-18T18:01:30.000Z" });
+
+    kaputt = false;
+    await fuehreAus(db, senden, new Date("2026-10-18T18:01:00Z"), TZ); // noch zu früh
+    expect(gesendet).toEqual([]);
+    await fuehreAus(db, senden, new Date("2026-10-18T18:01:30Z"), TZ);
+    expect(gesendet.filter((t) => t.includes("Woche 1"))).toHaveLength(1);
+    expect(bericht()).toMatchObject({ erledigt_am: "2026-10-18T18:01:30.000Z" });
+  });
+
+  it("schickt beim neuen Versuch nur, was noch fehlte", async () => {
+    const { db, lauf } = await aufbau();
+    aendereSeason(db, 1, { wochen: 8 }); // Bosse gibt es erst in längeren Seasons
+    await lauf("2026-10-19T06:00:00Z"); // plant den Boss für 9 Uhr
+    const gesendet: string[] = [];
+    let aufrufe = 0;
+    const senden = async (_chat: number, text: string) => {
+      // Beben geht raus, beim Vorzeichen bricht die Verbindung ab
+      if (++aufrufe === 2) throw new Error("Verbindung weg");
+      gesendet.push(text);
+      return 100 + gesendet.length;
+    };
+    await fuehreAus(db, senden, new Date("2026-10-19T07:00:30Z"), TZ);
+    expect(gesendet).toHaveLength(1);
+    const boss = db.prepare("SELECT name, lebenspunkte FROM boss").all();
+    expect(boss).toHaveLength(1);
+
+    await fuehreAus(db, senden, new Date("2026-10-19T07:01:30Z"), TZ);
+    expect(gesendet).toHaveLength(3); // Beben einmal, dann Vorzeichen und Steckbrief
+    expect(new Set(gesendet).size).toBe(3);
+    expect(gesendet.at(-1)).toContain((boss[0] as { name: string }).name);
+    expect(db.prepare("SELECT name, lebenspunkte FROM boss").all()).toEqual(boss);
+
+    await fuehreAus(db, senden, new Date("2026-10-19T08:00:00Z"), TZ);
+    expect(gesendet).toHaveLength(3);
+  });
+
+  it("gibt nach mehreren Fehlschlägen auf", async () => {
+    const { db, lauf } = await aufbau();
+    await lauf("2026-10-18T17:00:00Z");
+    const senden = async () => {
+      throw new Error("Telegram nicht erreichbar");
+    };
+    let jetzt = new Date("2026-10-18T18:00:30Z").getTime();
+    for (let i = 0; i < 10; i++) {
+      await fuehreAus(db, senden, new Date(jetzt), TZ);
+      jetzt += 4 * 60 * 60 * 1000;
+    }
+    expect(
+      db.prepare("SELECT versuche, erledigt_am IS NOT NULL AS fertig FROM termin WHERE art = 'wochenbericht' ORDER BY faellig_am LIMIT 1").get(),
+    ).toEqual({ versuche: 5, fertig: 1 });
+  });
+});
