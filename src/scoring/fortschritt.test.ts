@@ -101,4 +101,37 @@ describe("Fortschritt", () => {
     expect(aktuellerWert([m("2026-10-26", 80, 25, 40)], "2026-10-27", "2026-10-12")).toBeNull();
     expect(aktuellerWert([], "2026-10-27", "2026-10-12")).toBeNull();
   });
+
+  it("drei Messungen am selben Tag ersetzen keine drei Kalibriertage", () => {
+    const amSelbenTag = [m("2026-11-15", 80, 25, 40), m("2026-11-15", 80, 25, 40), m("2026-11-15", 80, 25, 40)];
+    expect(startwert(amSelbenTag, "2026-11-09", "2026-11-15")).toBeNull();
+    const dreiTage = [...amSelbenTag, m("2026-11-10", 80, 25, 40), m("2026-11-12", 80, 25, 40)];
+    expect(startwert(dreiTage, "2026-11-09", "2026-11-15")?.anzahlMessungen).toBe(3);
+  });
+
+  it("Bestandsschutz: Kalibrierwochen vor der Regeländerung zählen weiter Messungen", () => {
+    const amSelbenTag = [m("2026-11-01", 80, 25, 40), m("2026-11-01", 80, 25, 40), m("2026-11-01", 80, 25, 40)];
+    expect(startwert(amSelbenTag, "2026-10-26", "2026-11-01")?.fettKg).toBeCloseTo(20, 9);
+  });
+
+  it("jeder Messtag zählt gleich viel, egal wie oft an dem Tag gemessen wurde", () => {
+    const messungen = [
+      m("2026-10-05", 80, 20, 40), // 16 kg Fett
+      m("2026-10-06", 80, 30, 40), // 24 kg, aber viermal eingetragen
+      m("2026-10-06", 80, 30, 40),
+      m("2026-10-06", 80, 30, 40),
+      m("2026-10-06", 80, 30, 40),
+      m("2026-10-07", 80, 25, 40), // 20 kg
+    ];
+    expect(startwert(messungen, "2026-10-05", "2026-10-11")?.fettKg).toBeCloseTo(20, 9);
+  });
+
+  it("aktueller Wert braucht zwei Messtage, mehrere Messungen an einem Tag reichen nicht", () => {
+    const messungen = [m("2026-10-14", 80, 20, 40), m("2026-10-26", 80, 25, 40), m("2026-10-26", 80, 25, 40)];
+    // Im 7-Tage-Fenster nur ein Messtag: die letzten zwei Messtage zählen
+    const r = aktuellerWert(messungen, "2026-10-27", "2026-10-12");
+    expect(r?.anzahlMessungen).toBe(2);
+    expect(r?.fettKg).toBeCloseTo(18, 9);
+  });
 });
+

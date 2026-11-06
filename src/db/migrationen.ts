@@ -373,4 +373,14 @@ export const MIGRATIONEN: readonly Migration[] = [
     `,
     aus: (db) => faktorenNachMet(db, new Date()),
   },
+  {
+    version: 13,
+    name: "termin_wiederholen",
+    // Fehlgeschlagene Termine erneut versuchen, ohne schon Gesendetes doppelt zu schicken
+    sql: `
+      ALTER TABLE termin ADD COLUMN versuche INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE termin ADD COLUMN naechster_versuch TEXT;
+      ALTER TABLE termin ADD COLUMN gesendet TEXT; -- JSON: Nummer des Sendens → message_id
+    `,
+  },
 ];

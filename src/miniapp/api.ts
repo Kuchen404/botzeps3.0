@@ -283,8 +283,8 @@ export async function bearbeiteApi(db: Db, a: Anfrage, gruppenpost: Gruppenpost,
     const falsch = schritte ? pruefeSchritte(b.data.minuten, schritte) : null;
     if (falsch) return fehler(400, falsch);
     nimmAnAktuellerSeasonTeil(db, gruppe.id, nutzer.id, heute(gruppenZeitzone()));
-    const { trainingId, post, last } = trageTrainingEin(db, nutzer, sportart, b.data.minuten, b.data.tage, schritte);
-    const was = `${b.data.minuten} min ${sportart.name}${TAG_TEXT[b.data.tage]}, ${last} Lastpunkte`;
+    const { trainingId, post, last, deckel } = trageTrainingEin(db, nutzer, sportart, b.data.minuten, b.data.tage, schritte);
+    const was = `${b.data.minuten} min ${sportart.name}${TAG_TEXT[b.data.tage]}, ${last} Lastpunkte${deckel ? `.${deckel.trimEnd().replace(/\.$/, "")}` : ""}`;
     try {
       setzeGruppenNachricht(db, trainingId, await gruppensenden(gruppe.telegram_chat_id, post));
       return { status: 200, json: { ok: true, text: `Eingetragen: ${was}. In „${gruppe.name}“ gepostet.` } };

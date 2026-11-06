@@ -19,7 +19,8 @@ import { GRENZEN, parseSport } from "../domain/eingabe.js";
 import { sportartName } from "../domain/neue-sportart.js";
 import { nimmAnAktuellerSeasonTeil } from "../db/season-repo.js";
 import { plusTage } from "../scoring/datum.js";
-import { einheitsLast, pruefeSchritte } from "../scoring/fleiss.js";
+import { einheitsLast, FLEISS, pruefeSchritte } from "../scoring/fleiss.js";
+import { lebenslangeLast } from "../db/erfolg-repo.js";
 import { faktorText } from "../domain/sportarten.js";
 import { fuelle, waehleSpruch } from "../texte/sprueche.js";
 import { log } from "../log.js";
@@ -56,7 +57,7 @@ export function trageTrainingEin(
   minuten: number,
   tage: number,
   schritte?: number | null,
-): { trainingId: number; post: string; last: number; hinweis: string } {
+): { trainingId: number; post: string; last: number; hinweis: string; deckel: string } {
   const datum = plusTage(heute(nutzer.zeitzone), -tage);
   const mitSchritten = sportart.nach_schritten && schritte ? schritte : null;
   const trainingId = speichereTraining(db, {
@@ -71,12 +72,17 @@ export function trageTrainingEin(
   const meldungen = meldungenNachTraining(db, trainingId, heute(gruppenZeitzone()));
   const zusatz = mitSchritten ? ` (${schritteText(minuten, mitSchritten, faktor)})` : "";
   const post = mitMeldungen(`${trainingsPostText(nutzer.name, minuten, sportart.name)}${TAG_TEXT[tage]}${zusatz}`, meldungen);
-  const hinweis = schritte && !sportart.nach_schritten
+  // Was tatsächlich zählt: mit Tagesdeckel, also abzüglich dessen, was der Tag schon hatte
+  const last = Math.max(0, lebenslangeLast(db, nutzer.id) - lebenslangeLast(db, nutzer.id, trainingId));
+  const deckel = last < einheitsLast({ minuten, faktor })
+    ? ` Tagesdeckel: mehr als ${FLEISS.maxMinutenProTag} min am Tag zählen nicht.`
+    : "";
+  const hinweis = deckel + (schritte && !sportart.nach_schritten
     ? " Schritte zählen nur beim Spazieren, hier zählt die Dauer."
     : sportart.nach_schritten && !mitSchritten
       ? `\n${SCHRITTE_TIPP}`
-      : "";
-  return { trainingId, post, last: einheitsLast({ minuten, faktor }), hinweis };
+      : "");
+  return { trainingId, post, last, hinweis, deckel };
 }
 
 interface Auswahl {

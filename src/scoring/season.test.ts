@@ -266,3 +266,29 @@ describe("Ohne Waage", () => {
     expect(team!.durchschnitt).toBeCloseTo(25);
   });
 });
+
+describe("Pflichtmessung fürs Finale", () => {
+  const ende = seasonEnde(season); // 20.12.2026
+  const kalibrierung = messungen("2026-10-05", 3, 80, 25, 40);
+  const gut = messungen("2026-10-20", 2, 80, 20, 40); // −20 % Fett, danach nie wieder gemessen
+
+  it("ohne Messung in der letzten Woche gibt es im Finale keine positiven Punkte", () => {
+    const st = teilnehmerStand(season, teilnehmer({ id: "a", messungen: [...kalibrierung, ...gut] }), ende);
+    expect(st.fortschritt).toMatchObject({ punkte: 0, ohneAbschlussmessung: true });
+    // Vor dem letzten Tag zählen die alten Werte noch (Urlaub ohne Waage friert ein)
+    expect(teilnehmerStand(season, teilnehmer({ id: "a", messungen: [...kalibrierung, ...gut] }), plusTage(ende, -1)).fortschritt?.punkte).toBeCloseTo(200, 9);
+  });
+
+  it("eine Messung in der letzten Woche reicht", () => {
+    const st = teilnehmerStand(season, teilnehmer({ id: "a", messungen: [...kalibrierung, ...gut, ...messungen("2026-12-18", 1, 80, 20, 40)] }), ende);
+    expect(st.fortschritt?.ohneAbschlussmessung).toBeUndefined();
+    expect(st.fortschritt?.punkte).toBeCloseTo(200, 9);
+  });
+
+  it("schlechte Werte bleiben auch ohne Abschlussmessung, Weglassen lohnt sich nicht", () => {
+    const schlecht = messungen("2026-10-20", 2, 80, 27, 40);
+    const st = teilnehmerStand(season, teilnehmer({ id: "a", messungen: [...kalibrierung, ...schlecht] }), ende);
+    expect(st.fortschritt?.punkte).toBeLessThan(0);
+    expect(st.fortschritt?.ohneAbschlussmessung).toBeUndefined();
+  });
+});

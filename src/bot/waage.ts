@@ -62,7 +62,7 @@ export function ohneWaageText(db: Db, s: SeasonZeile, nutzerId: number, ohne: bo
   setzeOhneWaage(db, s.id, nutzerId, ohne);
   return ohne
     ? `Alles klar, in „${s.name}“ bist du ohne Waage dabei. Als Fortschritt bekommst du den Median der Gruppe: nicht besser, nicht schlechter als der Durchschnittstyp. Deinen Platz holst du dir über Fleiß.\nDoch noch eine Waage besorgt? /ohnewaage aus, geht bis ${datumDe(bis)}.`
-    : `Waage ist zurück: In „${s.name}“ zählen wieder deine eigenen Messungen. Bis ${datumDe(bis)} brauchst du 3 davon für den Startwert. /waage`;
+    : `Waage ist zurück: In „${s.name}“ zählen wieder deine eigenen Messungen. Bis ${datumDe(bis)} brauchst du Messungen an 3 Tagen für den Startwert. /waage`;
 }
 
 export function waageModul(db: Db): Composer<Context> {
