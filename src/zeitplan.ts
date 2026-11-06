@@ -521,7 +521,7 @@ function extras(db: Db, s: SeasonZeile): Map<string, Extras> {
     )
     .all(s.start, ende, s.start, ende, s.id) as { nutzer: number; beitritt: string; minuten: number; sportarten: number }[];
   const messungen = db.prepare(
-    "SELECT COUNT(*) AS n FROM messung WHERE nutzer = ? AND geloescht_am IS NULL AND datum BETWEEN ? AND ?",
+    "SELECT COUNT(DISTINCT datum) AS n FROM messung WHERE nutzer = ? AND geloescht_am IS NULL AND datum BETWEEN ? AND ?",
   );
   return new Map(
     zeilen.map((z) => {
@@ -601,7 +601,7 @@ export function erinnerungsText(
   const zaehle = (von: string, bis: string) =>
     (
       db
-        .prepare("SELECT COUNT(*) AS n FROM messung WHERE nutzer = ? AND geloescht_am IS NULL AND datum BETWEEN ? AND ?")
+        .prepare("SELECT COUNT(DISTINCT datum) AS n FROM messung WHERE nutzer = ? AND geloescht_am IS NULL AND datum BETWEEN ? AND ?")
         .get(nutzerId, von, bis) as { n: number }
     ).n;
   const letztes = (tabelle: "training" | "messung") =>
@@ -615,7 +615,7 @@ export function erinnerungsText(
     if (nutzer.ohneWaage) return null;
     const fehlen = FORTSCHRITT.minMessungenKalibrierung - zaehle(fenster.von, fenster.bis);
     if (fehlen <= 0) return null;
-    return `${nutzer.name}, Kalibrierwoche! Dir fehlen noch ${fehlen} Messung${fehlen === 1 ? "" : "en"} bis ${fenster.bis.split("-").reverse().join(".")}. Ohne Startwert keine Fortschrittspunkte. /waage`;
+    return `${nutzer.name}, Kalibrierwoche! Dir fehlen noch ${fehlen} Messtag${fehlen === 1 ? "" : "e"} bis ${fenster.bis.split("-").reverse().join(".")}. Ohne Startwert keine Fortschrittspunkte. /waage`;
   }
   if (heute < s.start || heute > seasonEnde(s)) return null;
 

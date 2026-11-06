@@ -37,7 +37,7 @@ function standZeilen(staende: readonly Stand[]): string[] {
   const mitWaage = staende.filter((st) => !st.ohneWaage);
   const fehlen = offen(staende);
   const ohne = staende.length - mitWaage.length;
-  const kopf = `📋 Kalibrierung: ${mitWaage.length - fehlen.length} von ${mitWaage.length} haben ihre ${FORTSCHRITT.minMessungenKalibrierung} Messungen.${ohne ? ` ${ohne} ohne Waage dabei.` : ""}`;
+  const kopf = `📋 Kalibrierung: ${mitWaage.length - fehlen.length} von ${mitWaage.length} haben ihre ${FORTSCHRITT.minMessungenKalibrierung} Messtage.${ohne ? ` ${ohne} ohne Waage dabei.` : ""}`;
   if (fehlen.length === 0) return [`${kopf} Alle durch, ihr Streber. 🤓`];
   return [kopf, `Noch offen: ${fehlen.map((st) => `${st.name} (${st.kalibrierMessungen}/${FORTSCHRITT.minMessungenKalibrierung})`).join(", ")}`];
 }
@@ -49,7 +49,7 @@ export function erklaerung(s: CountdownSeason): string[] {
     s.gewicht_fleiss === 50 ? "Fleiß und Fortschritt zählen gleich viel" : `Fleiß zählt ${s.gewicht_fleiss} %, Fortschritt ${100 - s.gewicht_fleiss} %`;
   return [
     "⚖️ DIE WAAGE",
-    `Bis ${d(k.bis)} mindestens ${FORTSCHRITT.minMessungenKalibrierung}× wiegen, privat beim Bot: /waage 82,4 18,5 41,2 (Gewicht, Fett %, Muskel %) oder in der Mini App. Der Mittelwert aller Messungen dieser Woche ist euer Startwert. Mehr Messungen, genauerer Startwert.`,
+    `Bis ${d(k.bis)} an mindestens ${FORTSCHRITT.minMessungenKalibrierung} verschiedenen Tagen wiegen, privat beim Bot: /waage 82,4 18,5 41,2 (Gewicht, Fett %, Muskel %) oder in der Mini App. Der Mittelwert aller Messungen dieser Woche ist euer Startwert. Mehr Messungen, genauerer Startwert.`,
     "Fett % ist der Körperfettanteil. Muskel % ist die Skelettmuskulatur, falls eure Waage die zeigt, sonst die Muskelrate. Egal welcher, aber die ganze Season derselbe.",
     "Immer gleich wiegen: morgens, nach dem Klo, vor Essen und Trinken, dieselbe Waage.",
     "",
@@ -139,7 +139,7 @@ export function countdownText(s: CountdownSeason, staende: readonly Stand[], tag
   if (tageBisStart === 1 && fehlen.length) {
     teile.push(
       "",
-      `🚨 Heute ist der letzte Tag der Kalibrierwoche! ${fehlen.map((st) => st.name).join(", ")}: Ohne ${FORTSCHRITT.minMessungenKalibrierung} Messungen kein Startwert, ohne Startwert die ganze Season keine Fortschrittspunkte. Ab auf die Waage. /waage`,
+      `🚨 Heute ist der letzte Tag der Kalibrierwoche! ${fehlen.map((st) => st.name).join(", ")}: Ohne Messungen an ${FORTSCHRITT.minMessungenKalibrierung} Tagen kein Startwert, ohne Startwert die ganze Season keine Fortschrittspunkte. Ab auf die Waage. /waage`,
     );
   }
   if (erstmals) teile.push("", ...erklaerung(s));

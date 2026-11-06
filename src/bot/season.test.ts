@@ -81,7 +81,7 @@ describe("/season", () => {
     tag("2026-10-08");
     await t.bot.handleUpdate(befehl("/waage 90 30 40", PRIVAT));
     await t.bot.handleUpdate(befehl("/rangliste"));
-    expect(t.letzterText()).toContain("1 von 1 haben ihre 3 Messungen");
+    expect(t.letzterText()).toContain("1 von 1 haben ihre 3 Messtage");
   });
 
   it("am Montag gibt es keinen kurzen Start, der nächste Montag hat schon die volle Woche", async () => {
@@ -145,10 +145,10 @@ describe("/rangliste und /stand", () => {
     const { bot, aufrufe, letzterText } = await seasonMitDaten();
     await bot.handleUpdate(befehl("/rangliste"));
     expect(letzterText()).toContain("startet am 12.10.2026");
-    expect(letzterText()).toContain("1 von 2 haben ihre 3 Messungen");
+    expect(letzterText()).toContain("1 von 2 haben ihre 3 Messtage");
 
     await bot.handleUpdate(befehl("/stand", PETER_PRIVAT, PETER));
-    expect(letzterText()).toContain("0 von 3 Messungen zwischen 05.10.2026 und 11.10.2026");
+    expect(letzterText()).toContain("Messungen an 0 von 3 Tagen zwischen 05.10.2026 und 11.10.2026");
     expect(aufrufe.some((a) => a.methode === "sendPhoto")).toBe(false);
   });
 

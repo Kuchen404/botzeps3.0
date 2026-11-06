@@ -56,7 +56,7 @@ export function ranglisteText(
     const mitWaage = staende.filter((st) => !st.ohneWaage);
     const fertig = mitWaage.filter((st) => st.kalibrierMessungen >= FORTSCHRITT.minMessungenKalibrierung).length;
     const ohne = staende.length - mitWaage.length;
-    return `„${s.name}“ startet am ${datumDe(s.start)}, Punkte gibt's danach.\nKalibrierung: ${fertig} von ${mitWaage.length} haben ihre 3 Messungen.${ohne ? ` ${ohne} ohne Waage dabei.` : ""}`;
+    return `„${s.name}“ startet am ${datumDe(s.start)}, Punkte gibt's danach.\nKalibrierung: ${fertig} von ${mitWaage.length} haben ihre 3 Messtage.${ohne ? ` ${ohne} ohne Waage dabei.` : ""}`;
   }
   if (staende.length === 0) return `„${s.name}“ hat noch keine Teilnehmer.`;
   const ende = seasonEnde(s);
@@ -129,7 +129,7 @@ export function standText(
   } else if (!st.start) {
     const fenster = kalibrierFenster(s, st.beitritt);
     zeilen.push(
-      `Fortschritt: noch kein Startwert, ${st.kalibrierMessungen} von ${FORTSCHRITT.minMessungenKalibrierung} Messungen zwischen ${datumDe(fenster.von)} und ${datumDe(fenster.bis)}.`,
+      `Fortschritt: noch kein Startwert, Messungen an ${st.kalibrierMessungen} von ${FORTSCHRITT.minMessungenKalibrierung} Tagen zwischen ${datumDe(fenster.von)} und ${datumDe(fenster.bis)}.`,
     );
   } else if (!st.fortschritt) {
     zeilen.push("Fortschritt: Startwert steht, Punkte gibt's nach der Kalibrierwoche.");

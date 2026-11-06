@@ -242,7 +242,7 @@ describe("Countdown der Kalibrierwoche", () => {
     const erster = berichte()[0]!;
     expect(erster).toContain("Noch 7 Tage bis „Herbst“ (Start 12.10.2026)");
     // Kevins Messungen aus dem Aufbau liegen schon in der Datenbank
-    expect(erster).toContain("Kalibrierung: 1 von 2 haben ihre 3 Messungen.");
+    expect(erster).toContain("Kalibrierung: 1 von 2 haben ihre 3 Messtage.");
     expect(erster).toContain("Noch offen: Peter (0/3)");
     expect(erster).toContain("⚖️ DIE WAAGE");
     expect(erster).toContain("1 % mehr Muskel = 30 Punkte");
@@ -290,7 +290,7 @@ describe("Erinnerungen", () => {
     const { privat, lauf } = await aufbau();
     await lauf("2026-10-08T17:00:30Z"); // 19 Uhr Berlin
     expect(privat()).toEqual([
-      { chatId: PETER.id, text: expect.stringContaining("Dir fehlen noch 3 Messungen bis 11.10.2026") },
+      { chatId: PETER.id, text: expect.stringContaining("Dir fehlen noch 3 Messtage bis 11.10.2026") },
     ]);
   });
 

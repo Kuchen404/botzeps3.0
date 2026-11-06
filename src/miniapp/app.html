@@ -403,7 +403,7 @@ function standTab(s) {
       el("p", { text: "„" + s.name + "“ startet am " + datum(s.start) + "." }),
       ich.ohneWaage
         ? el("p", { text: "Du bist ohne Waage dabei: Als Fortschritt bekommst du den Median der Gruppe. Doch eine Waage? /ohnewaage aus" })
-        : el("p", { text: "Kalibrierung: " + ich.kalibrierMessungen + " von 3 Messungen." }),
+        : el("p", { text: "Kalibrierung: Messungen an " + ich.kalibrierMessungen + " von 3 Tagen." }),
       ich.ohneWaage ? null : el("button", { class: "knopf", text: "⚖️ Jetzt messen", onclick: function () { zeigeTab("eintraege"); } })
     ]));
     return kinder;
