@@ -1,0 +1,39 @@
+/* Mount Botzeps: feste Seilschaften halten auch große Gruppen lesbar. */
+.ms-gipfel { color: #23334a; }
+.ms-gipfel .gipfel-expedition { padding: 12px 10px 0; }
+.ms-gipfel .gipfel-kopf { display: flex; justify-content: space-between; align-items: start; gap: 12px; padding: 2px 2px 12px; }
+.ms-gipfel .gipfel-titel { color: var(--text, #23334a); margin: 0; font-size: 17px; font-weight: 900; letter-spacing: -.4px; }
+.ms-gipfel .gipfel-untertitel { margin: 3px 0 0; font-size: 11px; color: var(--hint, #8492a6); }
+.ms-gipfel .gipfel-hoehe { flex: none; border: 2px solid #27384e; border-radius: 7px; background: #fff3c6; box-shadow: 2px 2px 0 #27384e; padding: 5px 7px; font-size: 12px; font-weight: 900; transform: rotate(3deg); }
+.ms-gipfel .gipfel-seilschaft { margin-bottom: 12px; }
+.ms-gipfel .gipfel-landschaft { position: relative; height: 350px; overflow: hidden; border: 2px solid #27384e; border-radius: 13px; background: #b7dfe5; isolation: isolate; }
+.ms-gipfel .gipfel-kulisse { position: absolute; inset: 0; width: 100%; height: 100%; }
+.ms-gipfel .gipfel-etikett { position: absolute; top: 9px; left: 10px; z-index: 1; background: #ffffffe6; padding: 4px 7px; border-radius: 5px; font-size: 10px; font-weight: 800; }
+.ms-gipfel .gipfel-lager { position: absolute; bottom: 8px; left: 9px; font-size: 10px; font-weight: 900; color: #fcf1cf; text-shadow: 1px 1px #24394a; }
+.ms-gipfel .gipfel-spur { position: absolute; top: 110px; bottom: 41px; width: 1px; border-left: 2px dotted #e6f3ed90; }
+.ms-gipfel .gipfel-kletterer { position: absolute; bottom: 39px; width: 62px; margin-left: -31px; transform: translate(0, 0); z-index: 2; }
+.ms-gipfel .gipfel-kletterer.ich { z-index: 3; }
+.ms-gipfel .gipfel-figur { width: 54px; height: 78px; position: relative; margin: 0 auto; transform-origin: 50% 95%; }
+.ms-gipfel .gipfel-figur > * { width: 54px; height: 78px; }
+.ms-gipfel .gipfel-figur svg { display: block; overflow: visible; }
+.ms-gipfel .gipfel-figur .ms-figur { width: 54px; height: 78px; }
+.ms-gipfel .gipfel-schatten { position: absolute; bottom: 13px; left: 11px; width: 40px; height: 8px; border-radius: 50%; background: #23334a40; }
+.ms-gipfel .gipfel-kletterer.ich .gipfel-schatten { background: #ffd357aa; box-shadow: 0 0 8px #ffd357; }
+.ms-gipfel .gipfel-name { display: block; position: relative; max-width: 62px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: #20364bec; color: #fff8e7; border-radius: 4px; text-align: center; font-size: 10px; font-weight: 800; line-height: 17px; padding: 0 3px; }
+.ms-gipfel .gipfel-kletterer.ich .gipfel-name { color: #25374d; background: #ffe073; }
+.ms-gipfel .gipfel-fahne { position: absolute; right: -1px; top: 4px; color: #20364b; background: #ffe073; border: 2px solid #20364b; border-radius: 4px 7px 7px 0; font-size: 11px; font-weight: 900; padding: 2px 4px; transform-origin: 0 100%; }
+.ms-gipfel .gipfel-fahne[hidden] { display: none; }
+.ms-gipfel .gipfel-stand { list-style: none; padding: 8px 0 0; margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px 10px; }
+.ms-gipfel .gipfel-stand li { min-width: 0; display: flex; align-items: center; gap: 5px; font-size: 10px; color: var(--hint, #8492a6); }
+.ms-gipfel .gipfel-stand .gipfel-person { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; color: var(--text, #23334a); }
+.ms-gipfel .gipfel-stand .gipfel-wert { white-space: nowrap; margin-left: auto; }
+.ms-gipfel .gipfel-stand li.ich .gipfel-person { color: #e6b634; }
+.ms-gipfel .gipfel-fazit { font-size: 12px; line-height: 1.5; color: var(--text, #23334a); padding: 2px 0 5px; }
+.ms-gipfel .gipfel-leer { padding: 28px 16px; text-align: center; font-size: 13px; }
+.ms-gipfel .gipfel-kletterer.steigt .gipfel-figur { animation: gipfel-schritt .48s ease-in-out infinite alternate; }
+.ms-gipfel .gipfel-kletterer.angekommen .gipfel-figur { animation: gipfel-freude .5s ease-in-out 2; }
+@keyframes gipfel-schritt { from { transform: rotate(-5deg) translateY(0); } to { transform: rotate(5deg) translateY(-4px); } }
+@keyframes gipfel-freude { 50% { transform: translateY(-6px) rotate(-3deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .ms-gipfel *, .ms-gipfel *::before, .ms-gipfel *::after { animation: none !important; transition: none !important; }
+}
