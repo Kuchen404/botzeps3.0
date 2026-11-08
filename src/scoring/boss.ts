@@ -65,6 +65,8 @@ export interface BossEinstellung {
   lebenspunkte: number;
   /** id der Sportart, die doppelten Schaden macht */
   schwaeche?: number | null;
+  /** id der Sportart, die nur halben Schaden macht */
+  resistenz?: number | null;
 }
 
 /** Schaden einer Einheit in der Schwäche des Bosses, als Vielfaches. */
@@ -72,6 +74,17 @@ export const SCHWAECHE_FAKTOR = 2;
 
 /** Nur Sportarten ab diesem Faktor (Krafttraining ×3) taugen als Schwäche, kein Spazieren, Garten oder Yoga. */
 export const SCHWAECHE_MIN_FAKTOR = 3;
+
+/** Schaden einer Einheit in der Resistenz des Bosses, als Vielfaches. */
+export const RESISTENZ_FAKTOR = 0.5;
+
+/** Schadensfaktor einer Einheit gegen den Boss: doppelt in der Schwäche, halb in der Resistenz. */
+export function bossTrefferFaktor(boss: Pick<BossEinstellung, "schwaeche" | "resistenz">, sportartId: number | undefined): number {
+  if (sportartId === undefined) return 1;
+  if (boss.schwaeche != null && sportartId === boss.schwaeche) return SCHWAECHE_FAKTOR;
+  if (boss.resistenz != null && sportartId === boss.resistenz) return RESISTENZ_FAKTOR;
+  return 1;
+}
 
 /** Schaden eines Teilnehmers am Boss: Last der Boss-Woche, Einheiten in der Schwäche doppelt. */
 export function bossSchadenVon(

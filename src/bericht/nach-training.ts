@@ -1,7 +1,7 @@
 import type { Db } from "../db/index.js";
 import { aktuelleSeason, bosseDerSeason, einstellungen, ladeTeilnehmer } from "../db/season-repo.js";
 import { alleTrainings, lebenslangeLast, vergebeErfolge } from "../db/erfolg-repo.js";
-import { SCHWAECHE_FAKTOR, bossAnzeigename, bossKampf, lebensbalken } from "../scoring/boss.js";
+import { RESISTENZ_FAKTOR, SCHWAECHE_FAKTOR, bossAnzeigename, bossKampf, lebensbalken } from "../scoring/boss.js";
 import { BOSS_BLUTET } from "../boss/texte.js";
 import { erfolgText, trainingsErfolge, wochenErfolge, type ErfolgArt } from "../scoring/erfolge.js";
 import { rangIndex, rangText, RAENGE } from "../scoring/raenge.js";
@@ -81,6 +81,8 @@ export function meldungenNachTraining(db: Db, trainingId: number, tag: string, z
       if (kVorher.besiegt) continue;
       if (boss.schwaeche === t.sportartId) {
         zeilen.push(`💥 Volltreffer! ${t.sportartName} ist die Schwäche von ${name}: ${SCHWAECHE_FAKTOR}× Schaden.`);
+      } else if (boss.resistenz === t.sportartId) {
+        zeilen.push(`🛡 Abgeprallt! ${t.sportartName} kitzelt ${name} nur: ${String(RESISTENZ_FAKTOR).replace(".", ",")}× Schaden.`);
       }
       if (kNachher.besiegt) {
         zeilen.push(fuelle(waehleSpruch("boss_besiegt", undefined, zufall), { name: t.name, boss: name }));

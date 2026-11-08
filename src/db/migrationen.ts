@@ -383,4 +383,10 @@ export const MIGRATIONEN: readonly Migration[] = [
       ALTER TABLE termin ADD COLUMN gesendet TEXT; -- JSON: Nummer des Sendens → message_id
     `,
   },
+  {
+    version: 14,
+    name: "boss_resistenz",
+    // Sportart, die beim Boss nur halben Schaden macht. Schon angekündigte Bosse bleiben ohne.
+    sql: `ALTER TABLE boss ADD COLUMN resistenz INTEGER REFERENCES sportart(id) ON DELETE SET NULL;`,
+  },
 ];

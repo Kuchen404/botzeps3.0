@@ -75,6 +75,7 @@ function bossJson(bosse: readonly Boss[], staende: readonly TeilnehmerStand[], i
     besiegt: k.besiegt,
     bonus: k.bonus,
     schwaeche: boss.schwaecheName ?? null,
+    resistenz: boss.resistenzName ?? null,
     kaempfer: staende
       .filter((st) => last(st) > 0)
       .sort((a, b) => last(b) - last(a) || a.name.localeCompare(b.name))
