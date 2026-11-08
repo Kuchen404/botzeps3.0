@@ -1,0 +1,51 @@
+/* Das Seil wandert zum höheren Teamdurchschnitt. Die Arena bleibt im laufenden Spiel offen. */
+.tauziehen { --tz-ink:#253344; --tz-blue:#236ca0; --tz-red:#bf4638; color:var(--tz-ink); padding:12px; background:var(--bg,#fff); }
+.tauziehen .tz-arena { position:relative; height:270px; overflow:hidden; isolation:isolate; border:3px solid var(--tz-ink); border-radius:18px; background:linear-gradient(#a5dfed 0%,#d4f0ee 64%,#c8d983 64%,#91b766 76%,#72984e 100%); box-shadow:inset 0 -8px #365b4026; }
+.tauziehen .tz-arena::before { content:""; position:absolute; left:-8%; top:116px; width:120%; height:90px; background:#a9c782; border-radius:50% 45% 0 0; transform:rotate(-5deg); z-index:-1; }
+.tauziehen .tz-sun { position:absolute; width:43px; height:43px; border:3px solid var(--tz-ink); border-radius:50%; background:#ffe78b; right:21px; top:18px; box-shadow:0 0 0 7px #ffe78b55; }
+.tauziehen .tz-cloud { position:absolute; width:72px; height:19px; background:#ffffffb8; border-radius:50%; left:22px; top:38px; box-shadow:24px 8px #ffffffb8; }
+.tauziehen .tz-flag { position:absolute; top:86px; bottom:49px; left:50%; border-left:3px dashed #fff9; }
+.tauziehen .tz-flag::before { content:""; position:absolute; left:-3px; top:-16px; width:24px; height:17px; background:#fff5d7; border:2px solid var(--tz-ink); clip-path:polygon(0 0,100% 0,77% 50%,100% 100%,0 100%); }
+.tauziehen .tz-mud { position:absolute; left:35%; width:30%; height:41px; top:207px; border:3px solid #51382c; border-radius:50%; background:#866049; box-shadow:inset 0 5px #b08059,0 6px #45603933; z-index:4; }
+.tauziehen .tz-mud::before,.tauziehen .tz-mud::after { content:""; position:absolute; border:2px solid #b88c69; border-radius:50%; width:22%; height:5px; top:12px; left:17%; transform:rotate(-8deg); }
+.tauziehen .tz-mud::after { left:59%; top:19px; width:16%; }
+.tauziehen .tz-field-label { position:absolute; top:244px; width:100%; text-align:center; color:#fff8d9; font-size:10px; font-weight:800; letter-spacing:1.8px; }
+.tauziehen .tz-rope { position:absolute; left:4%; right:4%; top:163px; height:7px; z-index:3; background:repeating-linear-gradient(115deg,#a96c32 0 4px,#ffe49b 4px 7px); border:1px solid #5f4028; border-radius:10px; box-shadow:0 2px #27304433; transition:transform .65s cubic-bezier(.2,.8,.2,1); transform:translateX(var(--tz-shift,0%)); }
+.tauziehen .tz-knot { position:absolute; top:-8px; left:50%; width:17px; height:22px; border:2px solid #692e2e; background:#ee6253; border-radius:6px; transform:translateX(-50%) rotate(-9deg); box-shadow:inset 4px 0 #ffb080; }
+.tauziehen .tz-knot::after { content:""; position:absolute; left:5px; top:17px; width:9px; height:23px; background:#ee6253; border:2px solid #692e2e; clip-path:polygon(0 0,100% 0,100% 100%,50% 78%,0 100%); }
+.tauziehen .tz-crew { position:absolute; top:89px; width:38%; height:137px; z-index:2; transition:transform .65s cubic-bezier(.2,.8,.2,1); }
+.tauziehen .tz-crew.links { left:3%; transform:translateX(var(--tz-left,0%)); }
+.tauziehen .tz-crew.rechts { right:3%; transform:translateX(var(--tz-right,0%)); }
+.tauziehen .tz-person { position:absolute; bottom:0; left:var(--tz-slot); width:clamp(43px,17vw,79px); height:126px; transform:translateX(-50%); }
+.tauziehen .tz-body { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; transform-origin:50% 94%; }
+.tauziehen .tz-avatar { height:100%; width:100%; display:flex; align-items:center; justify-content:center; }
+.tauziehen .tz-avatar>svg { height:100%; width:100%; overflow:visible; }
+.tauziehen .links .tz-avatar>svg { transform:scaleX(-1); }
+.tauziehen .tz-initials, .tauziehen .tz-avatar:not(:has(svg)) { display:flex; align-items:center; justify-content:center; width:45px; height:45px; border:3px solid var(--tz-ink); border-radius:50%; background:var(--tz-team-color); color:#fff; font-size:18px; font-weight:900; box-shadow:0 5px 0 -2px #253344; }
+.tauziehen .tz-person[data-ich="true"]::after { content:"DU"; position:absolute; left:50%; top:24px; transform:translateX(-50%); color:#253344; background:#ffe37b; border:2px solid #253344; border-radius:6px; padding:0 4px; font-size:9px; font-weight:900; }
+.tauziehen .tz-more { position:absolute; top:65px; background:#fffae8; border:2px solid var(--tz-ink); border-radius:8px; padding:2px 6px; font-size:10px; font-weight:800; z-index:5; }
+.tauziehen .tz-more.links { left:12px; } .tauziehen .tz-more.rechts { right:12px; }
+.tauziehen .tz-score { display:grid; grid-template-columns:minmax(0,1fr) 28px minmax(0,1fr); align-items:start; gap:7px; margin:12px 0 8px; }
+.tauziehen .tz-team { min-width:0; padding:9px; border-radius:11px; background:#e9f4fb; border-top:4px solid var(--tz-blue); }
+.tauziehen .tz-team.rechts { background:#fff0e9; border-color:var(--tz-red); text-align:right; }
+.tauziehen .tz-team-name { font-size:12px; line-height:1.2; font-weight:800; overflow-wrap:anywhere; }
+.tauziehen .tz-average { font-size:26px; line-height:1.25; font-weight:900; font-variant-numeric:tabular-nums; }
+.tauziehen .tz-unit { font-size:10px; color:#536271; }
+.tauziehen .tz-versus { align-self:center; font-size:12px; font-weight:900; text-align:center; color:var(--hint,#64748b); }
+.tauziehen .tz-rule { margin:2px 0 9px; font-size:11px; color:var(--hint,#687785); }
+.tauziehen .tz-members { color:var(--text,#253344); font-size:12px; margin-top:10px; }
+.tauziehen .tz-members summary { cursor:pointer; font-weight:650; padding:5px 0; }
+.tauziehen .tz-roster { margin:5px 0 10px; padding:0; list-style:none; }
+.tauziehen .tz-roster li { display:flex; justify-content:space-between; gap:9px; padding:4px 0; border-bottom:1px solid var(--bg2,#e8edf1); }
+.tauziehen .tz-roster li span:first-child { overflow-wrap:anywhere; }
+.tauziehen .tz-roster li span:last-child { flex-shrink:0; font-variant-numeric:tabular-nums; }
+.tauziehen .tz-tug .tz-body { animation:tz-tug .65s ease-out both; }
+.tauziehen .tz-tug .tz-rope { animation:tz-rope .65s ease-out; }
+.tauziehen .tz-splash { position:absolute; top:193px; left:50%; width:80px; height:40px; margin-left:-40px; z-index:6; display:none; background:radial-gradient(ellipse at 50% 100%,#866049 0 37%,transparent 39%),radial-gradient(ellipse at 20% 30%,#866049 0 10%,transparent 12%),radial-gradient(ellipse at 85% 18%,#a67853 0 8%,transparent 10%); }
+.tauziehen[data-ergebnis="links"] .tz-crew.rechts { transform:translateX(-47%) translateY(20px) rotate(-15deg); }
+.tauziehen[data-ergebnis="rechts"] .tz-crew.links { transform:translateX(47%) translateY(20px) rotate(15deg); }
+.tauziehen[data-ergebnis="links"] .tz-splash,.tauziehen[data-ergebnis="rechts"] .tz-splash { display:block; }
+@keyframes tz-tug { 0%,100% { transform:rotate(0); } 35% { transform:rotate(var(--tz-tug-angle,-7deg)) translateY(-3px); } 60% { transform:rotate(2deg); } }
+@keyframes tz-rope { 30% { margin-top:-3px; } 60% { margin-top:2px; } }
+@media (min-width:550px) { .tauziehen .tz-arena { height:290px; } .tauziehen .tz-person { width:85px; } .tauziehen .tz-crew { top:89px; } }
+@media (prefers-reduced-motion:reduce) { .tauziehen *, .tauziehen *::before, .tauziehen *::after { animation:none !important; transition:none !important; } }
