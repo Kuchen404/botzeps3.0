@@ -7,7 +7,7 @@ import { fuehreAus, plane } from "./zeitplan.js";
 const TZ = "Europe/Berlin";
 const echteUhr = uhr.jetzt;
 beforeEach(() => {
-  // Feste Zufälle: erster Boss-Name, erste Sportart als Schwäche (Spazierengehen), erster Spruch
+  // Feste Zufälle: erster Boss-Name, erste harte Sportart als Schwäche (Krafttraining), erster Spruch
   vi.spyOn(Math, "random").mockReturnValue(0);
 });
 afterEach(() => {
@@ -169,10 +169,22 @@ describe("Gamification", () => {
     await bot.handleUpdate(befehl("/sport 120 Joggen"));
     expect(letzterText()).toContain("blutet");
   });
+  it("Schwäche des Bosses: nur harte Sportarten ab Krafttraining, nie Spazieren, Yoga & Co.", async () => {
+    for (const zufall of [0, 0.3, 0.6, 0.99]) {
+      vi.spyOn(Math, "random").mockReturnValue(zufall);
+      const { db, lauf } = await aufbau();
+      await lauf("2026-10-19T07:00:30Z");
+      const boss = db
+        .prepare("SELECT sp.name, sp.faktor FROM boss b JOIN sportart sp ON sp.id = b.schwaeche WHERE b.stufe = 1")
+        .get() as { name: string; faktor: number };
+      expect(boss.faktor).toBeGreaterThanOrEqual(3);
+      expect(["Spazierengehen", "Yoga", "Dehnen", "Pilates", "Wandern", "Radfahren locker"]).not.toContain(boss.name);
+    }
+  });
   it("Schwäche des Bosses: eine zufällige Sportart macht doppelten Schaden", async () => {
     const { bot, db, gesendet, lauf, letzterText } = await aufbau();
     await lauf("2026-10-19T07:00:30Z");
-    expect(gesendet.at(-1)).toContain("💥 Seine Schwäche: Spazierengehen!");
+    expect(gesendet.at(-1)).toContain("💥 Seine Schwäche: Krafttraining!");
     db.prepare("UPDATE boss SET schwaeche = (SELECT id FROM sportart WHERE name = 'Joggen')").run();
     tag("2026-10-20");
     await bot.handleUpdate(befehl("/sport 120 Joggen"));
