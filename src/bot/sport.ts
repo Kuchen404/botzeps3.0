@@ -1,3 +1,4 @@
+import { figurFreigeschaltet } from "../figuren/zuteilung.js";
 import { Composer, InlineKeyboard, type Context } from "grammy";
 import type { Db } from "../db/index.js";
 import {
@@ -70,6 +71,10 @@ export function trageTrainingEin(
   });
   const faktor = trainingsFaktor(sportart, minuten, mitSchritten);
   const meldungen = meldungenNachTraining(db, trainingId, heute(gruppenZeitzone()));
+  // Dieses Training schaltet die Figurwahl frei: wer zuerst kommt, hat die volle Auswahl
+  if (figurFreigeschaltet(db, nutzer.id, trainingId, heute(gruppenZeitzone()))) {
+    meldungen.push(`🎭 ${nutzer.name} darf sich jetzt eine Kämpferfigur schnappen (App → Mehr). Wer trödelt, kriegt die Reste.`);
+  }
   const zusatz = mitSchritten ? ` (${schritteText(minuten, mitSchritten, faktor)})` : "";
   const post = mitMeldungen(`${trainingsPostText(nutzer.name, minuten, sportart.name)}${TAG_TEXT[tage]}${zusatz}`, meldungen);
   // Was tatsächlich zählt: mit Tagesdeckel, also abzüglich dessen, was der Tag schon hatte

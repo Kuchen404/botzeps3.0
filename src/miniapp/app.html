@@ -128,6 +128,26 @@
     background: #ffe8a8; clip-path: polygon(50% 0,58% 32%,86% 12%,69% 42%,100% 50%,69% 58%,86% 88%,58% 68%,50% 100%,42% 68%,14% 88%,31% 58%,0 50%,31% 42%,14% 12%,42% 32%);
     animation: trefferfunken .3s ease-out forwards; }
   @keyframes trefferfunken { from { transform: translate(-50%,-50%) scale(.3) rotate(-15deg); opacity: .9; } to { transform: translate(-50%,-50%) scale(1.3) rotate(15deg); opacity: 0; } }
+  /* Spielerfiguren */
+  .kaempfer > div.mitfigur { width: 54px; }
+  .figur { position: relative; width: 54px; height: 80px; margin: 0 auto 2px; }
+  .figur > svg { position: absolute; inset: 0; width: 54px; height: 80px; overflow: visible; }
+  .figur > .bz-spieler-illustriert { transform-origin: 50% 95%; }
+  .figur[data-pose="bereit"] > .bz-spieler-illustriert { animation: spieler-bereit 2.6s ease-in-out infinite; }
+  .figur[data-pose="jubel"] > .bz-spieler-illustriert { animation: spieler-jubel .65s ease-in-out 3; }
+  @keyframes spieler-bereit { 0%,100% { transform: scale(1); } 50% { transform: scale(1.025,.98); } }
+  @keyframes spieler-jubel { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px) rotate(-2deg); } }
+  .figur::before { content: ""; position: absolute; left: 50%; bottom: 0; width: 40px; height: 9px; transform: translateX(-50%); background: radial-gradient(ellipse, rgba(0,0,0,.55), transparent 70%); }
+  .kaempfer .ich .figur::before { width: 50px; height: 12px; background: radial-gradient(ellipse, #ffcc00, rgba(255,204,0,.35) 45%, transparent 70%); }
+  .kaempfer .ich .name { color: #ffcc00; font-weight: 700; }
+  .kaempfer .pennt .schaden { color: #ff9f9f; }
+  .zzz { position: absolute; right: 0; top: 0; font-weight: 900; font-size: 11px; color: #bfe8ff; transform: rotate(-12deg); }
+  .figurwahl { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 8px; }
+  .figurwahl button { border: 2px solid transparent; border-radius: 12px; background: var(--bg2); color: var(--text); padding: 4px 2px 6px; font-size: 11px; line-height: 1.2; }
+  .figurwahl button svg { width: 60px; height: 88px; display: block; margin: 0 auto; }
+  .figurwahl button.meine { border-color: #ffcc00; box-shadow: 0 0 8px rgba(255,204,0,.6); }
+  .figurwahl button:disabled { opacity: .4; }
+  .figurwahl .wer { display: block; color: var(--hint); font-size: 10px; }
   /* Minispiel der Woche */
   .regel { margin: 0 0 8px; }
   .spielstatus { font-weight: 700; margin-bottom: 8px; }
@@ -140,7 +160,7 @@
   @keyframes wut { from { scale: 1; } to { scale: 1.06; } }
   @keyframes aufsteigen { from { opacity: 1; transform: translate(-50%, 0); } to { opacity: 0; transform: translate(-50%, -46px); } }
   @keyframes stempeln { from { transform: translate(-50%, -50%) rotate(-12deg) scale(2.2); opacity: 0; } to { transform: translate(-50%, -50%) rotate(-12deg) scale(1); opacity: 1; } }
-  @media (prefers-reduced-motion: reduce) { .bossbild, .stufe2 .bossbild, .stempel, .zahl, .trefferfunken { animation: none !important; } .bossplatz.tot .bossbild, .lp > .rest { transition: none; } }
+  @media (prefers-reduced-motion: reduce) { .bossbild, .stufe2 .bossbild, .stempel, .zahl, .trefferfunken, .figur > .bz-spieler-illustriert { animation: none !important; } .bossplatz.tot .bossbild, .lp > .rest { transition: none; } }
 </style>
 </head>
 <body>
@@ -286,13 +306,42 @@ function bossKarte(b) {
     bild,
     b.stufe === 2 && !b.bild ? el("span", { class: "muckis r", text: "💪" }) : null
   ]);
+  var figuren = b.figuren || {};
+  function figurBild(nr, pose) {
+    var z = nr != null && figuren[nr] && figuren[nr][pose];
+    if (!z) return null;
+    // Illustrationen kommen vom eigenen Server (feste Figuren, keine Nutzereingaben)
+    var f = el("div", { class: "figur" });
+    f.innerHTML = z;
+    return f;
+  }
+  function stellePose(zelle, pose) {
+    var k = zelle._k;
+    if (k.figur == null || !figuren[k.figur] || !figuren[k.figur][pose]) return;
+    var alt = zelle.querySelector(".figur");
+    if (alt && alt.getAttribute("data-pose") === pose) return;
+    var neu = figurBild(k.figur, pose);
+    neu.setAttribute("data-pose", pose);
+    alt.replaceWith(neu);
+  }
   var reihe = el("div", { class: "kaempfer" }, b.kaempfer.map(function (k) {
-    return el("div", { class: k.ich ? "ich" : "" }, [
-      el("div", { class: "avatar", style: "background:" + farbe(k.name), text: initialen(k.name) }),
+    var bildchen = figurBild(k.figur, "bereit");
+    if (bildchen) bildchen.setAttribute("data-pose", "bereit");
+    var zelle = el("div", { class: (k.ich ? "ich" : "") + (bildchen ? " mitfigur" : "") }, [
+      bildchen || el("div", { class: "avatar", style: "background:" + farbe(k.name), text: initialen(k.name) }),
       el("div", { class: "name", text: k.name }),
       el("div", { class: "schaden", text: "−" + zahl(k.schaden, 0) })
     ]);
+    zelle._k = k;
+    return zelle;
   }));
+  // Wer nichts gemacht hat, liegt k.o. daneben
+  (b.pennen || []).forEach(function (p) {
+    var bildchen = figurBild(p.figur, "ko");
+    if (!bildchen) return;
+    bildchen.appendChild(el("div", { class: "zzz", text: "Zzz" }));
+    reihe.appendChild(el("div", { class: "mitfigur pennt" + (p.ich ? " ich" : "") }, [bildchen, el("div", { class: "name", text: p.name }), el("div", { class: "schaden", text: "pennt" })]));
+  });
   var arena = el("div", { class: "arena" + (b.stufe === 2 ? " stufe2" : "") + (illustriert ? " illustriert" : "") }, [el("div", { class: "lp" }, [rest, lpText]), platz, reihe]);
   if (!b.kaempfer.length) reihe.appendChild(el("div", { class: "hint", style: "width:auto;color:#ddd", text: "Noch keiner hat sich getraut." }));
 
@@ -310,6 +359,7 @@ function bossKarte(b) {
     setzeLp(b.schaden);
     platz.querySelectorAll(".stempel").forEach(function (x) { x.remove(); });
     platz.classList.toggle("tot", b.besiegt);
+    Array.prototype.forEach.call(reihe.children, function (z) { if (z._k) stellePose(z, b.besiegt ? "jubel" : "bereit"); });
     if (b.besiegt) platz.appendChild(el("div", { class: "stempel sieg", text: "BESIEGT" }));
     else if (!b.aktiv) platz.appendChild(el("div", { class: "stempel niederlage", text: "ÜBERLEBT" }));
     var texte = [];
@@ -329,6 +379,7 @@ function bossKarte(b) {
     if (!BEWEGUNG || !b.kaempfer.length || (bossGezeigt[schluessel] && !erzwingen)) { ende(); return; }
     bossGezeigt[schluessel] = true;
     platz.classList.remove("tot");
+    Array.prototype.forEach.call(reihe.children, function (z) { if (z._k) stellePose(z, "bereit"); });
     platz.querySelectorAll(".stempel").forEach(function (x) { x.remove(); });
     info.replaceChildren();
     setzeLp(0);
@@ -340,6 +391,8 @@ function bossKarte(b) {
       setTimeout(function () {
         if (!arena.isConnected || lauf !== durchlauf) return;
         var k = b.kaempfer[i], kaempfer = reihe.children[i];
+        stellePose(kaempfer, "schlag");
+        setTimeout(function () { if (lauf === durchlauf) stellePose(kaempfer, "bereit"); }, takt * 0.85);
         kaempfer.animate([{ transform: "translateY(0)" }, { transform: "translateY(-16px) scale(1.12)" }, { transform: "translateY(0)" }], { duration: takt * 0.8 });
         var a = arena.getBoundingClientRect(), von = kaempfer.getBoundingClientRect(), ziel = bild.getBoundingClientRect();
         var faust = el("span", { class: "faust", text: "👊" });
@@ -421,6 +474,12 @@ function standTab(s) {
   var kinder = [];
   if (!s) return [karte(null, [el("p", { text: "Du bist in keiner Season. In der Gruppe /season tippen oder trainieren, dann bist du dabei." })])];
   var ich = s.ich;
+  if (s.figur && s.figur.darfWaehlen) {
+    kinder.push(karte("🎭 Kämpferfigur", [
+      el("p", { text: "Du darfst dir jetzt eine Figur aussuchen. Wer zuerst kommt, hat die volle Auswahl, wer trödelt, kriegt die Reste." }),
+      el("button", { class: "knopf", text: "Figur aussuchen", onclick: function () { zeigeTab("einstellungen"); } })
+    ]));
+  }
   if (!s.gestartet) {
     kinder.push(karte("Vor dem Start", [
       el("p", { text: "„" + s.name + "“ startet am " + datum(s.start) + "." }),
@@ -758,6 +817,7 @@ function einstellungenTab() {
   an.addEventListener("change", speichere);
   zeit.addEventListener("change", speichere);
   return [
+    figurKarte(),
     karte("Erinnerungen", [
       el("label", { class: "schalter" }, ["Erinnerungen an", an]),
       el("label", { class: "schalter" }, ["Uhrzeit", zeit]),
@@ -766,6 +826,44 @@ function einstellungenTab() {
     ]),
     karte("Datenschutz", [el("p", { class: "hint", text: "Deine Waagenwerte siehst nur du. Die Gruppe sieht nur Punkte." })])
   ];
+}
+
+var figurDaten = null;
+/** Eigene Kämpferfigur der Season aussuchen: einmalig, ab dem ersten Training in der ersten Boss-Woche; jede Figur gibt es pro Season nur einmal. */
+function figurKarte() {
+  if (!figurDaten) {
+    api("/api/figuren").then(function (j) { figurDaten = j; if (tab === "einstellungen") zeichne(); }).catch(zeigeFehler);
+    return karte("Deine Kämpferfigur", [el("p", { class: "hint", text: "Lädt …" })]);
+  }
+  var s = daten.seasons[seasonIndex];
+  if (!s) return karte("Deine Kämpferfigur", [el("p", { class: "hint", text: "Figuren gibt es in einer Season ab der ersten Boss-Woche." })]);
+  var d = s.figur, waehlbar = d.darfWaehlen && d.meine == null;
+  var text = d.meine != null ? "Das ist deine Figur für „" + s.name + "“. Gewählt ist gewählt."
+    : waehlbar ? "Such dir eine aus! Gewählt ist gewählt."
+    : d.freiAb ? "Trag ein Training ab dem " + datum(d.freiAb) + " ein, dann darfst du wählen. Wer zuerst kommt, hat die volle Auswahl."
+    : "Ab der ersten Boss-Woche: Wer zuerst ein Training einträgt, sucht sich zuerst eine Figur aus.";
+  var status = el("p", { class: "hint", text: text });
+  var raster = el("div", { class: "figurwahl" }, figurDaten.figuren.map(function (f) {
+    f = { nr: f.nr, name: f.name, bild: f.bild, vergeben: d.meine === f.nr ? null : d.vergeben[f.nr] || null };
+    var knopf = el("button", { class: f.nr === d.meine ? "meine" : "", "aria-label": f.name }, []);
+    var bild = el("span"); bild.innerHTML = f.bild; // fester Baukasten vom eigenen Server
+    knopf.appendChild(bild);
+    knopf.appendChild(el("span", { text: f.name }));
+    if (f.vergeben) knopf.appendChild(el("span", { class: "wer", text: f.vergeben }));
+    knopf.disabled = !waehlbar || !!f.vergeben;
+    if (f.nr === d.meine) knopf.disabled = false;
+    knopf.addEventListener("click", function () {
+      if (!waehlbar) return;
+      bestaetige("„" + f.name + "“ nehmen? Danach lässt sie sich nicht mehr ändern.", function () {
+        status.textContent = "Speichert …";
+        api("/api/figur", { chat: s.chat, figur: f.nr }).then(function () {
+          erfolg(); return neuLaden();
+        }).catch(function (e) { status.textContent = e.message; });
+      });
+    });
+    return knopf;
+  }));
+  return karte("Deine Kämpferfigur", [raster, status, el("p", { class: "hint", text: "Deine Figur kämpft für dich gegen die Bosse und taucht in den Minispielen auf." })]);
 }
 
 function bestaetige(frage, dann) {

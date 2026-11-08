@@ -62,6 +62,29 @@ async function aufbau() {
 }
 
 describe("Mini App", () => {
+  it("liefert Figuren ohne Anmeldung als langfristig gecachte PNGs, nur aus der festen Medienliste", async () => {
+    const t = await aufbau();
+    try {
+      const daten = await t.holen("/api/figuren");
+      const pfad = daten.json.figuren[0].bild.match(/href="([^"]+)"/)[1];
+      const bild = await fetch(t.basis + pfad);
+      expect(bild.status).toBe(200);
+      expect(bild.headers.get("content-type")).toBe("image/png");
+      expect(bild.headers.get("cache-control")).toBe("public, max-age=31536000, immutable");
+      expect(bild.headers.get("x-content-type-options")).toBe("nosniff");
+      const bytes = Buffer.from(await bild.arrayBuffer());
+      expect(bytes.subarray(0, 8).toString("hex")).toBe("89504e470d0a1a0a");
+      expect(Number(bild.headers.get("content-length"))).toBe(bytes.length);
+      for (const ungueltig of ["prompts.json", "unbekannt.png", "0.png", "..%2F..%2Fpackage.json"]) {
+        expect((await fetch(t.basis + "/app/figuren/" + ungueltig)).status).toBe(404);
+      }
+      expect((await fetch(t.basis + pfad, { method: "POST" })).status).toBe(404);
+    } finally {
+      t.server.close();
+      t.db.close();
+    }
+  });
+
   it("liefert die Seite mit CSP-Nonce", async () => {
     const { server, basis } = await aufbau();
     try {
@@ -122,6 +145,7 @@ describe("Mini App", () => {
       tag("2026-10-20");
       await bot.handleUpdate(befehl("/sport 30 Yoga", GRUPPE, PETER));
       await bot.handleUpdate(befehl("/sport 100 Joggen"));
+      expect((await holen("/api/figur", KEVIN, { chat: GRUPPE.id, figur: 3 })).status).toBe(200);
       const boss = (await holen("/api/ich")).json.seasons[0].boss;
       expect(boss).toEqual({
         name: "König Bierbauch",
@@ -137,14 +161,58 @@ describe("Mini App", () => {
         schwaeche: null,
         resistenz: null,
         kaempfer: [
-          { name: "Kevin", schaden: 450, ich: true },
-          { name: "Peter", schaden: 30, ich: false },
+          { name: "Kevin", schaden: 450, ich: true, figur: 3 },
+          { name: "Peter", schaden: 30, ich: false, figur: null },
         ],
         drueckeberger: [],
+        pennen: [],
+        figuren: {
+          3: { bereit: expect.stringContaining("<svg"), schlag: expect.stringContaining("<svg"), jubel: expect.stringContaining("<svg") },
+        },
       });
       // Nach der Boss-Woche bleibt er als Ergebnis sichtbar
       tag("2026-10-27");
       expect((await holen("/api/ich")).json.seasons[0].boss).toMatchObject({ aktiv: false, besiegt: false });
+    } finally {
+      server.close();
+    }
+  });
+
+  it("/api/figur: wer in der ersten Boss-Woche zuerst trainiert, wählt zuerst", async () => {
+    const { server, holen, bot, db, letzterText } = await aufbau();
+    const figur = async (von = KEVIN) => (await holen("/api/ich", von)).json.seasons[0].figur;
+    const waehle = async (nr: number, von = KEVIN) => (await holen("/api/figur", von, { chat: GRUPPE.id, figur: nr })).status;
+    try {
+      const alle = (await holen("/api/figuren")).json.figuren;
+      expect(alle).toHaveLength(12);
+      expect(alle[0]).toMatchObject({ nr: 0, name: "Der Pumper", bild: expect.stringContaining("<svg") });
+      // Noch kein Spiel mit Figuren: keine Wahl
+      expect(await figur()).toEqual({ meine: null, darfWaehlen: false, freiAb: null, vergeben: {} });
+      kuendigeBossAn(db, 1, 1, "König Bierbauch", 650);
+      tag("2026-10-20");
+      expect(await figur()).toMatchObject({ darfWaehlen: false, freiAb: "2026-10-19" });
+      expect(await waehle(0)).toBe(403);
+
+      // Erstes Training in der Boss-Woche schaltet frei und kündigt es im Post an
+      await bot.handleUpdate(befehl("/sport 30 Joggen"));
+      expect(letzterText()).toContain("Kämpferfigur");
+      expect(await figur()).toMatchObject({ darfWaehlen: true });
+      await bot.handleUpdate(befehl("/sport 20 Joggen"));
+      expect(letzterText()).not.toContain("Kämpferfigur");
+
+      expect((await holen("/api/figur", KEVIN, { chat: GRUPPE.id, figur: 12 })).status).toBe(400);
+      expect((await holen("/api/figur", KEVIN, { chat: 1, figur: 0 })).status).toBe(404);
+      expect(await waehle(0)).toBe(200);
+      expect(await figur()).toEqual({ meine: 0, darfWaehlen: false, freiAb: "2026-10-19", vergeben: { 0: "Kevin" } });
+      // Gewählt ist gewählt
+      expect(await waehle(1)).toBe(409);
+
+      // Peter kommt später und bekommt, was übrig ist
+      expect(await waehle(5, PETER)).toBe(403);
+      await bot.handleUpdate(befehl("/sport 30 Yoga", GRUPPE, PETER));
+      expect(await figur(PETER)).toMatchObject({ meine: null, darfWaehlen: true, vergeben: { 0: "Kevin" } });
+      expect(await waehle(0, PETER)).toBe(409);
+      expect(await waehle(5, PETER)).toBe(200);
     } finally {
       server.close();
     }
