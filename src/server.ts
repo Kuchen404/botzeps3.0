@@ -16,8 +16,8 @@ const SPIELE = new URL("./miniapp/spiele/", import.meta.url);
 const dateien = readdirSync(SPIELE).sort();
 const skripte = ["runtime.js", ...dateien.filter((f) => f.endsWith(".js") && f !== "runtime.js")];
 const SEITE = readFileSync(new URL("./miniapp/app.html", import.meta.url), "utf8")
-  .replace("/* {{MINISPIEL_STILE}} */", dateien.filter((f) => f.endsWith(".css")).map((f) => readFileSync(new URL(f, SPIELE), "utf8")).join("\n"))
-  .replace("/* {{MINISPIEL_SKRIPTE}} */", skripte.map((f) => readFileSync(new URL(f, SPIELE), "utf8")).join("\n"));
+  .replace("/* {{MINISPIEL_STILE}} */", () => dateien.filter((f) => f.endsWith(".css")).map((f) => readFileSync(new URL(f, SPIELE), "utf8")).join("\n"))
+  .replace("/* {{MINISPIEL_SKRIPTE}} */", () => skripte.map((f) => readFileSync(new URL(f, SPIELE), "utf8")).join("\n"));
 const MAX_BODY = 16 * 1024;
 
 export interface MiniAppOptionen {
