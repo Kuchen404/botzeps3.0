@@ -137,6 +137,57 @@ describe("Mini App", () => {
     }
   });
 
+  it("/api/ich: Bombe nutzt stabile Spieler-IDs und die gewählten Season-Figuren", async () => {
+    const { server, holen, bot, db } = await aufbau();
+    try {
+      const ids = db.prepare("SELECT id, name FROM nutzer ORDER BY name").all() as { id: number; name: string }[];
+      const kevin = ids.find((n) => n.name === "Kevin")!.id;
+      const peter = ids.find((n) => n.name === "Peter")!.id;
+      db.prepare("UPDATE teilnahme SET figur = 0 WHERE nutzer = ?").run(kevin);
+      db.prepare("INSERT INTO minispiel (season, woche, art, daten) VALUES (1, 1, 'bombe', ?)")
+        .run(JSON.stringify({ art: "bombe", spieler: [String(kevin), String(peter)] }));
+      tag("2026-10-20");
+      const b = (await holen("/api/ich")).json.seasons[0].minispiel.bombe;
+      expect(b.id).toBe("1:1");
+      expect(b.spieler).toEqual([
+        { id: String(kevin), name: "Kevin", ich: true, figur: 0 },
+        { id: String(peter), name: "Peter", ich: false, figur: null },
+      ]);
+      expect(Object.keys(b.figuren)).toEqual(["0"]);
+      expect(Object.keys(b.figuren[0])).toEqual(["bereit", "schlag", "jubel"]);
+      expect(b.figuren[0].bereit).toContain("/api/figurbild/");
+      expect(b.figuren[0].bereit).toContain("bombe0bereit");
+      // Gleicher Trainingstag: Eintragszeit entscheidet, nicht Name oder Reihenfolge.
+      db.prepare("UPDATE training SET erstellt_am = '2026-10-14T08:00:00Z' WHERE nutzer = ?").run(kevin);
+      db.prepare("UPDATE training SET erstellt_am = '2026-10-14T09:00:00Z' WHERE nutzer = ?").run(peter);
+      expect((await holen("/api/ich")).json.seasons[0].minispiel.bombe.traeger).toBe(String(kevin));
+      await bot.handleUpdate(befehl("/sport 30 Yoga"));
+      const danach = (await holen("/api/ich")).json.seasons[0].minispiel.bombe;
+      expect(danach.traeger).toBe(String(peter));
+      expect(danach.spieler[0].figur).toBe(0);
+      expect(danach.zeitzone).toBe("Europe/Berlin");
+      expect(danach.verlauf.map((e: { traeger: string }) => e.traeger)).toEqual([String(kevin), String(peter)]);
+      expect(danach.verlauf[0].art).toBe("start");
+      expect(danach.verlauf.at(-1).traeger).toBe(danach.traeger);
+      // Gleiche Namen dürfen weder Figuren noch die Träger-ID vermischen.
+      db.prepare("UPDATE nutzer SET name = 'Kevin' WHERE id = ?").run(peter);
+      const gleich = (await holen("/api/ich")).json.seasons[0].minispiel.bombe;
+      expect(gleich.spieler.map((sp: { name: string }) => sp.name)).toEqual(["Kevin", "Kevin"]);
+      expect(gleich.traeger).toBe(String(peter));
+      expect((await holen("/api/ich", PETER)).json.seasons[0].minispiel.bombe.spieler[1].ich).toBe(true);
+      // Eine spätere Löschung löscht nicht die historische Übergabe aus dem Rückblick.
+      uhr.jetzt = () => new Date("2026-10-20T08:05:00Z");
+      db.prepare("UPDATE training SET geloescht_am = '2026-10-20T08:04:00Z' WHERE nutzer = ? AND datum = '2026-10-20'").run(kevin);
+      const korrigiert = (await holen("/api/ich")).json.seasons[0].minispiel.bombe;
+      expect(korrigiert.verlauf.map((e: { traeger: string }) => e.traeger)).toEqual([String(kevin), String(peter), String(kevin)]);
+      expect(korrigiert.verlauf.at(-1)).toMatchObject({ traeger: korrigiert.traeger, art: "korrektur" });
+      expect(JSON.stringify(korrigiert.verlauf)).not.toMatch(/minuten|faktor|sportart/);
+    } finally {
+      server.close();
+      db.close();
+    }
+  });
+
   it("/api/ich: Boss mit Lebenspunkten und Kämpfern, stärkste zuerst", async () => {
     const { server, holen, bot, db } = await aufbau();
     try {

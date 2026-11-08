@@ -113,6 +113,24 @@ function bossJson(
   };
 }
 
+/** Dieselben gewählten Season-Figuren wie beim Boss, nur die benötigten Posen. */
+function minispielJson(db: Db, s: Parameters<typeof minispielFuerApp>[1], tag: string, ich: string) {
+  const m = minispielFuerApp(db, s, tag, ich);
+  if (!m || !("bombe" in m)) return m;
+  const vergeben = figurenDerSeason(db, s.id);
+  const figuren: Record<number, Partial<Record<Pose, string>>> = {};
+  const spieler = m.bombe.spieler.map((sp) => {
+    const figur = vergeben.get(Number(sp.id)) ?? null;
+    if (figur !== null) {
+      // Eigenes Präfix: Boss und Minispiel können gleichzeitig im Dokument stehen.
+      figuren[figur] ??= Object.fromEntries((["bereit", "schlag", "jubel"] as const).map((pose) =>
+        [pose, figurSvg(FIGUREN[figur]!, pose, { id: `bombe${figur}${pose}` })]));
+    }
+    return { ...sp, figur };
+  });
+  return { ...m, bombe: { ...m.bombe, spieler, figuren } };
+}
+
 function ich(db: Db, nutzerId: number, telegramId: number) {
   const tag = heute(gruppenZeitzone());
   const seasons = [];
@@ -168,7 +186,7 @@ function ich(db: Db, nutzerId: number, telegramId: number) {
       teams: tag >= s.start ? berechneTeams(db, s, staende).map((t) => ({ platz: t.platz, name: t.name, gesamt: runde(t.gesamt), bonus: t.bonus })) : [],
       verlauf: eigen ? { x: eigen.x, achse: verlauf.achse, reihen: eigen.reihen } : null,
       boss: tag >= s.start ? bossJson(bosseDerSeason(db, s), staende, st.id, woche, laeuft, figurenDerSeason(db, s.id)) : null,
-      minispiel: laeuft ? minispielFuerApp(db, s, tag, st.id) : null,
+      minispiel: laeuft ? minispielJson(db, s, tag, st.id) : null,
       // Kämpferfigur dieser Season: gewählt, wählbar oder ab wann
       figur: {
         meine: figurIn(db, s.id, nutzerId),
