@@ -201,6 +201,11 @@ export function minispielFuerApp(db: Db, s: SeasonZeile, tag: string, ich: strin
         ...basis,
         regel: "Die Bombe hängt an dem, dessen letztes Training am längsten her ist. Wer sie Sonntagabend hat, fliegt in die Luft.",
         status: traeger ? `💣 Tickt gerade bei ${nm(traeger)}` : "",
+        bombe: {
+          id: `${s.id}:${spiel.woche}`,
+          traeger,
+          spieler: d.spieler.map((id) => ({ id, name: nm(id), ich: id === ich })),
+        },
         liste: [...d.spieler]
           .sort((a, b) => (letztes(a) ?? "").localeCompare(letztes(b) ?? ""))
           .map((id) => eintrag(id, letztes(id) ? `zuletzt ${letztes(id)!.split("-").reverse().slice(0, 2).join(".")}.` : "noch nie")),

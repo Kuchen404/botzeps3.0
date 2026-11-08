@@ -148,6 +148,30 @@
   .figurwahl button.meine { border-color: #ffcc00; box-shadow: 0 0 8px rgba(255,204,0,.6); }
   .figurwahl button:disabled { opacity: .4; }
   .figurwahl .wer { display: block; color: var(--hint); font-size: 10px; }
+  /* Tickende Bombe: die gewählten Season-Avatare im Trainingsraum. */
+  .bomben-szene { color: #f3f1d7; background: radial-gradient(ellipse at 50% 30%, #48543b, #202e24 80%); border: 1px solid #536344; border-radius: 12px; overflow: hidden; padding-bottom: 12px; margin-bottom: 10px; }
+  .bomben-status { color: #262b1d; background: #ffce58; font-weight: 800; padding: 9px 12px; font-size: 14px; }
+  .bomben-fenster { overflow-x: auto; scrollbar-width: thin; }
+  .bomben-feld { position: relative; width: max-content; min-width: 100%; padding-top: 85px; background: repeating-linear-gradient(0deg, transparent 0 39px, #bac6950a 40px 41px); }
+  .bomben-reihe { display: flex; justify-content: space-around; gap: 8px; min-width: 100%; padding: 0 10px 12px; }
+  .bomben-spieler { position: relative; flex: 0 0 84px; text-align: center; border-bottom: 3px solid transparent; padding: 0 3px 5px; }
+  .bomben-spieler .figur { width: 70px; height: 104px; }
+  .bomben-spieler .figur > svg { width: 70px; height: 104px; }
+  .bomben-spieler .avatar { margin: 30px auto 34px; }
+  .bomben-spieler .name { width: 78px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+  .bomben-spieler.ich .name { color: #ffdb70; font-weight: 800; }
+  .bomben-spieler.traeger { border-color: #ffce58; }
+  .bomben-marke { font-size: 10px; min-height: 16px; color: #f9d778; }
+  .bomben-kugel { position: absolute; left: -25px; top: 24px; width: 50px; height: 63px; pointer-events: none; }
+  .bomben-kugel svg { width: 50px; height: 63px; }
+  .bomben-funke { animation: bomben-funkeln .3s ease-in-out infinite alternate; transform-origin: 60px 13px; }
+  .bomben-info { font-size: 12px; color: #d3dcc6; margin: 4px 12px 10px; }
+  .bomben-szene > .knopf { margin-left: 12px; background: #384934; color: #f3f1d7; }
+  .bomben-erschreckt .figur, .bomben-erschreckt .avatar { animation: bomben-schreck .45s ease-out; }
+  @keyframes bomben-funkeln { to { opacity: .4; transform: scale(.75); } }
+  @keyframes bomben-schreck { 40% { transform: translateY(-8px) rotate(-5deg); } }
+  @media (prefers-reduced-motion: reduce) { .bomben-szene *, .bomben-szene *::before { animation: none !important; } }
+
   /* Minispiel der Woche */
   .regel { margin: 0 0 8px; }
   .spielstatus { font-weight: 700; margin-bottom: 8px; }
@@ -452,10 +476,95 @@ function berg(kletterer) {
   return svg;
 }
 
+/** Letzter angezeigter Träger je Season/Woche; Namen und Figuren sind keine Identität. */
+var bombenStaende = {};
+function bombenSzene(b) {
+  var vorher = bombenStaende[b.id];
+  var traeger = b.spieler.find(function (sp) { return sp.id === b.traeger; });
+  var wechsel = !!(vorher && vorher !== b.traeger && b.spieler.some(function (sp) { return sp.id === vorher; }));
+  var status = el("div", { class: "bomben-status", role: "status", "aria-live": "polite", text: traeger ? "Tickt bei " + traeger.name : "Noch kein Bombenträger" });
+  var bombe = el("div", { class: "bomben-kugel", "aria-hidden": "true" });
+  // Feste Zeichnung. Spielernamen werden ausschließlich als Text eingefügt.
+  bombe.innerHTML = '<svg viewBox="0 0 80 100"><path d="M42 35Q32 13 56 16L60 6" fill="none" stroke="#cba25c" stroke-width="5"/><path class="bomben-funke" d="M60 0L63 7 71 4 67 12 75 17 65 18 62 27 58 18 49 21 53 12 47 8 57 8Z" fill="#ffce49"/><path d="M29 34L32 26 48 28 50 38" fill="#59695c" stroke="#10251b" stroke-width="3"/><circle cx="39" cy="63" r="29" fill="#283e34" stroke="#10251b" stroke-width="4"/><path d="M19 54Q23 43 34 44" fill="none" stroke="#9dae9c" stroke-width="5" stroke-linecap="round"/><path d="M39 48V65M39 74V77" stroke="#ffd060" stroke-width="5" stroke-linecap="round"/></svg>';
+  var zellen = {};
+  function pose(sp, zelle, p) {
+    var f = b.figuren && b.figuren[sp.figur];
+    var bild = zelle.querySelector(".figur");
+    if (bild && f && f[p]) { bild.innerHTML = f[p]; bild.setAttribute("data-pose", p); }
+  }
+  var reihe = el("div", { class: "bomben-reihe" }, b.spieler.map(function (sp) {
+    var f = b.figuren && sp.figur != null && b.figuren[sp.figur];
+    var bild = f && f.bereit ? el("div", { class: "figur", "data-pose": "bereit" }) : el("div", { class: "avatar", style: "background:" + farbe(sp.name), text: initialen(sp.name) });
+    if (f && f.bereit) bild.innerHTML = f.bereit; // feste Server-Figuren wie im Bosskampf
+    var zelle = el("div", { class: "bomben-spieler" + (sp.ich ? " ich" : "") + (sp.id === b.traeger ? " traeger" : ""), "aria-label": sp.name + (sp.id === b.traeger ? ", trägt die Bombe" : "") }, [bild, el("div", { class: "name", text: sp.name }), el("div", { class: "bomben-marke", text: sp.id === b.traeger ? "💣 am Zug" : sp.ich ? "Du" : "" })]);
+    zellen[sp.id] = zelle;
+    return zelle;
+  }));
+  var feld = el("div", { class: "bomben-feld" }, [reihe, bombe]);
+  var fenster = el("div", { class: "bomben-fenster", tabindex: "0", "aria-label": "Spieler am Bombenspiel, seitlich scrollbar" }, [feld]);
+  var info = el("p", { class: "bomben-info", text: "Trainieren wirft die Bombe weiter. Wer sie Sonntagabend hat, ist dran." });
+  var aktualisieren = el("button", { class: "knopf leise", text: "↻ Stand aktualisieren", onclick: function () { aktualisiereBombe(aktualisieren); } });
+  var szene = el("div", { class: "bomben-szene" }, [status, fenster, info, aktualisieren]);
+  function mitte(id) { var z = zellen[id]; return z ? z.offsetLeft + z.offsetWidth / 2 : 0; }
+  function anzeigen(id) { fenster.scrollLeft = Math.max(0, mitte(id) - fenster.clientWidth / 2); }
+  requestAnimationFrame(function () {
+    if (!szene.isConnected) return;
+    bombenStaende[b.id] = b.traeger;
+    if (!traeger) { bombe.hidden = true; return; }
+    var ziel = mitte(b.traeger);
+    anzeigen(wechsel && BEWEGUNG ? vorher : b.traeger);
+    function ende() {
+      bombe.style.transform = "translate(" + ziel + "px, 0)";
+      b.spieler.forEach(function (sp) { pose(sp, zellen[sp.id], "bereit"); });
+      anzeigen(b.traeger);
+      status.textContent = "Tickt bei " + traeger.name;
+    }
+    if (!wechsel || !BEWEGUNG || document.hidden) { ende(); return; }
+    var start = mitte(vorher), zeit = null;
+    var werfer = b.spieler.find(function (sp) { return sp.id === vorher; });
+    pose(werfer, zellen[vorher], "schlag");
+    status.textContent = "Die Bombe fliegt zu " + traeger.name + "!";
+    function flug(t) {
+      if (!szene.isConnected) return;
+      if (zeit === null) zeit = t;
+      var p = Math.min(1, (t - zeit) / 850);
+      var x = start + (ziel - start) * p, y = -45 * Math.sin(Math.PI * p);
+      bombe.style.transform = "translate(" + x + "px," + y + "px) rotate(" + (360 * p) + "deg)";
+      if (p < 1 && !document.hidden) requestAnimationFrame(flug);
+      else {
+        ende();
+        zellen[b.traeger].classList.add("bomben-erschreckt");
+        pose(werfer, zellen[vorher], "jubel");
+        setTimeout(function () { if (szene.isConnected) pose(werfer, zellen[vorher], "bereit"); }, 700);
+      }
+    }
+    requestAnimationFrame(flug);
+  });
+  return szene;
+}
+
+/** Nur die sichtbare Bombenkarte nachladen; spätere Trainingsantworten haben Vorrang. */
+var bombenLaden = false;
+function aktualisiereBombe(knopf) {
+  var s = daten && daten.seasons[seasonIndex];
+  if (bombenLaden || !s || tab !== "stand" || !s.minispiel || !s.minispiel.bombe) return;
+  var alt = daten, index = seasonIndex;
+  bombenLaden = true;
+  if (knopf) { knopf.disabled = true; knopf.textContent = "Lädt …"; }
+  return api("/api/ich").then(function (j) {
+    if (daten !== alt || seasonIndex !== index || tab !== "stand") return;
+    daten = j; zeichne();
+  }).catch(function () {
+    if (knopf && knopf.isConnected) knopf.textContent = "Verbindung fehlgeschlagen – nochmal versuchen";
+  }).finally(function () { bombenLaden = false; if (knopf) knopf.disabled = false; });
+}
+setInterval(function () { if (!document.hidden) aktualisiereBombe(); }, 30000);
+
 /** Minispiel der laufenden Woche: Regel, Stand und je nach Spiel Berg, Seil oder Code. */
 function minispielKarte(m) {
   var kinder = [el("p", { class: "hint regel", text: m.regel })];
-  if (m.status) kinder.push(el("div", { class: "spielstatus", text: m.status }));
+  if (m.status && !m.bombe) kinder.push(el("div", { class: "spielstatus", text: m.status }));
+  if (m.bombe) kinder.push(bombenSzene(m.bombe));
   if (m.gipfel) kinder.push(berg(m.gipfel));
   if (m.seil) {
     var links = 50 - m.seil.zug * 50;
