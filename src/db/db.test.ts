@@ -54,7 +54,7 @@ describe("Datenbank", () => {
     db.prepare("INSERT INTO messung (nutzer, zeitpunkt, datum, gewicht_kg, fett_pct, muskel_pct, markiert) VALUES (?, ?, ?, ?, ?, ?, 1)").run(
       n.id, "2026-10-26T07:00:00Z", "2026-10-26", 88.5, 20.7, 51.2,
     );
-    expect(migriere(db)).toEqual([11, 12, 13]);
+    expect(migriere(db)).toEqual([11, 12, 13, 14]);
     expect(db.prepare("SELECT nutzer, datum, muskel_pct AS m, markiert FROM messung").all()).toEqual([{ nutzer: n.id, datum: "2026-10-26", m: 51.2, markiert: 1 }]);
     expect(db.prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'messung'").all()).toEqual([{ name: "messung_nutzer_datum" }]);
   });
@@ -94,7 +94,9 @@ describe("Datenbank", () => {
     db.prepare("INSERT INTO abstimmung (id, gruppe, name, vorschlag, antragsteller, erstellt_am) VALUES (1, 1, 'Handball', 3, ?, ?)").run(kevin.id, new Date().toISOString());
     db.prepare("INSERT INTO stimme (abstimmung, nutzer, faktor) VALUES (1, ?, 2)").run(kevin.id);
 
-    expect(migriere(db)).toEqual([12, 13]);
+    expect(migriere(db)).toEqual([12, 13, 14]);
+    // Schon angekündigter Boss behält seine Schwäche und bekommt keine Resistenz
+    expect(db.prepare("SELECT schwaeche, resistenz FROM boss WHERE season = 2").get()).toEqual({ schwaeche: sportart.get("Joggen"), resistenz: null });
     expect(db.pragma("foreign_keys", { simple: true })).toBe(1);
     expect(db.pragma("foreign_key_check")).toEqual([]);
 

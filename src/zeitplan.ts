@@ -1,7 +1,7 @@
 import type { Db } from "./db/index.js";
 import { type SeasonZeile, bossPin, bosseDerSeason, kuendigeBossAn, ladeTeilnehmer, seasonNachId, setzeBossPin } from "./db/season-repo.js";
 import { alleTrainings, vergebeErfolge } from "./db/erfolg-repo.js";
-import { BOSS_ANKUENDIGUNG, BOSS_NAMEN, BOSS_STUFEN, type BossStufe, STUFEN, bossAnzeigename, bossKampf, bossLebenspunkte, bossWoche, lebensbalken, SCHWAECHE_FAKTOR, SCHWAECHE_MIN_FAKTOR } from "./scoring/boss.js";
+import { BOSS_ANKUENDIGUNG, BOSS_NAMEN, BOSS_STUFEN, type BossStufe, STUFEN, bossAnzeigename, bossKampf, bossLebenspunkte, bossWoche, lebensbalken, RESISTENZ_FAKTOR, SCHWAECHE_FAKTOR, SCHWAECHE_MIN_FAKTOR } from "./scoring/boss.js";
 import { type ErfolgArt, finaleErfolge, trainingsErfolge, wochenErfolge } from "./scoring/erfolge.js";
 import { fuelle } from "./texte/sprueche.js";
 import { BOSS_NERVOES, bossBeben, bossTeaser, bossTexte } from "./boss/texte.js";
@@ -403,14 +403,23 @@ async function kuendigeAn(
   const lebenspunkte = schon?.lebenspunkte ?? bossLebenspunkte(stufe, teilnehmer, s.wochenziel_last);
   // Zufällige Schwäche aus den harten Sportarten der Gruppe (mindestens Krafttraining, kein Spazieren oder Yoga),
   // beim zweiten Auftritt möglichst eine andere
-  const sportarten = db
-    .prepare("SELECT id, name FROM sportart WHERE gruppe = ? AND faktor >= ? ORDER BY id")
-    .all(s.gruppe, SCHWAECHE_MIN_FAKTOR) as { id: number; name: string }[];
-  const auswahl = sportarten.length > 1 ? sportarten.filter((sp) => sp.id !== frueher?.schwaeche) : sportarten;
+  // Resistenz (halber Schaden) entsprechend aus den lockeren Sportarten unter Krafttraining (Spazieren, Yoga …)
+  const alle = db.prepare("SELECT id, name, faktor FROM sportart WHERE gruppe = ? ORDER BY id").all(s.gruppe) as {
+    id: number;
+    name: string;
+    faktor: number;
+  }[];
+  const ziehe = (pool: typeof alle, vorher: number | null | undefined) => {
+    const auswahl = pool.length > 1 ? pool.filter((sp) => sp.id !== vorher) : pool;
+    return auswahl.length ? auswahl[Math.floor(Math.random() * auswahl.length)]! : null;
+  };
   const schwaeche = schon
-    ? schon.schwaeche === null ? null : { id: schon.schwaeche, name: schon.schwaecheName ?? "" }
-    : auswahl.length ? auswahl[Math.floor(Math.random() * auswahl.length)]! : null;
-  if (!schon && !kuendigeBossAn(db, s.id, stufe, name, lebenspunkte, schwaeche?.id ?? null)) return false;
+    ? schon.schwaeche == null ? null : { id: schon.schwaeche, name: schon.schwaecheName ?? "" }
+    : ziehe(alle.filter((sp) => sp.faktor >= SCHWAECHE_MIN_FAKTOR), frueher?.schwaeche);
+  const resistenz = schon
+    ? schon.resistenz == null ? null : { id: schon.resistenz, name: schon.resistenzName ?? "" }
+    : ziehe(alle.filter((sp) => sp.faktor < SCHWAECHE_MIN_FAKTOR), frueher?.resistenz);
+  if (!schon && !kuendigeBossAn(db, s.id, stufe, name, lebenspunkte, schwaeche?.id ?? null, resistenz?.id ?? null)) return false;
 
   // Der Boss nimmt sich den Letzten der Rangliste vor
   const tag = lokalesDatum(new Date(t.faellig_am), zeitzone);
@@ -421,11 +430,11 @@ async function kuendigeAn(
   await pause();
   await senden(chat, bossTexte(name).vorzeichen);
   await pause();
-  const text = bossAnkuendigung(stufe, name, lebenspunkte, frueher !== undefined, opfer, schwaeche?.name ?? null);
+  const text = bossAnkuendigung(stufe, name, lebenspunkte, frueher !== undefined, opfer, schwaeche?.name ?? null, resistenz?.name ?? null);
   let nachricht: number | void = undefined;
   if (foto) {
     try {
-      nachricht = await foto(chat, alsPng(steckbriefSvg(name, stufe, lebenspunkte, opfer, schwaeche?.name ?? null)), text);
+      nachricht = await foto(chat, alsPng(steckbriefSvg(name, stufe, lebenspunkte, opfer, schwaeche?.name ?? null, resistenz?.name ?? null)), text);
     } catch (err) {
       log.error("Steckbrief des Bosses nicht gesendet", err);
       nachricht = await senden(chat, text);
@@ -449,6 +458,7 @@ export function bossAnkuendigung(
   kamSchonMal: boolean,
   opfer: string,
   schwaeche: string | null = null,
+  resistenz: string | null = null,
 ): string {
   const anzeige = bossAnzeigename(name, stufe);
   const kopf =
@@ -465,6 +475,7 @@ export function bossAnkuendigung(
     `${anzeige} hat ${lebenspunkte.toLocaleString("de-DE")} Lebenspunkte. Jeder Lastpunkt, den ihr bis Sonntag trainiert, ist ein Schlag in die Fresse.`,
     `Fällt er, kassiert jeder, der mitgeprügelt hat, +${BOSS_STUFEN[stufe].bonus} Punkte. Wer nichts tut, wird namentlich erwähnt.`,
     ...(schwaeche ? [`💥 Seine Schwäche: ${schwaeche}! Jede Einheit ${schwaeche} macht diese Woche ${SCHWAECHE_FAKTOR}× Schaden.`] : []),
+    ...(resistenz ? [`🛡 Dagegen ist er abgehärtet: ${resistenz} kitzelt ihn nur, das macht bloß ${String(RESISTENZ_FAKTOR).replace(".", ",")}× Schaden.`] : []),
   ].join("\n");
 }
 
