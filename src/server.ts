@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { readFileSync, readdirSync } from "node:fs";
 import { gzipSync } from "node:zlib";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
@@ -15,9 +15,15 @@ export const MINIAPP_PFAD = "/app";
 const SPIELE = new URL("./miniapp/spiele/", import.meta.url);
 const dateien = readdirSync(SPIELE).sort();
 const skripte = ["runtime.js", ...dateien.filter((f) => f.endsWith(".js") && f !== "runtime.js")];
-const SEITE = readFileSync(new URL("./miniapp/app.html", import.meta.url), "utf8")
+const VORLAGE = readFileSync(new URL("./miniapp/app.html", import.meta.url), "utf8")
   .replace("/* {{MINISPIEL_STILE}} */", () => dateien.filter((f) => f.endsWith(".css")).map((f) => readFileSync(new URL(f, SPIELE), "utf8")).join("\n"))
   .replace("/* {{MINISPIEL_SKRIPTE}} */", () => skripte.map((f) => readFileSync(new URL(f, SPIELE), "utf8")).join("\n"));
+/**
+ * Fingerabdruck der ausgelieferten Seite. Jede API-Antwort trägt ihn im Kopf; eine noch offene Mini App
+ * mit altem Stand (Telegram hält minimierte Apps am Leben) merkt so nach einem Deploy, dass sie neu laden muss.
+ */
+export const SEITEN_VERSION = createHash("sha256").update(VORLAGE).digest("hex").slice(0, 12);
+const SEITE = VORLAGE.replace("{{VERSION}}", SEITEN_VERSION);
 const MAX_BODY = 16 * 1024;
 
 export interface MiniAppOptionen {
@@ -29,7 +35,12 @@ export interface MiniAppOptionen {
 
 function json(res: ServerResponse, status: number, daten: unknown, req?: IncomingMessage): void {
   const text = JSON.stringify(daten);
-  const kopf: Record<string, string> = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", vary: "accept-encoding" };
+  const kopf: Record<string, string> = {
+    "content-type": "application/json; charset=utf-8",
+    "cache-control": "no-store",
+    vary: "accept-encoding",
+    "x-botzeps-version": SEITEN_VERSION,
+  };
   // Figuren-SVGs wiederholen sich stark: komprimiert nur ein Bruchteil der Größe
   if (text.length > 4096 && /\bgzip\b/.test(String(req?.headers["accept-encoding"] ?? ""))) {
     res.writeHead(status, { ...kopf, "content-encoding": "gzip" });
