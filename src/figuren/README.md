@@ -31,11 +31,15 @@ node scripts/figuren-vorschau.mjs
 node scripts/boss-vorschau.mjs
 ```
 
-`figuren-vorschau.html` zeigt alle zwölf Figuren, alle sechs Posen, die Zombie-Variante und einen abspielbaren Posenwechsel. `boss-vorschau.html` verwendet den tatsächlichen Kampfablauf und das CSS der Mini App. Beide HTML-Dateien sind eigenständig, enthalten ihre Bilder und können lokal ohne Telegram oder Webserver geöffnet werden. Die erzeugten Vorschauen gehören nicht ins Repository.
+`figuren-vorschau.html` zeigt alle zwölf Figuren, alle sechs Posen, eine grün gefilterte Zombie-Vorschau und einen abspielbaren Posenwechsel. Die Figuren und ihre Bilder stehen direkt im HTML. Posenwahl, Kampfstart, erneutes Abspielen und Zurücksetzen verwenden ausschließlich native Formularfelder und CSS; die Seite benötigt kein JavaScript und funktioniert auch in einem iframe ohne `allow-scripts`. Der Zombie-Farbfilter dieser reinen HTML-Vorschau ist eine CSS-Annäherung; die Mini App verwendet weiterhin den originalen SVG-Farbfilter.
+
+`boss-vorschau.html` verwendet den tatsächlichen Kampfablauf und das CSS der Mini App und benötigt dafür JavaScript in einem normalen Browser. Beide HTML-Dateien sind eigenständig, enthalten ihre Bilder und können lokal ohne Telegram oder Webserver geöffnet werden. Die erzeugten Vorschauen gehören nicht ins Repository.
 
 Die Tests prüfen die vollständige Figuren-/Posenmatrix, eindeutige IDs und Ausschnitte, PNG-Abmessungen, Dateihashes, Größenbudget, Zombie-Filter sowie die Medienroute und weiterhin Auswahl und Bosskampf.
 
 Prüfstand 2026-11-08: Typprüfung, Build und alle 279 Tests (35 Dateien) erfolgreich. Chromium prüfte alle zwölf Atlanten, alle Posen einschließlich Zombie, den echten Posenwechsel im Bosskampf, Sieg, reduzierte Bewegung sowie die mobile Ansicht bei 390 px ohne horizontalen Überlauf oder Seitenfehler. Die Transparenz nach der Palettenreduktion wird zusätzlich durch einen Rastertest abgesichert.
+
+Nachprüfung der Chat-Vorschau: Die frühere Galerie blieb ohne JavaScript leer. Die korrigierte Figuren-Vorschau wurde mit deaktiviertem JavaScript, CSP `script-src 'none'` und einem iframe ohne Skriptfreigabe geprüft: zwölf sichtbare Figuren, vollständig geladene Bilder, alle sieben Ansichten, Schlag-/Jubelwechsel, erneuter Start, Formular-Reset, reduzierte Bewegung und 390-px-Ansicht ohne Überlauf.
 
 ## Spätere Bildänderungen
 
