@@ -438,7 +438,7 @@ export async function bearbeiteApi(db: Db, a: Anfrage, gruppenpost: Gruppenpost,
       case "schon_gewaehlt":
         return fehler(409, "Du hast deine Figur für diese Season schon. Gewählt ist gewählt.");
       case "noch_nicht":
-        return fehler(403, "Erst ab der ersten Boss-Woche: Trag ein Training ein, dann darfst du dir eine Figur aussuchen.");
+        return fehler(403, "Noch nicht freigeschaltet.");
       case "vergeben":
         return fehler(409, `Die Figur hat schon ${vergebeneFiguren(db, s.id).get(b.data.figur)}. Zu langsam!`);
     }
