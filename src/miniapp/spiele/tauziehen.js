@@ -118,6 +118,7 @@
         var l = lage(stand);
         var teams = stand.teams || [];
         root.classList.remove("tz-tug");
+        root.setAttribute("data-bewegt", String(!!meta.bewegt));
         root.removeAttribute("data-ergebnis");
         root.setAttribute("data-zug", String(l.zug));
         rope.style.setProperty("--tz-shift", (-l.zug * 14) + "%");

@@ -49,3 +49,5 @@
 @keyframes tz-rope { 30% { margin-top:-3px; } 60% { margin-top:2px; } }
 @media (min-width:550px) { .tauziehen .tz-arena { height:290px; } .tauziehen .tz-person { width:85px; } .tauziehen .tz-crew { top:89px; } }
 @media (prefers-reduced-motion:reduce) { .tauziehen *, .tauziehen *::before, .tauziehen *::after { animation:none !important; transition:none !important; } }
+
+.tauziehen[data-bewegt="false"] .tz-rope, .tauziehen[data-bewegt="false"] .tz-crew { transition:none; }

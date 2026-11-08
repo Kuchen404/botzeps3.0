@@ -102,6 +102,7 @@ describe("Tauziehen-Szene", () => {
     expect(root.className).toContain("tz-tug");
     config.zeichne(stand, { ...meta, vorher, bewegt: false });
     expect(root.className).not.toContain("tz-tug");
+    expect(root.attributes.get("data-bewegt")).toBe("false");
     config.zeichne(stand, { ...meta, vorher, bewegt: true, station: { art: "korrektur" } });
     expect(root.className).not.toContain("tz-tug");
   });
