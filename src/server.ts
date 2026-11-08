@@ -105,8 +105,9 @@ export function erstelleServer(optionen: { bot?: Bot; webhookSecret?: string; mi
       seite(res);
       return;
     }
-    if (optionen.miniApp && req.method === "GET" && pfad.startsWith(FIGUREN_MEDIEN_PFAD)) {
-      const bild = figurMedium(pfad.slice(FIGUREN_MEDIEN_PFAD.length));
+    if (optionen.miniApp && pfad.startsWith(FIGUREN_MEDIEN_PFAD)) {
+      // Öffentlich ohne Anmeldung (Bilder lädt der Browser ohne unseren Header), nur GET
+      const bild = req.method === "GET" ? figurMedium(pfad.slice(FIGUREN_MEDIEN_PFAD.length)) : null;
       if (!bild) {
         res.writeHead(404).end();
         return;

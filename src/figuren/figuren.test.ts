@@ -39,7 +39,7 @@ describe("Spielerfiguren", () => {
       const ausschnitte = new Set<string>();
       for (const pose of ["bereit", "schlag", "jubel", "ko", "ziehen", "klettern"] as const) {
         const svg = figurSvg(f, pose, { id: `a${nr}${pose}` });
-        expect(svg).toContain(`href="/app/figuren/${datei}"`);
+        expect(svg).toContain(`href="/api/figurbild/${datei}"`);
         expect(svg).not.toContain("data:image");
         expect(svg.length).toBeLessThan(1500);
         ausschnitte.add(svg.match(/viewBox="([\d ]+200 300)"/)![1]!);

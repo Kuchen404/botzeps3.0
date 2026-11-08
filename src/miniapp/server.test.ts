@@ -76,7 +76,7 @@ describe("Mini App", () => {
       expect(bytes.subarray(0, 8).toString("hex")).toBe("89504e470d0a1a0a");
       expect(Number(bild.headers.get("content-length"))).toBe(bytes.length);
       for (const ungueltig of ["prompts.json", "unbekannt.png", "0.png", "..%2F..%2Fpackage.json"]) {
-        expect((await fetch(t.basis + "/app/figuren/" + ungueltig)).status).toBe(404);
+        expect((await fetch(t.basis + "/api/figurbild/" + ungueltig)).status).toBe(404);
       }
       expect((await fetch(t.basis + pfad, { method: "POST" })).status).toBe(404);
     } finally {
