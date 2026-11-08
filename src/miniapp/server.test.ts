@@ -136,14 +136,39 @@ describe("Mini App", () => {
         bonus: 5,
         schwaeche: null,
         kaempfer: [
-          { name: "Kevin", schaden: 450, ich: true },
-          { name: "Peter", schaden: 30, ich: false },
+          { name: "Kevin", schaden: 450, ich: true, figur: 1 },
+          { name: "Peter", schaden: 30, ich: false, figur: 0 },
         ],
         drueckeberger: [],
+        pennen: [],
+        figuren: {
+          0: { bereit: expect.stringContaining("<svg"), schlag: expect.stringContaining("<svg"), jubel: expect.stringContaining("<svg") },
+          1: { bereit: expect.stringContaining("<svg"), schlag: expect.stringContaining("<svg"), jubel: expect.stringContaining("<svg") },
+        },
       });
       // Nach der Boss-Woche bleibt er als Ergebnis sichtbar
       tag("2026-10-27");
       expect((await holen("/api/ich")).json.seasons[0].boss).toMatchObject({ aktiv: false, besiegt: false });
+    } finally {
+      server.close();
+    }
+  });
+
+  it("/api/figur: eigene Figur wählen, vergebene sind gesperrt", async () => {
+    const { server, holen } = await aufbau();
+    try {
+      const vorher = (await holen("/api/figuren")).json;
+      expect(vorher).toMatchObject({ meine: 1, gewaehlt: false });
+      expect(vorher.figuren).toHaveLength(12);
+      expect(vorher.figuren[0]).toMatchObject({ nr: 0, vergeben: "Peter", bild: expect.stringContaining("<svg") });
+      expect(vorher.figuren[1].vergeben).toBeNull();
+      expect((await holen("/api/figur", KEVIN, { figur: 0 })).status).toBe(409);
+      expect((await holen("/api/figur", KEVIN, { figur: 12 })).status).toBe(400);
+      expect((await holen("/api/figur", KEVIN, { figur: 10 })).status).toBe(200);
+      expect((await holen("/api/figuren")).json).toMatchObject({ meine: 10, gewaehlt: true });
+      const peter = (await holen("/api/figuren", PETER)).json;
+      expect(peter).toMatchObject({ meine: 0, gewaehlt: false });
+      expect(peter.figuren[10].vergeben).toBe("Kevin");
     } finally {
       server.close();
     }

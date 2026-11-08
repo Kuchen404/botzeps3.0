@@ -128,6 +128,21 @@
     background: #ffe8a8; clip-path: polygon(50% 0,58% 32%,86% 12%,69% 42%,100% 50%,69% 58%,86% 88%,58% 68%,50% 100%,42% 68%,14% 88%,31% 58%,0 50%,31% 42%,14% 12%,42% 32%);
     animation: trefferfunken .3s ease-out forwards; }
   @keyframes trefferfunken { from { transform: translate(-50%,-50%) scale(.3) rotate(-15deg); opacity: .9; } to { transform: translate(-50%,-50%) scale(1.3) rotate(15deg); opacity: 0; } }
+  /* Spielerfiguren */
+  .kaempfer > div.mitfigur { width: 54px; }
+  .figur { position: relative; width: 54px; height: 80px; margin: 0 auto 2px; }
+  .figur > svg { position: absolute; inset: 0; width: 54px; height: 80px; overflow: visible; }
+  .figur::before { content: ""; position: absolute; left: 50%; bottom: 0; width: 40px; height: 9px; transform: translateX(-50%); background: radial-gradient(ellipse, rgba(0,0,0,.55), transparent 70%); }
+  .kaempfer .ich .figur::before { width: 50px; height: 12px; background: radial-gradient(ellipse, #ffcc00, rgba(255,204,0,.35) 45%, transparent 70%); }
+  .kaempfer .ich .name { color: #ffcc00; font-weight: 700; }
+  .kaempfer .pennt .schaden { color: #ff9f9f; }
+  .zzz { position: absolute; right: 0; top: 0; font-weight: 900; font-size: 11px; color: #bfe8ff; transform: rotate(-12deg); }
+  .figurwahl { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 8px; }
+  .figurwahl button { border: 2px solid transparent; border-radius: 12px; background: var(--bg2); color: var(--text); padding: 4px 2px 6px; font-size: 11px; line-height: 1.2; }
+  .figurwahl button svg { width: 60px; height: 88px; display: block; margin: 0 auto; }
+  .figurwahl button.meine { border-color: #ffcc00; box-shadow: 0 0 8px rgba(255,204,0,.6); }
+  .figurwahl button:disabled { opacity: .4; }
+  .figurwahl .wer { display: block; color: var(--hint); font-size: 10px; }
   /* Minispiel der Woche */
   .regel { margin: 0 0 8px; }
   .spielstatus { font-weight: 700; margin-bottom: 8px; }
@@ -286,13 +301,42 @@ function bossKarte(b) {
     bild,
     b.stufe === 2 && !b.bild ? el("span", { class: "muckis r", text: "💪" }) : null
   ]);
+  var figuren = b.figuren || {};
+  function figurBild(nr, pose) {
+    var z = nr != null && figuren[nr] && figuren[nr][pose];
+    if (!z) return null;
+    // Zeichnungen kommen vom eigenen Server (fester Baukasten, keine Nutzereingaben)
+    var f = el("div", { class: "figur" });
+    f.innerHTML = z;
+    return f;
+  }
+  function stellePose(zelle, pose) {
+    var k = zelle._k;
+    if (k.figur == null || !figuren[k.figur] || !figuren[k.figur][pose]) return;
+    var alt = zelle.querySelector(".figur");
+    if (alt && alt.getAttribute("data-pose") === pose) return;
+    var neu = figurBild(k.figur, pose);
+    neu.setAttribute("data-pose", pose);
+    alt.replaceWith(neu);
+  }
   var reihe = el("div", { class: "kaempfer" }, b.kaempfer.map(function (k) {
-    return el("div", { class: k.ich ? "ich" : "" }, [
-      el("div", { class: "avatar", style: "background:" + farbe(k.name), text: initialen(k.name) }),
+    var bildchen = figurBild(k.figur, "bereit");
+    if (bildchen) bildchen.setAttribute("data-pose", "bereit");
+    var zelle = el("div", { class: (k.ich ? "ich" : "") + (bildchen ? " mitfigur" : "") }, [
+      bildchen || el("div", { class: "avatar", style: "background:" + farbe(k.name), text: initialen(k.name) }),
       el("div", { class: "name", text: k.name }),
       el("div", { class: "schaden", text: "−" + zahl(k.schaden, 0) })
     ]);
+    zelle._k = k;
+    return zelle;
   }));
+  // Wer nichts gemacht hat, liegt k.o. daneben
+  (b.pennen || []).forEach(function (p) {
+    var bildchen = figurBild(p.figur, "ko");
+    if (!bildchen) return;
+    bildchen.appendChild(el("div", { class: "zzz", text: "Zzz" }));
+    reihe.appendChild(el("div", { class: "mitfigur pennt" + (p.ich ? " ich" : "") }, [bildchen, el("div", { class: "name", text: p.name }), el("div", { class: "schaden", text: "pennt" })]));
+  });
   var arena = el("div", { class: "arena" + (b.stufe === 2 ? " stufe2" : "") + (illustriert ? " illustriert" : "") }, [el("div", { class: "lp" }, [rest, lpText]), platz, reihe]);
   if (!b.kaempfer.length) reihe.appendChild(el("div", { class: "hint", style: "width:auto;color:#ddd", text: "Noch keiner hat sich getraut." }));
 
@@ -310,6 +354,7 @@ function bossKarte(b) {
     setzeLp(b.schaden);
     platz.querySelectorAll(".stempel").forEach(function (x) { x.remove(); });
     platz.classList.toggle("tot", b.besiegt);
+    Array.prototype.forEach.call(reihe.children, function (z) { if (z._k) stellePose(z, b.besiegt ? "jubel" : "bereit"); });
     if (b.besiegt) platz.appendChild(el("div", { class: "stempel sieg", text: "BESIEGT" }));
     else if (!b.aktiv) platz.appendChild(el("div", { class: "stempel niederlage", text: "ÜBERLEBT" }));
     var texte = [];
@@ -328,6 +373,7 @@ function bossKarte(b) {
     if (!BEWEGUNG || !b.kaempfer.length || (bossGezeigt[schluessel] && !erzwingen)) { ende(); return; }
     bossGezeigt[schluessel] = true;
     platz.classList.remove("tot");
+    Array.prototype.forEach.call(reihe.children, function (z) { if (z._k) stellePose(z, "bereit"); });
     platz.querySelectorAll(".stempel").forEach(function (x) { x.remove(); });
     info.replaceChildren();
     setzeLp(0);
@@ -339,6 +385,8 @@ function bossKarte(b) {
       setTimeout(function () {
         if (!arena.isConnected || lauf !== durchlauf) return;
         var k = b.kaempfer[i], kaempfer = reihe.children[i];
+        stellePose(kaempfer, "schlag");
+        setTimeout(function () { if (lauf === durchlauf) stellePose(kaempfer, "bereit"); }, takt * 0.85);
         kaempfer.animate([{ transform: "translateY(0)" }, { transform: "translateY(-16px) scale(1.12)" }, { transform: "translateY(0)" }], { duration: takt * 0.8 });
         var a = arena.getBoundingClientRect(), von = kaempfer.getBoundingClientRect(), ziel = bild.getBoundingClientRect();
         var faust = el("span", { class: "faust", text: "👊" });
@@ -757,6 +805,7 @@ function einstellungenTab() {
   an.addEventListener("change", speichere);
   zeit.addEventListener("change", speichere);
   return [
+    figurKarte(),
     karte("Erinnerungen", [
       el("label", { class: "schalter" }, ["Erinnerungen an", an]),
       el("label", { class: "schalter" }, ["Uhrzeit", zeit]),
@@ -765,6 +814,32 @@ function einstellungenTab() {
     ]),
     karte("Datenschutz", [el("p", { class: "hint", text: "Deine Waagenwerte siehst nur du. Die Gruppe sieht nur Punkte." })])
   ];
+}
+
+var figurDaten = null;
+/** Eigene Kämpferfigur für Bosskampf und Minispiele aussuchen; jede Figur gibt es pro Gruppe nur einmal. */
+function figurKarte() {
+  if (!figurDaten) {
+    api("/api/figuren").then(function (j) { figurDaten = j; if (tab === "einstellungen") zeichne(); }).catch(zeigeFehler);
+    return karte("Deine Kämpferfigur", [el("p", { class: "hint", text: "Lädt …" })]);
+  }
+  var status = el("p", { class: "hint", text: figurDaten.gewaehlt ? "" : "Noch automatisch zugeteilt. Such dir eine aus!" });
+  var raster = el("div", { class: "figurwahl" }, figurDaten.figuren.map(function (f) {
+    var knopf = el("button", { class: f.nr === figurDaten.meine ? "meine" : "", "aria-label": f.name }, []);
+    var bild = el("span"); bild.innerHTML = f.bild; // fester Baukasten vom eigenen Server
+    knopf.appendChild(bild);
+    knopf.appendChild(el("span", { text: f.name }));
+    if (f.vergeben && f.nr !== figurDaten.meine) { knopf.disabled = true; knopf.appendChild(el("span", { class: "wer", text: f.vergeben })); }
+    knopf.addEventListener("click", function () {
+      if (f.nr === figurDaten.meine && figurDaten.gewaehlt) return;
+      status.textContent = "Speichert …";
+      api("/api/figur", { figur: f.nr }).then(function () {
+        figurDaten = null; erfolg(); return neuLaden();
+      }).catch(function (e) { status.textContent = e.message; figurDaten = null; });
+    });
+    return knopf;
+  }));
+  return karte("Deine Kämpferfigur", [raster, status, el("p", { class: "hint", text: "Deine Figur kämpft für dich gegen die Bosse und taucht in den Minispielen auf." })]);
 }
 
 function bestaetige(frage, dann) {

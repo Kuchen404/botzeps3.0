@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
+import { gzipSync } from "node:zlib";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { webhookCallback, type Bot } from "grammy";
 import type { Db } from "./db/index.js";
@@ -20,9 +21,17 @@ export interface MiniAppOptionen {
   gruppensenden: Gruppensenden;
 }
 
-function json(res: ServerResponse, status: number, daten: unknown): void {
-  res.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
-  res.end(JSON.stringify(daten));
+function json(res: ServerResponse, status: number, daten: unknown, req?: IncomingMessage): void {
+  const text = JSON.stringify(daten);
+  const kopf: Record<string, string> = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", vary: "accept-encoding" };
+  // Figuren-SVGs wiederholen sich stark: komprimiert nur ein Bruchteil der Größe
+  if (text.length > 4096 && /\bgzip\b/.test(String(req?.headers["accept-encoding"] ?? ""))) {
+    res.writeHead(status, { ...kopf, "content-encoding": "gzip" });
+    res.end(gzipSync(text));
+    return;
+  }
+  res.writeHead(status, kopf);
+  res.end(text);
 }
 
 function seite(res: ServerResponse): void {
@@ -72,7 +81,7 @@ async function api(req: IncomingMessage, res: ServerResponse, pfad: string, m: M
     return;
   }
   const antwort = await bearbeiteApi(m.db, { methode: req.method ?? "GET", pfad, nutzer, body }, m.gruppenpost, m.gruppensenden);
-  json(res, antwort.status, antwort.json);
+  json(res, antwort.status, antwort.json, req);
 }
 
 /** HTTP-Server für Docker-Healthcheck, Telegram-Webhook und die Mini App. */

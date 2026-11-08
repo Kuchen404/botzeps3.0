@@ -24,6 +24,8 @@ import { RAENGE, naechsterRang, rangFuer } from "../scoring/raenge.js";
 import { laternen } from "../db/laterne-repo.js";
 import { aktuelleMarken, minispielFuerApp } from "../minispiel/ablauf.js";
 import type { MiniAppNutzer } from "./auth.js";
+import { FIGUREN, type Pose, figurSvg } from "../figuren/figuren.js";
+import { ANZAHL_FIGUREN, eigeneFigur, figurenDerGruppe, setzeFigur, vergebeneFiguren } from "../figuren/zuteilung.js";
 
 /**
  * JSON-API der Mini App. Jeder Aufruf gilt nur für den angemeldeten Nutzer selbst:
@@ -58,11 +60,37 @@ function name(n: MiniAppNutzer): string {
  * Der Boss der laufenden Woche, sonst der zuletzt besiegte oder überlebende.
  * Kämpfer sind alle mit Schaden in der Boss-Woche, stärkste zuerst.
  */
-function bossJson(bosse: readonly Boss[], staende: readonly TeilnehmerStand[], ich: string, woche: number | null, laeuft: boolean) {
+const KAMPF_POSEN: readonly Pose[] = ["bereit", "schlag", "jubel"];
+
+function posen(nr: number, liste: readonly Pose[]): Partial<Record<Pose, string>> {
+  return Object.fromEntries(liste.map((p) => [p, figurSvg(FIGUREN[nr]!, p, { id: `f${nr}${p}` })]));
+}
+
+function bossJson(
+  bosse: readonly Boss[],
+  staende: readonly TeilnehmerStand[],
+  ich: string,
+  woche: number | null,
+  laeuft: boolean,
+  figuren: ReadonlyMap<number, number>,
+) {
   const boss = bosse.filter((b) => woche !== null && b.woche <= woche).at(-1);
   if (!boss) return null;
   const k = bossKampf(boss, staende);
   const last = (st: TeilnehmerStand) => bossSchadenVon(boss, st);
+  const figur = (st: TeilnehmerStand) => figuren.get(Number(st.id)) ?? null;
+  const kaempfer = staende.filter((st) => last(st) > 0);
+  const drueckeberger = staende.filter((st) => last(st) === 0);
+  // Gezeichnete Posen nur für die Figuren, die im Kampf vorkommen
+  const zeichnungen: Record<number, Partial<Record<Pose, string>>> = {};
+  for (const st of kaempfer) {
+    const nr = figur(st);
+    if (nr !== null) zeichnungen[nr] ??= posen(nr, KAMPF_POSEN);
+  }
+  for (const st of drueckeberger) {
+    const nr = figur(st);
+    if (nr !== null) zeichnungen[nr] = { ...zeichnungen[nr], ...posen(nr, ["ko"]) };
+  }
   return {
     name: bossAnzeigename(boss.name, boss.stufe),
     emoji: bossEmoji(boss.name),
@@ -75,11 +103,12 @@ function bossJson(bosse: readonly Boss[], staende: readonly TeilnehmerStand[], i
     besiegt: k.besiegt,
     bonus: k.bonus,
     schwaeche: boss.schwaecheName ?? null,
-    kaempfer: staende
-      .filter((st) => last(st) > 0)
+    kaempfer: kaempfer
       .sort((a, b) => last(b) - last(a) || a.name.localeCompare(b.name))
-      .map((st) => ({ name: st.name, schaden: last(st), ich: st.id === ich })),
-    drueckeberger: staende.filter((st) => last(st) === 0).map((st) => st.name),
+      .map((st) => ({ name: st.name, schaden: last(st), ich: st.id === ich, figur: figur(st) })),
+    drueckeberger: drueckeberger.map((st) => st.name),
+    pennen: drueckeberger.map((st) => ({ name: st.name, figur: figur(st), ich: st.id === ich })),
+    figuren: zeichnungen,
   };
 }
 
@@ -137,7 +166,7 @@ function ich(db: Db, nutzerId: number, telegramId: number) {
             })) : [],
       teams: tag >= s.start ? berechneTeams(db, s, staende).map((t) => ({ platz: t.platz, name: t.name, gesamt: runde(t.gesamt), bonus: t.bonus })) : [],
       verlauf: eigen ? { x: eigen.x, achse: verlauf.achse, reihen: eigen.reihen } : null,
-      boss: tag >= s.start ? bossJson(bosseDerSeason(db, s), staende, st.id, woche, laeuft) : null,
+      boss: tag >= s.start ? bossJson(bosseDerSeason(db, s), staende, st.id, woche, laeuft, figurenDerGruppe(db, g.id)) : null,
       minispiel: laeuft ? minispielFuerApp(db, s, tag, st.id) : null,
     });
   }
@@ -248,6 +277,7 @@ const MessungSchema = z.object({
 const LoeschenSchema = z.object({ art: z.enum(["t", "m"]), id: z.number().int().positive() });
 const DauerSchema = z.object({ id: z.number().int().positive(), minuten: z.number().int() });
 const IdSchema = z.object({ id: z.number().int().positive() });
+const FigurSchema = z.object({ figur: z.number().int().min(0).max(ANZAHL_FIGUREN - 1) });
 const EinstellungenSchema = z.object({
   erinnerungen: z.boolean().optional(),
   uhrzeit: z
@@ -345,6 +375,26 @@ export async function bearbeiteApi(db: Db, a: Anfrage, gruppenpost: Gruppenpost,
     db.prepare(
       "UPDATE nutzer SET erinnerungen = COALESCE(?, erinnerungen), erinnerung_uhrzeit = COALESCE(?, erinnerung_uhrzeit) WHERE id = ?",
     ).run(b.data.erinnerungen === undefined ? null : Number(b.data.erinnerungen), b.data.uhrzeit ?? null, nutzer.id);
+    return { status: 200, json: { ok: true } };
+  }
+  if (a.methode === "GET" && a.pfad === "/api/figuren") {
+    const vergeben = vergebeneFiguren(db, nutzer.id);
+    const meine = eigeneFigur(db, nutzer.id);
+    return {
+      status: 200,
+      json: {
+        meine: meine.nr,
+        gewaehlt: meine.gewaehlt,
+        figuren: FIGUREN.map((f, nr) => ({ nr, name: f.name, bild: figurSvg(f, "bereit", { id: `w${nr}` }), vergeben: vergeben.get(nr) ?? null })),
+      },
+    };
+  }
+  if (a.methode === "POST" && a.pfad === "/api/figur") {
+    const b = FigurSchema.safeParse(a.body);
+    if (!b.success) return fehler(400, "Ungültige Figur");
+    const besitzer = vergebeneFiguren(db, nutzer.id).get(b.data.figur);
+    if (besitzer) return fehler(409, `Die Figur hat schon ${besitzer}.`);
+    setzeFigur(db, nutzer.id, b.data.figur);
     return { status: 200, json: { ok: true } };
   }
   return fehler(404, "Gibt's nicht");

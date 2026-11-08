@@ -383,4 +383,10 @@ export const MIGRATIONEN: readonly Migration[] = [
       ALTER TABLE termin ADD COLUMN gesendet TEXT; -- JSON: Nummer des Sendens → message_id
     `,
   },
+  {
+    version: 14,
+    name: "spielerfigur",
+    // Selbst gewählte Kämpferfigur (Nummer im Baukasten), sonst automatisch zugeteilt
+    sql: `ALTER TABLE nutzer ADD COLUMN figur INTEGER CHECK (figur >= 0);`,
+  },
 ];
