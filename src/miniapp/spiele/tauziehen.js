@@ -20,12 +20,17 @@
   function ausschlag(zug) {
     return zug === 0 ? 0 : (zug > 0 ? 1 : -1) * Math.min(1, Math.sqrt(Math.abs(zug)));
   }
-  function beschreibung(stand) {
+  // Erst nach dem Sonntagsbericht meldet der Server das Spiel als abgeschlossen; nur dann gibt es Sieg und Schlamm.
+  function fertig(a, meta) {
+    return a.abgeschlossen === true && meta.index === meta.anzahl - 1;
+  }
+  function beschreibung(a, stand, meta) {
     var l = lage(stand);
     if (!l.schnitt[0] && !l.schnitt[1]) return "Noch kein Zug am Seil. Beide Teams stehen bereit.";
     if (l.seite == null) return "Gleichstand! Der Knoten steht genau in der Mitte.";
     var teams = stand.teams || [];
     var name = (teams[l.seite] || {}).name || (l.seite === 0 ? "Team links" : "Team rechts");
+    if (fertig(a, meta)) return name + " gewinnt! Das andere Team landet im Schlamm.";
     return name + " zieht! Bis zum Finale ist noch alles offen.";
   }
   window.MINISPIEL_SZENEN = window.MINISPIEL_SZENEN || {};
@@ -50,6 +55,7 @@
       arena.appendChild(badge);
       return badge;
     });
+    arena.appendChild(node("div", "tz-splash"));
     root.appendChild(arena);
     var score = node("div", "tz-score");
     var labels = [], averages = [];
@@ -67,7 +73,7 @@
     root.appendChild(node("p", "tz-rule", "Jedes Training zieht. Es zählt die Wochenlast pro Kopf – auch bei unterschiedlich großen Teams."));
     var spieler = new Map((a.spieler || []).map(function (s) { return [s.id, s]; }));
     // Wer in welchem Team mit wie viel Last zieht, steht in der Liste unter der Szene.
-    function teamZeichnen(team, index) {
+    function teamZeichnen(team, index, pose) {
       var ids = team.mitglieder || [];
       labels[index].textContent = team.name;
       // Die eigene gewählte Figur bleibt auch in großen Gruppen sichtbar.
@@ -82,7 +88,7 @@
         person.style.setProperty("--tz-slot", (index === 0 ? slot : 100 - slot) + "%");
         person.style.zIndex = String(index === 0 ? platz + 1 : sichtbar.length - platz);
         var body = node("div", "tz-body");
-        var avatar = minispielAvatar(a, id, "ziehen");
+        var avatar = minispielAvatar(a, id, pose);
         avatar.classList.add("tz-avatar");
         body.appendChild(avatar);
         person.appendChild(body);
@@ -95,20 +101,23 @@
       klasse: "ms-tauziehen",
       inhalt: root,
       dauer: 1100,
-      beschreibe: function (stand) { return beschreibung(stand); },
+      beschreibe: function (stand, meta) { return beschreibung(a, stand, meta); },
       zeichne: function (stand, meta) {
         var l = lage(stand);
         var teams = stand.teams || [];
         root.classList.remove("tz-tug");
         root.setAttribute("data-bewegt", String(!!meta.bewegt));
+        root.removeAttribute("data-ergebnis");
         root.setAttribute("data-zug", String(l.zug));
         var x = ausschlag(l.zug);
         rope.style.setProperty("--tz-shift", (-x * 16).toFixed(1) + "%");
         crews.forEach(function (crew, i) {
           crew.style.setProperty(i === 0 ? "--tz-left" : "--tz-right", (-x * 10).toFixed(1) + "%");
-          teamZeichnen(teams[i] || { name: "Team " + seiten[i], mitglieder: [] }, i);
+          var pose = fertig(a, meta) && l.seite != null ? (i === l.seite ? "jubel" : "ko") : "ziehen";
+          teamZeichnen(teams[i] || { name: "Team " + seiten[i], mitglieder: [] }, i, pose);
           averages[i].textContent = z(l.schnitt[i]);
         });
+        if (fertig(a, meta) && l.seite != null) root.setAttribute("data-ergebnis", seiten[l.seite]);
         var vorher = meta.vorher && lage(meta.vorher);
         var training = meta.station && meta.station.art === "training";
         if (meta.bewegt && training && vorher && (l.schnitt[0] > vorher.schnitt[0] || l.schnitt[1] > vorher.schnitt[1])) {

@@ -43,3 +43,7 @@
 @media (prefers-reduced-motion:reduce) { .tauziehen *, .tauziehen *::before, .tauziehen *::after { animation:none !important; transition:none !important; } }
 
 .tauziehen[data-bewegt="false"] .tz-rope, .tauziehen[data-bewegt="false"] .tz-crew { transition:none; }
+.tauziehen .tz-splash { position:absolute; top:193px; left:50%; width:80px; height:40px; margin-left:-40px; z-index:6; display:none; background:radial-gradient(ellipse at 50% 100%,#866049 0 37%,transparent 39%),radial-gradient(ellipse at 20% 30%,#866049 0 10%,transparent 12%),radial-gradient(ellipse at 85% 18%,#a67853 0 8%,transparent 10%); }
+.tauziehen[data-ergebnis="links"] .tz-crew.rechts { transform:translateX(-47%) translateY(20px) rotate(-15deg); }
+.tauziehen[data-ergebnis="rechts"] .tz-crew.links { transform:translateX(47%) translateY(20px) rotate(15deg); }
+.tauziehen[data-ergebnis="links"] .tz-splash,.tauziehen[data-ergebnis="rechts"] .tz-splash { display:block; }

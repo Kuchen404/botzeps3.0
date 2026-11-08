@@ -65,8 +65,8 @@ describe("Tauziehen-Szene", () => {
     expect(posen.every((p) => p.pose === "ziehen")).toBe(true);
   });
 
-  it("zeigt selbst bei extremem Vorsprung keine Schlamm-Niederlage und begrenzt den Seilweg", () => {
-    const { config, stand, meta, root, posen } = szene(true);
+  it("zeigt während der Woche selbst bei extremem Vorsprung keine Schlamm-Niederlage und begrenzt den Seilweg", () => {
+    const { config, stand, meta, root, posen } = szene();
     stand.schnitt = [1000, 0];
     config.zeichne(stand, meta);
     expect(root.attributes.has("data-ergebnis")).toBe(false);
@@ -74,6 +74,18 @@ describe("Tauziehen-Szene", () => {
     expect(config.beschreibe(stand, meta)).not.toContain("gewinnt");
     expect(posen.every((p) => p.pose === "ziehen")).toBe(true);
     expect(root.find("tz-rope")[0]!.properties.get("--tz-shift")).toBe("-16.0%");
+  });
+
+  it("zeigt nach dem Sonntagsbericht (abgeschlossen) nur an der letzten Station Sieg und Schlamm", () => {
+    const { config, stand, meta, root, posen } = szene(true);
+    config.zeichne(stand, { ...meta, index: 0 });
+    expect(root.attributes.has("data-ergebnis")).toBe(false);
+    config.zeichne(stand, meta);
+    expect(root.attributes.get("data-ergebnis")).toBe("rechts");
+    expect(posen.slice(-3).map((p) => p.pose)).toEqual(["ko", "ko", "jubel"]);
+    expect(config.beschreibe(stand, meta)).toContain("Team Pizza gewinnt");
+    config.zeichne(stand, { ...meta, index: 0 });
+    expect(root.attributes.has("data-ergebnis")).toBe(false);
   });
 
   it("lässt auch einen knappen Vorsprung sichtbar am Seil ziehen", () => {
