@@ -99,14 +99,24 @@ function bossKarte(b, kontext) {
   }
   function schnipsel(final, lauf) {
     if (!b.reaktion) return;
-    var sofa = b.reaktion.motiv === "sofa";
+    var motive = {
+      sofa: { teile: ["kissen", "polster", "polster"], hoehe: .6 },
+      chips: { teile: ["chip"], hoehe: .24 },
+      schweinehund: { teile: ["tropfen", "staub", "staub"], hoehe: .45 },
+      doenerteller: { teile: ["salat", "tomate", "pommes", "kraut"], hoehe: .5 },
+      bierbauch: { teile: ["schaum", "schaum", "hopfen"], hoehe: .45 },
+      lieferdienst: { teile: ["karton", "zettel", "tuete"], hoehe: .4 },
+      gemuetlich: { teile: ["glanz", "fell", "knopf"], hoehe: .35 }
+    };
+    var motiv = motive[b.reaktion.motiv];
+    if (!motiv) return;
     var layer = el("div", { class: "boss-schnipsel", "aria-hidden": "true" });
     var p = platz.getBoundingClientRect(), r = bild.getBoundingClientRect();
-    var cx = r.left - p.left + r.width / 2, cy = r.top - p.top + r.height * (sofa ? .6 : .24);
+    var cx = r.left - p.left + r.width / 2, cy = r.top - p.top + r.height * motiv.hoehe;
     platz.appendChild(layer);
     var anzahl = final ? 12 : 6;
     for (var i = 0; i < anzahl; i++) {
-      var art = sofa ? (i % 3 === 0 ? "kissen" : "polster") : "chip";
+      var art = motiv.teile[i % motiv.teile.length];
       var teil = el("span", { class: "boss-splitter boss-splitter-" + art });
       if (art === "chip") teil.innerHTML = '<svg viewBox="0 0 28 24"><path d="M3 18Q-1 6 11 3Q23-2 25 9Q30 22 16 22Z" fill="#ffd447" stroke="#ae6417" stroke-width="2"/><path d="M7 8L16 18M13 6L22 15" stroke="#e5a429" stroke-width="2"/></svg>';
       teil.style.left = cx + "px"; teil.style.top = cy + "px"; layer.appendChild(teil);

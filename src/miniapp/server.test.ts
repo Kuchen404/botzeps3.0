@@ -238,6 +238,7 @@ describe("Mini App", () => {
       const boss = (await holen("/api/ich")).json.seasons[0].boss;
       expect(boss).toEqual({
         name: "König Bierbauch",
+        reaktion: { motiv: "bierbauch", atlas: expect.stringMatching(/^\/api\/bossbild\/bierbauch-reaktionen-[a-f0-9]{12}\.png$/), treffer: expect.stringContaining("boss-reaktionspose"), ko: expect.stringContaining("boss-reaktionspose") },
         emoji: "🍺",
         bild: expect.stringContaining("<svg"),
         stufe: 1,
