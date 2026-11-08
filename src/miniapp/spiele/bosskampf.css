@@ -41,7 +41,12 @@
 .boss-auftritt-stufe { display: block; font-size: 10px; font-weight: 800; letter-spacing: .16em; color: #ffce62; margin-bottom: 5px; }
 .boss-arcade.stufe2 .boss-auftritt { border-color: #ff9a72; }
 .boss-arcade[data-kampfphase="auftritt"] .kaempfer, .boss-arcade[data-kampfphase="landung"] .kaempfer { opacity: .7; }
-.boss-auftritt-staub { bottom: 65px; }
+.boss-auftritt-staub { bottom: 65px; opacity: 0; }
+.boss-auftritt-effekt-chips { left: 30%; width: 40%; height: 26px; background: radial-gradient(ellipse, #ffdb7699, transparent 70%); }
+.boss-auftritt-effekt-doenerteller { height: 20px; background: repeating-linear-gradient(-8deg, transparent 0 7px, #dcd4bd66 8px 10px, transparent 12px 19px); border-radius: 50%; }
+.boss-auftritt-effekt-bierbauch { height: 65px; filter: drop-shadow(0 -4px 5px #fff0ca44); }
+.boss-auftritt-effekt-lieferdienst { left: 5%; width: 80%; height: 24px; background: repeating-linear-gradient(0deg, transparent 0 5px, #ffb76a99 6px 8px, transparent 9px 13px); }
+.boss-auftritt-effekt-gemuetlich { bottom: 90px; height: 110px; background: radial-gradient(circle at 20% 45%, #ffe6a8 0 2px, transparent 4px), radial-gradient(circle at 80% 20%, #ffe6a8 0 3px, transparent 5px), radial-gradient(circle at 65% 85%, #f7d36c 0 2px, transparent 4px), radial-gradient(ellipse, #dbc07122, transparent 65%); }
 .boss-schnipsel { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
 .boss-splitter { position: absolute; display: block; width: 24px; height: 20px; opacity: 0; }
 .boss-splitter svg { width: 100%; height: 100%; }

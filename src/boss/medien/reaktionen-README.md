@@ -10,6 +10,10 @@ Die Mini-App lädt den benötigten Atlas bereits während des Boss-Auftritts. Bi
 
 SVGs mit eigener Trefferpose bewegen sich nach der kurzen Trefferpause zurück und wechseln anschließend zur neutralen Pose. Beim tatsächlichen Sieg bleibt die eigene K.O.-Pose sichtbar, ergänzt um passende bewegte Teile: Kissen/Füllung, Chips, Speichel-/Staubtropfen beim Schweinehund, Salat/Tomate/Pommes/Kraut beim Dönerteller, Schaum/Hopfen beim Bierbauch, Kartons/Zettel/Tüten beim Lieferdienst und Gold-/Fellpartikel bei Graf Gemütlich. Überspringen und reduzierte Bewegung zeigen sofort den tatsächlichen Stand ohne Auftritt oder Partikel.
 
+Jeder Boss hat einen eigenen Auftritt: Sofa fällt schwer herunter, Chips flattern, der Schweinehund hüpft heran, der Dönerteller rutscht hinein, Bierbauch stampft, der Lieferdienst-Lord bremst nach einem schnellen Antritt und Graf Gemütlich schwebt langsam ein. Stufe 2 bekommt stärkere Landungsbewegungen. Alle Profile enden am gleichen Bühnenpunkt; unbekannte ältere Namen verwenden den Fall-Auftritt. Die Effekte erscheinen erst beim Bodenkontakt und werden bei Abbruch vollständig entfernt.
+
+Die Trefferwucht hängt ausschließlich vom echten Spieler-Schaden relativ zu den gesamten Boss-LP ab. Mit zunehmendem Anteil wachsen Rückstoß, Kamerabewegung, Funken, Ring, Schadenszahl, Trefferpause und Partikelzahl; ab einem Drittel der gesamten Boss-LP sind die Effekte gedeckelt (Kamera höchstens 5 Pixel, Zahl höchstens 36 Pixel). Dadurch bleibt Über-Schaden begrenzt und ein einzelner kleiner Beitrag wird nicht allein wegen einer kleinen Gruppe zum maximalen Treffer. Angezeigter Schaden, LP und Bonus ändern sich dadurch nicht. Vor einem K.O. werden beide Rückbewegungen abgeschlossen, damit sie die Niederlagenpose nicht überlagern.
+
 Lokale eigenständige Vorschau mit allen Bossen: `npm run build && node scripts/boss-vorschau.mjs /tmp/boss-vorschau.html`. Die Datei enthält die echten Kampf-/Auftrittsfunktionen, alle Bilder und Beispieldaten; sie benötigt keinen Telegram-Zugang.
 
 Die vollständigen Generation-Prompts für die fünf ergänzten Motive stehen in `weitere-reaktionen-prompts.json`.
