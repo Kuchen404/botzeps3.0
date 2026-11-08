@@ -3,7 +3,7 @@ import { bombenTrainings, bombenVerlauf } from "./bombenverlauf.js";
 import type { Db } from "../db/index.js";
 import { type SeasonZeile, seasonNachId } from "../db/season-repo.js";
 import { gruppeNachId } from "../db/repo.js";
-import { legeMinispielFest, minispielZeile, setzeMinispielDaten, setzeMinispielPin, spielWoche, spielerDerSeason } from "../db/minispiel-repo.js";
+import { legeMinispielFest, minispielZeile, setzeMinispielDaten, setzeMinispielPin, spielWoche, spielerDerSeason, wochenberichtGesendet } from "../db/minispiel-repo.js";
 import { berechneStand } from "../bericht/stand.js";
 import { lokalesDatum, plusTage, tageZwischen, zeitpunktIn } from "../scoring/datum.js";
 import { wocheVon } from "../scoring/season.js";
@@ -156,6 +156,30 @@ function laufendesSpiel(db: Db, s: SeasonZeile, tag: string): { daten: Minispiel
   return daten ? { daten, spieler: spielerDerSeason(db, s, tag), w: spielWoche(s, woche), woche } : null;
 }
 
+/**
+ * Das Minispiel, das die Mini App zeigt. Normalerweise das laufende. Nach dem Sonntagsbericht gilt es als
+ * abgeschlossen und bleibt mit seinem Endstand stehen, bis das nächste Spiel angekündigt ist, ohne neues Spiel
+ * (etwa in einer Boss-Woche) längstens bis Montagabend. `stichtag` begrenzt die Trainings auf die Spielwoche,
+ * `fertigeTage` ist beim abgeschlossenen Spiel die ganze Woche, wie bei der Auflösung.
+ */
+export function minispielDerApp(db: Db, s: SeasonZeile, tag: string) {
+  const woche = wocheVon(s, tag);
+  if (woche === null) return null;
+  let spielwoche = woche, daten = minispielZeile(db, s.id, woche)?.daten;
+  if (!daten) {
+    // Montag vor der Ankündigung: das Spiel der Vorwoche, wenn es schon aufgelöst wurde
+    if (woche === 0 || tag !== spielWoche(s, woche).start) return null;
+    spielwoche = woche - 1;
+    daten = minispielZeile(db, s.id, spielwoche)?.daten;
+    if (!daten || !wochenberichtGesendet(db, s.id, spielwoche)) return null;
+  }
+  const w = spielWoche(s, spielwoche);
+  const abgeschlossen = wochenberichtGesendet(db, s.id, spielwoche);
+  const sonntag = plusTage(w.start, 6);
+  const stichtag = tag < sonntag ? tag : sonntag;
+  return { daten, spieler: spielerDerSeason(db, s, stichtag), w, woche: spielwoche, stichtag, abgeschlossen, fertigeTage: abgeschlossen ? 7 : fertigeTage(w, tag) };
+}
+
 /** Meldungen für den Gruppenpost eines Trainings, nur für Trainings der laufenden Woche. */
 export function minispielMeldungen(db: Db, s: SeasonZeile, trainingId: number, nutzer: number, datum: string, tag: string): string[] {
   const spiel = laufendesSpiel(db, s, tag);
@@ -174,18 +198,18 @@ const z = (x: number) => Math.round(x).toLocaleString("de-DE");
 
 /** Das laufende Minispiel für die Mini App, oder null. */
 export function minispielFuerApp(db: Db, s: SeasonZeile, tag: string, ich: string) {
-  const spiel = laufendesSpiel(db, s, tag);
+  const spiel = minispielDerApp(db, s, tag);
   if (!spiel) return null;
-  const { daten: d, spieler, w } = spiel;
+  const { daten: d, spieler, w, abgeschlossen } = spiel;
   const namen = namenVon(spieler);
   const nm = (id: string) => namen.get(id) ?? "?";
   const l = lasten(d, spieler, w);
-  const marken = minispielMarken(d, spieler, w, fertigeTage(w, tag));
-  const basis = { art: d.art, name: MINISPIELE[d.art].name, emoji: MINISPIELE[d.art].emoji, woche: spiel.woche + 1 };
+  const marken = minispielMarken(d, spieler, w, spiel.fertigeTage);
+  const basis = { art: d.art, name: MINISPIELE[d.art].name, emoji: MINISPIELE[d.art].emoji, woche: spiel.woche + 1, abgeschlossen };
   const eintrag = (id: string, text: string) => ({ name: nm(id) + (marken.has(id) ? ` ${marken.get(id)}` : ""), text, ich: id === ich });
   switch (d.art) {
     case "zombie": {
-      const zz = zombies(d, spieler, w, fertigeTage(w, tag));
+      const zz = zombies(d, spieler, w, spiel.fertigeTage);
       const menschen = d.spieler.filter((id) => !zz.has(id)).length;
       return {
         ...basis,
@@ -202,13 +226,13 @@ export function minispielFuerApp(db: Db, s: SeasonZeile, tag: string, ich: strin
       return {
         ...basis,
         regel: "Die Bombe hängt an dem, dessen letztes Training am längsten her ist. Wer sie Sonntagabend hat, fliegt in die Luft.",
-        status: traeger ? `💣 Tickt gerade bei ${nm(traeger)}` : "",
+        status: traeger ? (abgeschlossen ? `💥 Hochgegangen bei ${nm(traeger)}` : `💣 Tickt gerade bei ${nm(traeger)}`) : "",
         bombe: {
           id: `${s.id}:${spiel.woche}`,
           traeger,
           zeitzone: gruppenZeitzone(),
           verlauf: bombenVerlauf(
-            d, spieler, bombenTrainings(db, s.id, tag),
+            d, spieler, bombenTrainings(db, s.id, spiel.stichtag),
             minispielZeitpunkt(s, spiel.woche, 0, gruppenZeitzone()).toISOString(), uhr.jetzt().toISOString(),
           ),
           spieler: d.spieler.map((id) => ({ id, name: nm(id), ich: id === ich })),
