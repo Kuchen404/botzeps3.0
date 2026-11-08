@@ -73,7 +73,8 @@ export function trageTrainingEin(
   const meldungen = meldungenNachTraining(db, trainingId, heute(gruppenZeitzone()));
   // Dieses Training schaltet die Figurwahl frei: wer zuerst kommt, hat die volle Auswahl
   if (figurFreigeschaltet(db, nutzer.id, trainingId, heute(gruppenZeitzone()))) {
-    meldungen.push(`🎭 ${nutzer.name} darf sich jetzt eine Kämpferfigur schnappen (App → Mehr). Wer trödelt, kriegt die Reste.`);
+    // Für die anderen noch ein Geheimnis: nur andeuten, nicht verraten
+    meldungen.push(`🎁 ${nutzer.name} hat etwas freigeschaltet (App → Mehr). Wer trödelt, kriegt die Reste.`);
   }
   const zusatz = mitSchritten ? ` (${schritteText(minuten, mitSchritten, faktor)})` : "";
   const post = mitMeldungen(`${trainingsPostText(nutzer.name, minuten, sportart.name)}${TAG_TEXT[tage]}${zusatz}`, meldungen);
