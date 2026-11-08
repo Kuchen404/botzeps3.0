@@ -1,6 +1,6 @@
 import type { AddressInfo } from "node:net";
 import { afterEach, describe, expect, it } from "vitest";
-import { erstelleServer } from "../server.js";
+import { SEITEN_VERSION, erstelleServer } from "../server.js";
 import { uhr } from "../bot/kontext.js";
 import { GRUPPE, KEVIN, PETER, PRIVAT, befehl, knopf, testBot } from "../bot/testhilfe.js";
 import { signiereInitData } from "./auth.js";
@@ -63,6 +63,22 @@ async function aufbau() {
 }
 
 describe("Mini App", () => {
+  it("schickt den Fingerabdruck der Seite mit, damit alte offene Apps nach einem Deploy neu laden", async () => {
+    const t = await aufbau();
+    try {
+      expect(SEITEN_VERSION).toMatch(/^[0-9a-f]{12}$/);
+      const seite = await (await fetch(t.basis + "/app")).text();
+      expect(seite).toContain(`var VERSION = "${SEITEN_VERSION}";`);
+      expect(seite).not.toContain("{{VERSION}}");
+      const r = await fetch(t.basis + "/api/ich", { headers: { authorization: anmeldung(KEVIN) } });
+      expect(r.headers.get("x-botzeps-version")).toBe(SEITEN_VERSION);
+      expect((await fetch(t.basis + "/api/ich")).headers.get("x-botzeps-version")).toBe(SEITEN_VERSION);
+    } finally {
+      t.server.close();
+      t.db.close();
+    }
+  });
+
   it("liefert Figuren ohne Anmeldung als langfristig gecachte PNGs, nur aus der festen Medienliste", async () => {
     const t = await aufbau();
     try {
