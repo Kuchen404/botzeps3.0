@@ -418,7 +418,13 @@ export async function bearbeiteApi(db: Db, a: Anfrage, gruppenpost: Gruppenpost,
     return { status: 200, json: { ok: true } };
   }
   if (a.methode === "GET" && a.pfad === "/api/figuren") {
-    return { status: 200, json: { figuren: FIGUREN.map((f, nr) => ({ nr, name: f.name, bild: figurSvg(f, "bereit", { id: `w${nr}` }) })) } };
+    // Kein Spoiler: Die Figuren sieht erst, wer in einer Season wählen darf oder schon gewählt hat
+    const freigeschaltet = gruppenDesNutzers(db, nutzer.id).some((g) => {
+      const s = relevanteSeason(db, g.id, tag);
+      return !!s && (figurIn(db, s.id, nutzer.id) !== null || darfFigurWaehlen(db, s, nutzer.id));
+    });
+    if (!freigeschaltet) return { status: 200, json: { verdeckt: true, anzahl: FIGUREN.length, figuren: [] } };
+    return { status: 200, json: { verdeckt: false, figuren: FIGUREN.map((f, nr) => ({ nr, name: f.name, bild: figurSvg(f, "bereit", { id: `w${nr}` }) })) } };
   }
   if (a.methode === "POST" && a.pfad === "/api/figur") {
     const b = FigurSchema.safeParse(a.body);
@@ -432,7 +438,7 @@ export async function bearbeiteApi(db: Db, a: Anfrage, gruppenpost: Gruppenpost,
       case "schon_gewaehlt":
         return fehler(409, "Du hast deine Figur für diese Season schon. Gewählt ist gewählt.");
       case "noch_nicht":
-        return fehler(403, "Erst ab der ersten Boss-Woche: Trag ein Training ein, dann darfst du dir eine Figur aussuchen.");
+        return fehler(403, "Noch nicht freigeschaltet.");
       case "vergeben":
         return fehler(409, `Die Figur hat schon ${vergebeneFiguren(db, s.id).get(b.data.figur)}. Zu langsam!`);
     }
