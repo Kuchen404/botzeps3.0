@@ -1,4 +1,4 @@
-import { darfFigurWaehlen } from "../figuren/zuteilung.js";
+import { figurFreigeschaltet } from "../figuren/zuteilung.js";
 import { Composer, InlineKeyboard, type Context } from "grammy";
 import type { Db } from "../db/index.js";
 import {
@@ -72,7 +72,7 @@ export function trageTrainingEin(
   const faktor = trainingsFaktor(sportart, minuten, mitSchritten);
   const meldungen = meldungenNachTraining(db, trainingId, heute(gruppenZeitzone()));
   // Dieses Training schaltet die Figurwahl frei: wer zuerst kommt, hat die volle Auswahl
-  if (darfFigurWaehlen(db, nutzer.id) && !darfFigurWaehlen(db, nutzer.id, trainingId)) {
+  if (figurFreigeschaltet(db, nutzer.id, trainingId, heute(gruppenZeitzone()))) {
     meldungen.push(`🎭 ${nutzer.name} darf sich jetzt eine Kämpferfigur schnappen (App → Mehr). Wer trödelt, kriegt die Reste.`);
   }
   const zusatz = mitSchritten ? ` (${schritteText(minuten, mitSchritten, faktor)})` : "";

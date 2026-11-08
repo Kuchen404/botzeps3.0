@@ -386,7 +386,10 @@ export const MIGRATIONEN: readonly Migration[] = [
   {
     version: 14,
     name: "spielerfigur",
-    // Selbst gewählte Kämpferfigur (Nummer im Baukasten), sonst automatisch zugeteilt
-    sql: `ALTER TABLE nutzer ADD COLUMN figur INTEGER CHECK (figur >= 0);`,
+    // Kämpferfigur (Nummer im Baukasten), einmal pro Season selbst ausgesucht, jede nur einmal
+    sql: `
+      ALTER TABLE teilnahme ADD COLUMN figur INTEGER CHECK (figur >= 0);
+      CREATE UNIQUE INDEX teilnahme_figur ON teilnahme (season, figur) WHERE figur IS NOT NULL;
+    `,
   },
 ];
