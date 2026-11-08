@@ -8,7 +8,7 @@
     "node": ">=22"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && node -e \"const fs=require('node:fs');fs.copyFileSync('src/miniapp/app.html','dist/miniapp/app.html');fs.cpSync('src/boss/medien','dist/boss/medien',{recursive:true});fs.cpSync('src/figuren/medien','dist/figuren/medien',{recursive:true});fs.cpSync('src/hype/medien','dist/hype/medien',{recursive:true})\"",
+    "build": "tsc -p tsconfig.build.json && node -e \"const fs=require('node:fs');fs.copyFileSync('src/miniapp/app.html','dist/miniapp/app.html');fs.cpSync('src/miniapp/spiele','dist/miniapp/spiele',{recursive:true});fs.cpSync('src/boss/medien','dist/boss/medien',{recursive:true});fs.cpSync('src/figuren/medien','dist/figuren/medien',{recursive:true});fs.cpSync('src/hype/medien','dist/hype/medien',{recursive:true})\"",
     "start": "node dist/index.js",
     "dev": "tsx watch --env-file-if-exists=.env src/index.ts",
     "typecheck": "tsc --noEmit",
