@@ -34,3 +34,44 @@
 @keyframes boss-team-jubel { 50% { transform: translateY(-7px); } }
 @media (max-width: 350px) { .boss-arcade .boss-buehne { height: 285px; } .boss-arcade .bossbild { width: 206px; height: 208px; margin-left: -103px; } .boss-arcade .bossbild > svg, .boss-arcade.stufe2 .bossbild > svg { width: 206px; height: 208px; } }
 @media (prefers-reduced-motion: reduce) { .boss-arcade *, .boss-arcade *::before { animation: none !important; transition: none !important; } .boss-arcade .bossbild { animation: none !important; } }
+
+/* Boss-Auftritt und eigene Reaktionsposen. */
+.boss-auftritt { position: absolute; z-index: 6; left: 2%; right: 2%; bottom: 15px; text-align: center; padding: 10px 6px; background: linear-gradient(90deg, transparent, #111a2ce8 16% 84%, transparent); border-block: 1px solid #efc7767a; color: #fff0bd; }
+.boss-auftritt strong { display: block; font-size: clamp(17px,5vw,23px); line-height: 1.15; font-weight: 900; text-shadow: 0 2px 3px #000; }
+.boss-auftritt-stufe { display: block; font-size: 10px; font-weight: 800; letter-spacing: .16em; color: #ffce62; margin-bottom: 5px; }
+.boss-arcade.stufe2 .boss-auftritt { border-color: #ff9a72; }
+.boss-arcade[data-kampfphase="auftritt"] .kaempfer, .boss-arcade[data-kampfphase="landung"] .kaempfer { opacity: .7; }
+.boss-auftritt-staub { bottom: 65px; opacity: 0; }
+.boss-auftritt-effekt-chips { left: 30%; width: 40%; height: 26px; background: radial-gradient(ellipse, #ffdb7699, transparent 70%); }
+.boss-auftritt-effekt-doenerteller { height: 20px; background: repeating-linear-gradient(-8deg, transparent 0 7px, #dcd4bd66 8px 10px, transparent 12px 19px); border-radius: 50%; }
+.boss-auftritt-effekt-bierbauch { height: 65px; filter: drop-shadow(0 -4px 5px #fff0ca44); }
+.boss-auftritt-effekt-lieferdienst { left: 5%; width: 80%; height: 24px; background: repeating-linear-gradient(0deg, transparent 0 5px, #ffb76a99 6px 8px, transparent 9px 13px); }
+.boss-auftritt-effekt-gemuetlich { bottom: 90px; height: 110px; background: radial-gradient(circle at 20% 45%, #ffe6a8 0 2px, transparent 4px), radial-gradient(circle at 80% 20%, #ffe6a8 0 3px, transparent 5px), radial-gradient(circle at 65% 85%, #f7d36c 0 2px, transparent 4px), radial-gradient(ellipse, #dbc07122, transparent 65%); }
+.boss-schnipsel { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
+.boss-splitter { position: absolute; display: block; width: 24px; height: 20px; opacity: 0; }
+.boss-splitter svg { width: 100%; height: 100%; }
+.boss-splitter-kissen { width: 28px; height: 22px; background: #ba38ec; border: 2px solid #5d157a; border-radius: 7px; box-shadow: inset 0 3px #e993ff, inset 0 -3px #8425a7; }
+.boss-splitter-kissen::after { content: ""; position: absolute; inset: 4px; border: 1px solid #edb4fa; border-radius: 3px; }
+.boss-splitter-polster { width: 12px; height: 10px; background: #fff3d9; border-radius: 50% 40% 55% 30%; box-shadow: -4px 2px #e8dcc2, 3px -3px #fff3d9; }
+.boss-arcade .bossplatz.tot .bossbild[data-boss-pose="ko"] { transform: translateY(14px); opacity: 1; filter: none; }
+.boss-arcade .boss-reaktionspose, .boss-arcade .boss-reaktionspose * { animation: none !important; }
+
+.boss-arcade .bossbild[data-boss-pose="ko"] ~ .stempel { top: 80%; font-size: 22px; }
+
+/* Gegenstände und Spuren passend zu den übrigen Bossen. */
+.boss-splitter-tropfen { width: 10px; height: 16px; background: #a8e8fa; border: 1px solid #4196bb; border-radius: 65% 65% 55% 5%; }
+.boss-splitter-staub { width: 13px; height: 10px; background: #c8b08e; border-radius: 50%; box-shadow: -4px 2px #ac9172, 4px -2px #ddc7aa; }
+.boss-splitter-salat { width: 17px; height: 13px; background: #7bc947; border: 2px solid #3c7a27; border-radius: 25% 55% 30% 60%; }
+.boss-splitter-tomate { width: 18px; height: 17px; border-radius: 50%; border: 2px solid #b52e1b; background: radial-gradient(ellipse at 30% 40%, #ffe28c 0 2px, transparent 3px), radial-gradient(ellipse at 65% 65%, #ffe28c 0 2px, #f9572c 3px); }
+.boss-splitter-pommes { width: 7px; height: 25px; background: linear-gradient(90deg,#ffed88,#efac29); border: 1px solid #b97a18; border-radius: 2px; }
+.boss-splitter-kraut { width: 17px; height: 5px; background: #e66fcc; border: 1px solid #912a88; border-radius: 3px; }
+.boss-splitter-schaum { width: 12px; height: 10px; background: #fff7dc; border-radius: 50%; box-shadow: -4px 3px #f0e2bd, 4px -3px #fff7dc; }
+.boss-splitter-hopfen { width: 14px; height: 18px; background: #80ac38; clip-path: polygon(50% 0,75% 17%,94% 39%,77% 70%,50% 100%,23% 70%,6% 39%,25% 17%); }
+.boss-splitter-karton { width: 24px; height: 19px; background: #dba66a; border: 2px solid #79502e; border-radius: 3px; box-shadow: inset 0 5px #f5cb8d; }
+.boss-splitter-karton::after { content: ""; position: absolute; left: 10px; top: 0; bottom: 0; width: 2px; background: #946036; }
+.boss-splitter-zettel { width: 16px; height: 22px; background: repeating-linear-gradient(#f6f0db 0 5px,#bec1b8 5px 6px); border: 1px solid #9f9d8f; }
+.boss-splitter-tuete { width: 17px; height: 22px; background: #d7b080; border: 2px solid #8d6642; border-radius: 2px; }
+.boss-splitter-tuete::before { content: ""; position: absolute; left: 3px; top: -7px; width: 7px; height: 8px; border: 2px solid #8d6642; border-bottom: 0; border-radius: 5px 5px 0 0; }
+.boss-splitter-glanz { width: 17px; height: 17px; background: #ffdc6f; clip-path: polygon(50% 0,62% 37%,100% 50%,62% 63%,50% 100%,38% 63%,0 50%,38% 37%); }
+.boss-splitter-fell { width: 16px; height: 11px; background: #bb793b; clip-path: polygon(0 60%,14% 12%,36% 30%,47% 0,64% 25%,84% 5%,100% 65%,62% 100%,27% 85%); }
+.boss-splitter-knopf { width: 10px; height: 10px; border: 2px solid #9d6b19; border-radius: 50%; background: radial-gradient(circle,#9d6b19 0 1px,#ffe07c 2px); }

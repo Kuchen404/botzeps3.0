@@ -1,8 +1,65 @@
 /* Boss-Inszenierung: dieselben Spielstände und gewählten Figuren, kräftigere Bewegung. */
 var bossKampfAbbrechen = null;
+var bossAuftrittGezeigt = {};
 document.addEventListener("visibilitychange", function () { if (document.hidden && bossKampfAbbrechen) bossKampfAbbrechen(); });
 var bossBewegungsWahl = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)");
 if (bossBewegungsWahl && bossBewegungsWahl.addEventListener) bossBewegungsWahl.addEventListener("change", function (e) { if (e.matches && bossKampfAbbrechen) bossKampfAbbrechen(); });
+
+/** Kurze, abgeschlossene Auftritte; jede Bewegung endet wieder am selben Bühnenpunkt. */
+function bossAuftrittProfil(motiv, stufe) {
+  var schwer = stufe === 2, druck = schwer ? 1.12 : 1.06, sprung = schwer ? 12 : 7;
+  function pose(x, y, winkel, sx, sy) {
+    return { transform: "translate(" + x + "px," + y + "px) rotate(" + winkel + "deg) scale(" + (sx || 1) + "," + (sy || sx || 1) + ")", opacity: 1 };
+  }
+  var ruhe = pose(0, 0, 0), kontakt = pose(0, sprung, 0, druck, 2 - druck);
+  var start, ende, dauer, wucht, easing = "ease-in-out";
+  switch (motiv) {
+    case "chips": // Leichte Tüte: flattert im Zickzack herunter.
+      kontakt = pose(0, 4, 4, 1.03, .97);
+      start = [pose(-48, -125, -28, .8), pose(24, -88, 19, .9), pose(-18, -45, -15), pose(12, -17, 10), kontakt];
+      ende = [kontakt, pose(-4, -sprung, -7), pose(3, 0, 4), ruhe];
+      dauer = 900; wucht = .8; break;
+    case "schweinehund": // Zwei ungeduldige Sätze, dann ein Abschütteln.
+      start = [pose(-100, 28, -10, .85), pose(-55, -30, 5), pose(-30, 8, -5), pose(-12, -18, 3), kontakt];
+      ende = [kontakt, pose(-5, -sprung, -5), pose(5, 0, 5), ruhe];
+      dauer = 760; wucht = 2.5; break;
+    case "doenerteller": // Rutscht herein und balanciert den Teller aus.
+      kontakt = pose(-8, 6, -9, druck, 2 - druck);
+      start = [pose(135, 28, 18, .9), pose(55, 18, 10), pose(8, 7, -4), kontakt];
+      ende = [kontakt, pose(9, -4, 7), pose(-3, 0, -3), ruhe];
+      dauer = 650; wucht = 2; easing = "cubic-bezier(.15,.65,.3,1)"; break;
+    case "bierbauch": // Stampft heran; Bauch und Krone schwingen nach.
+      start = [pose(-82, 6, -8, .9), pose(-58, -12, 6), pose(-39, 8, -6), pose(-18, -10, 4), kontakt];
+      ende = [kontakt, pose(0, -sprung, -4, .97, 1.04), pose(0, 3, 3, 1.04, .97), ruhe];
+      dauer = 1000; wucht = 4.5; break;
+    case "lieferdienst": // Schneller Antritt mit sichtbarer Vollbremsung.
+      kontakt = pose(12, 5, 11, druck, 2 - druck);
+      start = [pose(-155, 5, -20, .85), pose(-55, -6, -15), pose(-6, -3, -9), kontakt];
+      ende = [kontakt, pose(-7, -4, -6), pose(3, 0, 3), ruhe];
+      dauer = 570; wucht = 2.5; easing = "cubic-bezier(.1,.6,.25,1)"; break;
+    case "gemuetlich": // Sinkt gemächlich auf die Bühne, fast ohne Erschütterung.
+      kontakt = pose(0, 0, -2);
+      start = [pose(0, -90, -6, .9), pose(-9, -58, -3, .95), pose(7, -29, 3), kontakt];
+      ende = [kontakt, pose(0, -4, 2), ruhe];
+      dauer = 1150; wucht = .35; break;
+    default: // Sofa und unbekannte ältere Bosse landen schwer von oben.
+      motiv = motiv === "sofa" ? "sofa" : "standard";
+      start = [pose(0, -175, -3, .7), pose(0, -25, 0, 1.02), kontakt];
+      ende = [kontakt, pose(0, -sprung, -2, .97, 1.04), pose(0, 2, 1, 1.03, .98), ruhe];
+      dauer = 580; wucht = 4;
+      easing = "cubic-bezier(.4,0,.8,1)";
+  }
+  start[0].opacity = 0;
+  return { motiv: motiv, start: start, ende: ende, dauer: dauer + (schwer ? 120 : 0), erholung: schwer ? 500 : 420, wucht: wucht * (schwer ? 1.5 : 1), easing: easing };
+}
+
+/** Rein visuelle Wucht aus echtem Schaden relativ zu den gesamten Boss-LP, begrenzt. */
+function bossTrefferWucht(schaden, lebenspunkte) {
+  var anteil = Math.max(0, schaden) / Math.max(1, lebenspunkte);
+  var w = Math.pow(Math.min(1, anteil * 3), .65);
+  return { rueckstoss: 4 + 15 * w, kamera: 1 + 4 * w, funken: 48 + 48 * w,
+    ring: 46 + 50 * w, schrift: 22 + 14 * w, pause: 60 + 50 * w, partikel: 4 + Math.round(4 * w) };
+}
 
 function bossKarte(b, kontext) {
   if (bossKampfAbbrechen) bossKampfAbbrechen();
@@ -12,7 +69,18 @@ function bossKarte(b, kontext) {
   var bild = el("div", { class: "bossbild" + (b.bild ? " gezeichnet" : ""), text: b.bild ? "" : b.emoji });
   if (b.bild) bild.innerHTML = b.bild; // Feste Illustration vom eigenen Server.
   var illustriert = !!bild.querySelector(".boss-illustriert");
+  var auftrittProfil = bossAuftrittProfil(b.reaktion && b.reaktion.motiv, b.stufe);
   if (illustriert) bild.classList.add("neu");
+  var reaktionGeladen = false, erwarteteBossPose = "bereit";
+  // Früh laden; auf langsamen Verbindungen bleibt die neutrale Figur bis dahin sichtbar.
+  if (b.reaktion && b.reaktion.atlas) {
+    var vorladen = new Image();
+    vorladen.onload = function () {
+      reaktionGeladen = true;
+      if (arena && arena.isConnected) setzeBossPose(erwarteteBossPose);
+    };
+    vorladen.src = b.reaktion.atlas;
+  }
   var platz = el("div", { class: "bossplatz boss-buehne" }, [bild]);
   var kamera = el("div", { class: "boss-kamera" }, [platz]);
   var figuren = b.figuren || {};
@@ -54,6 +122,7 @@ function bossKarte(b, kontext) {
   var steuerung = el("div", { class: "boss-steuerung" }, [skip, nochmal]);
   var titel = (b.aktiv ? "🐉 Boss-Woche " : "🐉 Boss aus Woche ") + b.woche;
   var karteElement = karte(titel, [el("div", { class: "gross", style: "font-size:20px", text: b.name }), arena, info, steuerung]);
+  var auftrittSchluessel = JSON.stringify([kontext || "", b.name, b.woche, b.stufe]);
   var durchlauf = 0, animationen = new Set(), wartende = new Map(), angreifer = null, quelle = null;
   var schluessel = JSON.stringify([kontext || "", b.name, b.woche, b.stufe, b.schaden, b.besiegt, b.kaempfer.map(function (k) { return [k.name, k.schaden]; })]);
   function bewegung() { return BEWEGUNG && !(bossBewegungsWahl && bossBewegungsWahl.matches); }
@@ -65,7 +134,7 @@ function bossKarte(b, kontext) {
     if (angreifer) angreifer.remove(); angreifer = null;
     if (quelle) quelle.style.visibility = ""; quelle = null;
     arena.classList.remove("boss-hitstop", "boss-laeuft");
-    arena.querySelectorAll(".zahl, .trefferfunken, .boss-ring, .boss-staub, .boss-ko").forEach(function (e) { e.remove(); });
+    arena.querySelectorAll(".zahl, .trefferfunken, .boss-ring, .boss-staub, .boss-ko, .boss-schnipsel, .boss-auftritt").forEach(function (e) { e.remove(); });
   }
   function warte(ms, lauf) {
     return new Promise(function (resolve) {
@@ -79,6 +148,65 @@ function bossKarte(b, kontext) {
     animationen.add(a);
     return a.finished.then(function () { return gueltig(lauf); }, function () { return false; });
   }
+  function setzeBossPose(pose) {
+    erwarteteBossPose = pose;
+    var svg = pose !== "bereit" && reaktionGeladen && b.reaktion && b.reaktion[pose];
+    bild.setAttribute("data-boss-pose", svg ? pose : "bereit");
+    if (b.bild) bild.innerHTML = svg || b.bild;
+  }
+  function schnipsel(final, lauf, anzahlTreffer) {
+    if (!b.reaktion) return;
+    var motive = {
+      sofa: { teile: ["kissen", "polster", "polster"], hoehe: .6 },
+      chips: { teile: ["chip"], hoehe: .24 },
+      schweinehund: { teile: ["tropfen", "staub", "staub"], hoehe: .45 },
+      doenerteller: { teile: ["salat", "tomate", "pommes", "kraut"], hoehe: .5 },
+      bierbauch: { teile: ["schaum", "schaum", "hopfen"], hoehe: .45 },
+      lieferdienst: { teile: ["karton", "zettel", "tuete"], hoehe: .4 },
+      gemuetlich: { teile: ["glanz", "fell", "knopf"], hoehe: .35 }
+    };
+    var motiv = motive[b.reaktion.motiv];
+    if (!motiv) return;
+    var layer = el("div", { class: "boss-schnipsel", "aria-hidden": "true" });
+    var p = platz.getBoundingClientRect(), r = bild.getBoundingClientRect();
+    var cx = r.left - p.left + r.width / 2, cy = r.top - p.top + r.height * motiv.hoehe;
+    platz.appendChild(layer);
+    var anzahl = final ? 12 : anzahlTreffer || 6;
+    for (var i = 0; i < anzahl; i++) {
+      var art = motiv.teile[i % motiv.teile.length];
+      var teil = el("span", { class: "boss-splitter boss-splitter-" + art });
+      if (art === "chip") teil.innerHTML = '<svg viewBox="0 0 28 24"><path d="M3 18Q-1 6 11 3Q23-2 25 9Q30 22 16 22Z" fill="#ffd447" stroke="#ae6417" stroke-width="2"/><path d="M7 8L16 18M13 6L22 15" stroke="#e5a429" stroke-width="2"/></svg>';
+      teil.style.left = cx + "px"; teil.style.top = cy + "px"; layer.appendChild(teil);
+      var richtung = i % 2 ? 1 : -1, dx = richtung * (28 + (i % 5) * (final ? 21 : 13));
+      var hoch = -(30 + (i % 4) * 13), unten = final ? 110 - i % 3 * 16 : 35 + i % 4 * 11;
+      bewegen(teil, [
+        { transform: "translate(-50%,-50%) scale(.4) rotate(0deg)", opacity: 0 },
+        { transform: "translate(" + dx * .45 + "px," + hoch + "px) scale(1) rotate(" + richtung * 65 + "deg)", opacity: 1, offset: .35 },
+        { transform: "translate(" + dx + "px," + unten + "px) scale(.8) rotate(" + richtung * 165 + "deg)", opacity: 0 }
+      ], { duration: final ? 1000 : 650, easing: "ease-out" }, lauf);
+    }
+    warte(final ? 1050 : 700, lauf).then(function () { layer.remove(); });
+  }
+  async function auftritt(lauf) {
+    phase("auftritt"); status.textContent = b.stufe === 2 ? "Er ist zurück. Aufgepumpt!" : "Der Boss betritt die Arena!";
+    var schild = el("div", { class: "boss-auftritt", "aria-hidden": "true" }, [
+      el("span", { class: "boss-auftritt-stufe", text: b.stufe === 2 ? "STUFE 2 · AUFGEPUMPT" : "BOSS-WOCHE " + b.woche }),
+      el("strong", { text: b.name })
+    ]);
+    var staub = el("div", { class: "boss-staub boss-auftritt-staub boss-auftritt-effekt-" + auftrittProfil.motiv, "aria-hidden": "true" });
+    platz.appendChild(schild); platz.appendChild(staub);
+    bewegen(schild, [{ opacity: 0, transform: "translateX(-25px) skewX(-5deg)" }, { opacity: 1, transform: "translateX(0) skewX(0deg)" }], { duration: 260, easing: "ease-out" }, lauf);
+    if (!await bewegen(bild, auftrittProfil.start, { duration: auftrittProfil.dauer, easing: auftrittProfil.easing }, lauf)) return false;
+    phase("landung");
+    bewegen(staub, [{ opacity: 0, transform: "scale(.2)" }, { opacity: .8, transform: "scale(1)", offset: .25 }, { opacity: 0, transform: "scale(1.8)" }], { duration: 600 }, lauf);
+    var wucht = auftrittProfil.wucht;
+    bewegen(kamera, [{ transform: "translateY(0)" }, { transform: "translateY(" + wucht + "px)" }, { transform: "translateY(" + -wucht / 3 + "px)" }, { transform: "translateY(0)" }], { duration: 230 }, lauf);
+    if (!await bewegen(bild, auftrittProfil.ende, { duration: auftrittProfil.erholung, easing: "ease-out" }, lauf)) return false;
+    if (!await bewegen(schild, [{ opacity: 1, transform: "translateX(0)" }, { opacity: 0, transform: "translateX(25px)" }], { duration: 220 }, lauf)) return false;
+    schild.remove(); staub.remove();
+    bossAuftrittGezeigt[auftrittSchluessel] = true;
+    return true;
+  }
   function setzeLp(schaden, sofort) {
     var prozent = Math.max(0, Math.min(100, (b.lebenspunkte - schaden) / Math.max(1, b.lebenspunkte) * 100));
     arena.classList.toggle("boss-lp-sofort", !!sofort);
@@ -87,6 +215,7 @@ function bossKarte(b, kontext) {
   }
   function endstand(animiert) {
     setzeLp(b.schaden, !animiert);
+    setzeBossPose(b.besiegt ? "ko" : "bereit");
     platz.querySelectorAll(".stempel").forEach(function (e) { e.remove(); });
     platz.classList.toggle("tot", !!b.besiegt);
     reihe.querySelectorAll(".boss-team-jubel").forEach(function (e) { e.classList.remove("boss-team-jubel"); });
@@ -104,38 +233,49 @@ function bossKarte(b, kontext) {
     if (b.drueckeberger.length) texte.push(el("p", { class: "hint", text: "Versteckt sich hinter dem Sofa: " + b.drueckeberger.join(", ") }));
     info.replaceChildren.apply(info, texte);
     status.textContent = b.besiegt ? "K.O. – gemeinsam erledigt!" : !b.aktiv ? "Der Boss hat überlebt." : "Aktueller Kampfstand";
-    phase("ende"); skip.hidden = true; nochmal.hidden = !b.kaempfer.length || !bewegung();
+    phase("ende"); skip.hidden = true; nochmal.hidden = !bewegung();
+    nochmal.textContent = b.kaempfer.length ? "↻ Nochmal kämpfen" : "↻ Auftritt ansehen";
   }
   function abbrechen() {
-    if (arena.isConnected) bossGezeigt[schluessel] = true;
+    if (arena.isConnected) { bossGezeigt[schluessel] = true; bossAuftrittGezeigt[auftrittSchluessel] = true; }
     durchlauf++; reinigen(); endstand(false);
     if (bossKampfAbbrechen === abbrechen) bossKampfAbbrechen = null;
   }
   async function finale(lauf) {
     phase("finale"); status.textContent = "K.O.!";
+    var eigen = !!(b.reaktion && b.reaktion.ko);
+    if (eigen) { setzeBossPose("ko"); schnipsel(true, lauf); }
     var ko = el("div", { class: "boss-ko", text: "K.O.!", "aria-hidden": "true" });
     var staub = el("div", { class: "boss-staub", "aria-hidden": "true" });
     platz.appendChild(staub); platz.appendChild(ko);
     bewegen(ko, [{ opacity: 0, transform: "scale(1.8) rotate(-12deg)" }, { opacity: 1, transform: "scale(1) rotate(-8deg)" }], { duration: 240, easing: "cubic-bezier(.2,.8,.4,1)" }, lauf);
     bewegen(staub, [{ opacity: 0, transform: "scale(.3)" }, { opacity: .8, offset: .35, transform: "scale(1)" }, { opacity: 0, transform: "scale(1.7)" }], { duration: 700 }, lauf);
+    if (eigen) return bewegen(bild, [
+      { transform: "translateY(-6px) rotate(-5deg) scale(1.06)", opacity: 1 },
+      { transform: "translateY(20px) rotate(3deg) scale(1.03,.93)", opacity: 1, offset: .65 },
+      { transform: "translateY(14px) rotate(0deg) scale(1)", opacity: 1 }
+    ], { duration: 850, easing: "ease-out" }, lauf);
     return bewegen(bild, [{ transform: "translateY(-8px) rotate(-6deg) scale(1.03)" }, { transform: "translateY(22px) rotate(11deg) scale(.96,.64)", offset: .7 }, { transform: "translateY(35px) rotate(15deg) scale(.94,.55)", opacity: .4 }], { duration: 720, easing: "cubic-bezier(.2,0,.7,1)" }, lauf);
   }
   async function spiele(erzwingen) {
     durchlauf++; reinigen();
     var lauf = durchlauf;
-    if (!bewegung() || document.hidden || !b.kaempfer.length || (bossGezeigt[schluessel] && !erzwingen)) { endstand(false); return; }
+    if (!bewegung() || document.hidden || (bossGezeigt[schluessel] && !erzwingen)) { endstand(false); return; }
     bossKampfAbbrechen = abbrechen;
     skip.hidden = false; nochmal.hidden = true;
+    setzeBossPose("bereit");
     platz.classList.remove("tot"); platz.querySelectorAll(".stempel").forEach(function (e) { e.remove(); });
     reihe.querySelectorAll(".boss-team-jubel").forEach(function (e) { e.classList.remove("boss-team-jubel"); });
     Array.prototype.forEach.call(reihe.children, function (z) { if (z._k) stellePose(z, "bereit"); });
     info.replaceChildren(); setzeLp(0, true); arena.classList.add("boss-laeuft");
     var summe = 0, fertig = false;
     try {
+      if ((!bossAuftrittGezeigt[auftrittSchluessel] || erzwingen) && !await auftritt(lauf)) return;
       var folge = b.kaempfer.map(function (k, i) { return i; }).reverse();
       for (var n = 0; n < folge.length; n++) {
         if (!gueltig(lauf)) return;
         var zelle = reihe.children[folge[n]], k = zelle._k;
+        var wucht = bossTrefferWucht(k.schaden, b.lebenspunkte);
         quelle = zelle.querySelector(".figur, .avatar");
         var ziel = figurBild(k.figur, "bereit") || el("div", { class: "avatar", style: "background:" + farbe(k.name), text: initialen(k.name) });
         angreifer = el("div", { class: "boss-angreifer" + (k.ich ? " boss-angreifer-ich" : ""), "aria-hidden": "true" }, [ziel]);
@@ -156,18 +296,29 @@ function bossKarte(b, kontext) {
         if (!await bewegen(angreifer, [{ transform: "translate(-22px,4px) rotate(-9deg)" }, { transform: "translate(28px,-24px) rotate(5deg) scale(1.08)" }], { duration: 115, easing: "ease-in" }, lauf)) return;
         summe += k.schaden;
         var toedlich = b.besiegt && summe >= b.lebenspunkte;
+        setzeBossPose("treffer");
         setzeLp(summe, false); phase("trefferpause"); arena.classList.add("boss-hitstop");
         var funken = el("div", { class: "trefferfunken", "aria-hidden": "true" });
         var ring = el("div", { class: "boss-ring", "aria-hidden": "true" });
         var schaden = el("div", { class: "zahl", text: "−" + zahl(k.schaden, 0) });
+        funken.style.width = funken.style.height = wucht.funken + "px";
+        ring.style.width = ring.style.height = wucht.ring + "px";
+        schaden.style.fontSize = wucht.schrift + "px";
         platz.appendChild(funken); platz.appendChild(ring); platz.appendChild(schaden);
         // Der Kontakt hält kurz still, bevor Rückstoß und Kameraruck einsetzen.
-        if (!await warte(toedlich ? 140 : 90, lauf)) return;
+        if (!await warte(wucht.pause + (toedlich ? 30 : 0), lauf)) return;
         arena.classList.remove("boss-hitstop"); phase("rueckstoss");
-        bewegen(kamera, [{ transform: "translate(0,0)" }, { transform: "translate(-4px,2px)" }, { transform: "translate(4px,-2px)" }, { transform: "translate(-2px,0)" }, { transform: "translate(0,0)" }], { duration: 220 }, lauf);
-        bewegen(bild, [{ transform: "translate(0,0)", filter: "brightness(1.35)" }, { transform: "translate(13px,-5px) rotate(6deg)", offset: .25 }, { transform: "translate(-5px,0) rotate(-3deg)", offset: .65 }, { transform: "translate(0,0)", filter: "brightness(1)" }], { duration: 280, easing: "ease-out" }, lauf);
-        if (!await bewegen(angreifer, [{ transform: "translate(28px,-24px) rotate(5deg) scale(1.08)" }, { transform: "translate(0,0) rotate(0deg) scale(1)" }], { duration: 230, easing: "ease-out" }, lauf)) return;
+        schnipsel(false, lauf, wucht.partikel);
+        var ruck = wucht.kamera, weg = wucht.rueckstoss;
+        bewegen(kamera, [{ transform: "translate(0,0)" }, { transform: "translate(" + -ruck + "px," + ruck / 2 + "px)" }, { transform: "translate(" + ruck + "px," + -ruck / 2 + "px)" }, { transform: "translate(" + -ruck / 2 + "px,0)" }, { transform: "translate(0,0)" }], { duration: 220 }, lauf);
+        // Beide Rückbewegungen abschließen, bevor die K.O.-Animation den Boss übernimmt.
+        var reaktionen = await Promise.all([
+          bewegen(bild, [{ transform: "translate(0,0)", filter: "brightness(1.2)" }, { transform: "translate(" + weg + "px," + -weg / 3 + "px) rotate(" + weg / 2.5 + "deg)", offset: .25 }, { transform: "translate(" + -weg / 3 + "px,0) rotate(" + -weg / 5 + "deg)", offset: .65 }, { transform: "translate(0,0)", filter: "brightness(1)" }], { duration: 280, easing: "ease-out" }, lauf),
+          bewegen(angreifer, [{ transform: "translate(28px,-24px) rotate(5deg) scale(1.08)" }, { transform: "translate(0,0) rotate(0deg) scale(1)" }], { duration: 230, easing: "ease-out" }, lauf)
+        ]);
+        if (!reaktionen.every(Boolean)) return;
         if (toedlich) { if (!await finale(lauf)) return; }
+        else { if (!await warte(55, lauf)) return; setzeBossPose("bereit"); }
         stellePose(angreifer, toedlich ? "jubel" : "bereit"); phase("rueckzug");
         if (!await bewegen(angreifer, [{ transform: "translate(0,0) scale(1)" }, { transform: ursprung }], { duration: 340, easing: "ease-in-out" }, lauf)) return;
         angreifer.remove(); angreifer = null; quelle.style.visibility = ""; quelle = null;

@@ -204,6 +204,28 @@ describe("Mini App", () => {
     }
   });
 
+  it("liefert die eigenen Sofa-Reaktionen und nur die festen, gecachten Boss-Atlanten", async () => {
+    const { server, holen, basis, db } = await aufbau();
+    try {
+      kuendigeBossAn(db,1,1,"Das Sofa der Verdammnis",650);
+      tag("2026-10-20");
+      const r = (await holen("/api/ich")).json.seasons[0].boss.reaktion;
+      expect(r.motiv).toBe("sofa");
+      expect(r.treffer).toContain(r.atlas);
+      expect(r.ko).toContain(r.atlas);
+      const bild = await fetch(basis+r.atlas);
+      expect(bild.status).toBe(200);
+      expect(bild.headers.get("content-type")).toBe("image/png");
+      expect(bild.headers.get("cache-control")).toBe("public, max-age=31536000, immutable");
+      expect(bild.headers.get("x-content-type-options")).toBe("nosniff");
+      const bytes=Buffer.from(await bild.arrayBuffer());
+      expect(bytes.subarray(0,8).toString("hex")).toBe("89504e470d0a1a0a");
+      expect(Number(bild.headers.get("content-length"))).toBe(bytes.length);
+      expect((await fetch(basis+r.atlas,{method:"POST"})).status).toBe(404);
+      for(const pfad of ["unbekannt.png","sofa-reaktionen.png","..%2F..%2F.env"]) expect((await fetch(basis+"/api/bossbild/"+pfad)).status).toBe(404);
+    } finally { server.close(); db.close(); }
+  });
+
   it("/api/ich: Boss mit Lebenspunkten und Kämpfern, stärkste zuerst", async () => {
     const { server, holen, bot, db } = await aufbau();
     try {
@@ -216,6 +238,7 @@ describe("Mini App", () => {
       const boss = (await holen("/api/ich")).json.seasons[0].boss;
       expect(boss).toEqual({
         name: "König Bierbauch",
+        reaktion: { motiv: "bierbauch", atlas: expect.stringMatching(/^\/api\/bossbild\/bierbauch-reaktionen-[a-f0-9]{12}\.png$/), treffer: expect.stringContaining("boss-reaktionspose"), ko: expect.stringContaining("boss-reaktionspose") },
         emoji: "🍺",
         bild: expect.stringContaining("<svg"),
         stufe: 1,
