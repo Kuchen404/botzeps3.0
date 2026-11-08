@@ -618,9 +618,15 @@ function aktualisiereBombe(knopf) {
   var alt = daten, index = seasonIndex;
   bombenLaden = true;
   if (knopf) { knopf.disabled = true; knopf.textContent = "Lädt …"; }
+  var bombenId = s.minispiel.bombe.id;
   return api("/api/ich").then(function (j) {
     if (daten !== alt || seasonIndex !== index || tab !== "stand") return;
-    daten = j; zeichne();
+    daten = j;
+    // Nur die Minispielkarte austauschen, damit Scrollposition und der Rest des Tabs bleiben.
+    var neu = j.seasons[index];
+    var alteKarte = document.querySelector(".minispiel-karte");
+    if (alteKarte && neu && neu.minispiel && neu.minispiel.bombe && neu.minispiel.bombe.id === bombenId) alteKarte.replaceWith(minispielKarte(neu.minispiel));
+    else zeichne(); // Woche oder Season gewechselt: dann doch alles neu
   }).catch(function () {
     if (knopf && knopf.isConnected) knopf.textContent = "Verbindung fehlgeschlagen – nochmal versuchen";
   }).finally(function () { bombenLaden = false; if (knopf) knopf.disabled = false; });
@@ -643,7 +649,9 @@ function minispielKarte(m) {
   }
   if (m.code) kinder.push(el("div", { class: "code", text: m.code }));
   m.liste.forEach(function (x) { kinder.push(zeile(x.name, x.text, x.ich ? "ich" : "")); });
-  return karte(m.emoji + " " + m.name + " · Woche " + m.woche, kinder);
+  var k = karte(m.emoji + " " + m.name + " · Woche " + m.woche, kinder);
+  k.classList.add("minispiel-karte");
+  return k;
 }
 
 function standTab(s) {
