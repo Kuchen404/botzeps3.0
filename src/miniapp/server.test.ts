@@ -155,7 +155,7 @@ describe("Mini App", () => {
       ]);
       expect(Object.keys(b.figuren)).toEqual(["0"]);
       expect(Object.keys(b.figuren[0])).toEqual(["bereit", "schlag", "jubel"]);
-      expect(b.figuren[0].bereit).toContain("/app/figuren/");
+      expect(b.figuren[0].bereit).toContain("/api/figurbild/");
       expect(b.figuren[0].bereit).toContain("bombe0bereit");
       // Gleicher Trainingstag: Eintragszeit entscheidet, nicht Name oder Reihenfolge.
       db.prepare("UPDATE training SET erstellt_am = '2026-10-14T08:00:00Z' WHERE nutzer = ?").run(kevin);
