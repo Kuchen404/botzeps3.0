@@ -404,7 +404,13 @@ export async function bearbeiteApi(db: Db, a: Anfrage, gruppenpost: Gruppenpost,
     return { status: 200, json: { ok: true } };
   }
   if (a.methode === "GET" && a.pfad === "/api/figuren") {
-    return { status: 200, json: { figuren: FIGUREN.map((f, nr) => ({ nr, name: f.name, bild: figurSvg(f, "bereit", { id: `w${nr}` }) })) } };
+    // Kein Spoiler: Die Figuren sieht erst, wer in einer Season wählen darf oder schon gewählt hat
+    const freigeschaltet = gruppenDesNutzers(db, nutzer.id).some((g) => {
+      const s = relevanteSeason(db, g.id, tag);
+      return !!s && (figurIn(db, s.id, nutzer.id) !== null || darfFigurWaehlen(db, s, nutzer.id));
+    });
+    if (!freigeschaltet) return { status: 200, json: { verdeckt: true, anzahl: FIGUREN.length, figuren: [] } };
+    return { status: 200, json: { verdeckt: false, figuren: FIGUREN.map((f, nr) => ({ nr, name: f.name, bild: figurSvg(f, "bereit", { id: `w${nr}` }) })) } };
   }
   if (a.methode === "POST" && a.pfad === "/api/figur") {
     const b = FigurSchema.safeParse(a.body);
