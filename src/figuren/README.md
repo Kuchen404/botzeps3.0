@@ -1,45 +1,50 @@
-# Spielerfiguren – Übergabe für die optische Überarbeitung
+# Spielerfiguren – Übergabe
 
-Die 12 Kämpferfiguren sind aktuell ein handgezeichneter SVG-Baukasten. Sie sollen – wie die Bosse in PR #52 – durch hochwertige Arcade-Comic-Illustrationen ersetzt werden. Die Spiellogik (Auswahl, Bosskampf, API) muss dafür nicht angefasst werden.
+## Stand der Überarbeitung
 
-## Wo die Figuren hängen
+Alle zwölf festen Spielerfiguren besitzen jetzt sechs mit ImageGen erstellte, transparente Arcade-Illustrationen: `bereit`, `schlag`, `jubel`, `ko`, `ziehen` und `klettern`. Stilvorlage ist `src/boss/medien/bierbauch.png`: kräftige dunkle Tuschekonturen, organische sportliche Körper, satte Farben, harte Zellschatten und cremefarbene Glanzlichter. Kleidung, Hautfarben, Frisuren, Kopfteile und Brustembleme orientieren sich an den ursprünglichen Figuren. Namen und Nummern 0–11 bleiben identisch; die gespeicherte Auswahl gilt weiterhin pro Season.
 
-Einziger Einstiegspunkt ist `figurSvg(figur, pose, optionen)` in `figuren.ts`. Alle Aufrufer:
+Der Einstiegspunkt bleibt `figurSvg(figur, pose, optionen)` in `figuren.ts`, die Rückgabe bleibt ein SVG-String mit dem bisherigen `viewBox`. Die API, Auswahlregeln und Schadensberechnung sind unverändert. Individuell zusammengestellte Baukastenfiguren und explizite `mimik`-Optionen verwenden weiterhin den SVG-Baukasten. `zombie: true` färbt auch die Illustrationen über den bestehenden SVG-Farbfilter grün.
 
-| Aufrufer | Posen | Optionen |
-| --- | --- | --- |
-| `src/miniapp/api.ts` → `bossJson` (Bosskampf) | `bereit`, `schlag`, `jubel` (Kämpfer), `ko` (Drückeberger) | `id` |
-| `src/miniapp/api.ts` → `GET /api/figuren` (Auswahl im Mehr-Tab) | `bereit` | `id` |
-| `scripts/boss-vorschau.mjs` (lokale Vorschau) | `bereit`, `schlag`, `jubel`, `ko` | `id` |
+## Medien und Auslieferung
 
-Später für Minispiele vorgesehen: `ziehen` (Tauziehen), `klettern` (Gipfelsturm) und `zombie: true` (Zombie-Woche).
+`medien/` enthält pro Figur einen PNG-Atlas mit allen sechs Posen, drei Spalten und zwei Zeilen in obiger Reihenfolge. Jede Zelle misst 200 × 300 px; der gesamte Atlas 600 × 600 px. Die Füße stehen bei y=286 jeder Zelle; alle Posen einer Figur haben denselben Maßstab. Die Bilder sind auf maximal 192 Farben einschließlich Transparenz reduziert.
 
-Rückgabe muss ein `<svg …>`-String bleiben. Die Mini App setzt ihn per `innerHTML` in einen 54 × 80 px großen Rahmen (`.figur > svg` in `app.html`, Auswahl: 60 × 88 px). Seitenverhältnis also etwa **2 : 3 hochkant**; das aktuelle `viewBox` ist `-58 -12 116 172`, Füße bei y ≈ 156.
+`atlanten.ts` ordnet Figurennummern den Dateinamen zu. Jeder Dateiname enthält einen SHA-256-Inhaltshash. `arcade.ts` beschneidet den richtigen Ausschnitt im SVG und liefert nur eine Referenz auf `/app/figuren/<nr>-<hash>.png`. Alle Posen teilen dieselbe URL: Beim Zuschlagen oder Jubeln ist kein zusätzlicher Bilddownload nötig. Die API-Antworten enthalten keine eingebetteten PNG-Daten.
 
-`FIGUREN` (Name, Aussehen) und die Nummern 0–11 müssen gleich bleiben: Die Nummer ist in der Datenbank gespeichert (`teilnahme.figur`).
+`src/server.ts` liefert ausschließlich die zwölf bekannten Dateien aus, ohne Telegram-Anmeldung, mit `image/png`, `nosniff` und `cache-control: public, max-age=31536000, immutable`. Unbekannte Dateien und Pfade werden mit 404 beantwortet. Neue Bilder bekommen neue Hashes; Browser können keine alten Figuren unter derselben URL behalten. Die vorhandene CSP mit `img-src 'self' data:` reicht aus. Der Build kopiert den Medienordner nach `dist/figuren/medien`, auch im Docker-Build.
 
-## Bilder
+## Animationen und Aufrufer
 
-Pro Figur ein Bild je Pose, also 12 × 4 = 48 Pflicht (bereit, schlag, jubel, ko), 12 × 2 = 24 optional (ziehen, klettern).
+- Bosskampf: `bereit` → `schlag` → `bereit`, beim Sieg `jubel`; Drückeberger bleiben `ko`. Der bestehende Ablauf mit Sprung, Schaden und Boss-Trefferreaktion bleibt erhalten. Die illustrierten Figuren atmen in der Kampfhaltung leicht und jubeln dreimal kurz. `prefers-reduced-motion` unterbindet diese Bewegung.
+- Auswahl im Mehr-Tab: `bereit`, unverändert 60 × 88 px. Bosskampf: 54 × 80 px.
+- Die Posen `ziehen`, `klettern` und der Zombie-Filter sind vollständig vorhanden und in der Figuren-Vorschau sichtbar. Die Minispiele verwenden bisher weiterhin ihre bisherige Darstellung; die Anbindung der Figuren dort ist eine eigene spätere Aufgabe.
 
-- Stil wie `src/boss/medien`: dicke dunkle Konturen, satte glänzende Farben, harte Zellschatten, cremefarbene Lichter.
-- Transparenter Hintergrund, ganze Figur von vorn, kein Boden-Schatten, keine Schrift.
-- Füße in allen Posen auf gleicher Höhe (ca. 90 % der Bildhöhe), Figur mittig.
-- Jede Figur muss in allen Posen eindeutig wiedererkennbar sein (Frisur, Kopfteil, Farben, Emblem auf der Brust).
-- `schlag`: rechte Faust hoch zum Boss (Uppercut), Schrei. `jubel`: beide Arme hoch. `ko`: X-Augen, Sterne, leicht eingeknickt. `bereit`: Fäuste vor der Brust, grimmiges Grinsen.
-- Vorlage für Aussehen und Posen: `/mnt/project-files/botzeps3/figuren/uebersicht.png` und `posen.png` (Projektordner, nicht im Repo); die Beschreibungen in `FIGUREN` gelten.
+## Vorschauen und Prüfung
 
-## Größe – wichtig
+```sh
+npm ci
+npm run typecheck
+npm test
+npm run build
+node scripts/figuren-vorschau.mjs
+node scripts/boss-vorschau.mjs
+```
 
-Die SVGs stecken heute direkt in den JSON-Antworten (`/api/ich`, `/api/figuren`); das ist klein, weil SVG sich mit gzip stark komprimieren lässt. **PNGs komprimiert gzip kaum.** Bei 12 Kämpfern × 3 Posen würde `/api/ich` sonst schnell über 1 MB groß.
+`figuren-vorschau.html` zeigt alle zwölf Figuren, alle sechs Posen, die Zombie-Variante und einen abspielbaren Posenwechsel. `boss-vorschau.html` verwendet den tatsächlichen Kampfablauf und das CSS der Mini App. Beide HTML-Dateien sind eigenständig, enthalten ihre Bilder und können lokal ohne Telegram oder Webserver geöffnet werden. Die erzeugten Vorschauen gehören nicht ins Repository.
 
-Deshalb:
+Die Tests prüfen die vollständige Figuren-/Posenmatrix, eindeutige IDs und Ausschnitte, PNG-Abmessungen, Dateihashes, Größenbudget, Zombie-Filter sowie die Medienroute und weiterhin Auswahl und Bosskampf.
 
-1. Bilder klein halten: etwa 200 × 300 px, auf 256 Farben reduziert (wie die Boss-PNGs), Ziel ≤ 15 KB pro Bild.
-2. Besser: Bilder nicht als Daten-URL in jede Antwort einbetten, sondern über eine eigene, lange gecachte Route ausliefern (z. B. `GET /app/figuren/<nr>-<pose>.png` in `src/server.ts`, `cache-control: public, max-age=…, immutable`), und `figurSvg` gibt nur ein `<svg><image href="…"/></svg>` zurück. Die CSP der Seite erlaubt `img-src 'self' data:`, eine Route unter derselben Domain funktioniert also ohne Änderung.
-3. Der Build kopiert Medien explizit (`package.json` → `build`, `fs.cpSync`); einen neuen Ordner `src/figuren/medien` dort ergänzen, wie bei `src/boss/medien`.
+Prüfstand 2026-11-08: Typprüfung, Build und alle 279 Tests (35 Dateien) erfolgreich. Chromium prüfte alle zwölf Atlanten, alle Posen einschließlich Zombie, den echten Posenwechsel im Bosskampf, Sieg, reduzierte Bewegung sowie die mobile Ansicht bei 390 px ohne horizontalen Überlauf oder Seitenfehler. Die Transparenz nach der Palettenreduktion wird zusätzlich durch einen Rastertest abgesichert.
 
-## Prüfen
+## Spätere Bildänderungen
 
-- `npm test` – `figuren.test.ts` prüft, dass jede Figur in jeder Pose ein SVG mit eigener id liefert; `src/miniapp/server.test.ts` prüft Bosskampf und Auswahl.
-- `npm run build && node scripts/boss-vorschau.mjs` erzeugt `boss-vorschau.html` mit Boss und Figuren im echten Kampfablauf der Mini App.
+Die verwendeten Beschreibungen und Rastervorgaben stehen in `medien/prompts.json`. Ausgangspunkt war je Figur eine transparente ImageGen-Tafel mit sechs Posen in einem 3×2-Raster, Stilreferenz der Boss und Identitätsreferenz die ursprüngliche SVG-Figur. Die hochauflösenden Originale sind Arbeitsdateien; eingecheckt sind die kleinen Produktionsatlanten.
+
+`scripts/figuren-optimieren.mjs` normalisiert Maßstab und Fußlinie, reduziert die Palette, schreibt die PNGs mit Inhaltshashes und aktualisiert `atlanten.ts`. Es benötigt ImageMagick 7 und eine lokale JSON-Liste mit genau zwölf Einträgen `{ "nr": 0, "path": "/absolut/zur/quelle.png" }` (Nummern 0–11):
+
+```sh
+node scripts/figuren-optimieren.mjs quellen.json
+```
+
+Anschließend die nicht mehr referenzierten alten PNGs entfernen, Vorschauen prüfen und Tests/Build ausführen. Der Produktionsbetrieb benötigt ImageMagick nicht.

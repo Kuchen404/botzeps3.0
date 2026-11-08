@@ -132,6 +132,11 @@
   .kaempfer > div.mitfigur { width: 54px; }
   .figur { position: relative; width: 54px; height: 80px; margin: 0 auto 2px; }
   .figur > svg { position: absolute; inset: 0; width: 54px; height: 80px; overflow: visible; }
+  .figur > .bz-spieler-illustriert { transform-origin: 50% 95%; }
+  .figur[data-pose="bereit"] > .bz-spieler-illustriert { animation: spieler-bereit 2.6s ease-in-out infinite; }
+  .figur[data-pose="jubel"] > .bz-spieler-illustriert { animation: spieler-jubel .65s ease-in-out 3; }
+  @keyframes spieler-bereit { 0%,100% { transform: scale(1); } 50% { transform: scale(1.025,.98); } }
+  @keyframes spieler-jubel { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px) rotate(-2deg); } }
   .figur::before { content: ""; position: absolute; left: 50%; bottom: 0; width: 40px; height: 9px; transform: translateX(-50%); background: radial-gradient(ellipse, rgba(0,0,0,.55), transparent 70%); }
   .kaempfer .ich .figur::before { width: 50px; height: 12px; background: radial-gradient(ellipse, #ffcc00, rgba(255,204,0,.35) 45%, transparent 70%); }
   .kaempfer .ich .name { color: #ffcc00; font-weight: 700; }
@@ -155,7 +160,7 @@
   @keyframes wut { from { scale: 1; } to { scale: 1.06; } }
   @keyframes aufsteigen { from { opacity: 1; transform: translate(-50%, 0); } to { opacity: 0; transform: translate(-50%, -46px); } }
   @keyframes stempeln { from { transform: translate(-50%, -50%) rotate(-12deg) scale(2.2); opacity: 0; } to { transform: translate(-50%, -50%) rotate(-12deg) scale(1); opacity: 1; } }
-  @media (prefers-reduced-motion: reduce) { .bossbild, .stufe2 .bossbild, .stempel, .zahl, .trefferfunken { animation: none !important; } .bossplatz.tot .bossbild, .lp > .rest { transition: none; } }
+  @media (prefers-reduced-motion: reduce) { .bossbild, .stufe2 .bossbild, .stempel, .zahl, .trefferfunken, .figur > .bz-spieler-illustriert { animation: none !important; } .bossplatz.tot .bossbild, .lp > .rest { transition: none; } }
 </style>
 </head>
 <body>
@@ -305,7 +310,7 @@ function bossKarte(b) {
   function figurBild(nr, pose) {
     var z = nr != null && figuren[nr] && figuren[nr][pose];
     if (!z) return null;
-    // Zeichnungen kommen vom eigenen Server (fester Baukasten, keine Nutzereingaben)
+    // Illustrationen kommen vom eigenen Server (feste Figuren, keine Nutzereingaben)
     var f = el("div", { class: "figur" });
     f.innerHTML = z;
     return f;

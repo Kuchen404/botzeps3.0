@@ -62,6 +62,29 @@ async function aufbau() {
 }
 
 describe("Mini App", () => {
+  it("liefert Figuren ohne Anmeldung als langfristig gecachte PNGs, nur aus der festen Medienliste", async () => {
+    const t = await aufbau();
+    try {
+      const daten = await t.holen("/api/figuren");
+      const pfad = daten.json.figuren[0].bild.match(/href="([^"]+)"/)[1];
+      const bild = await fetch(t.basis + pfad);
+      expect(bild.status).toBe(200);
+      expect(bild.headers.get("content-type")).toBe("image/png");
+      expect(bild.headers.get("cache-control")).toBe("public, max-age=31536000, immutable");
+      expect(bild.headers.get("x-content-type-options")).toBe("nosniff");
+      const bytes = Buffer.from(await bild.arrayBuffer());
+      expect(bytes.subarray(0, 8).toString("hex")).toBe("89504e470d0a1a0a");
+      expect(Number(bild.headers.get("content-length"))).toBe(bytes.length);
+      for (const ungueltig of ["prompts.json", "unbekannt.png", "0.png", "..%2F..%2Fpackage.json"]) {
+        expect((await fetch(t.basis + "/app/figuren/" + ungueltig)).status).toBe(404);
+      }
+      expect((await fetch(t.basis + pfad, { method: "POST" })).status).toBe(404);
+    } finally {
+      t.server.close();
+      t.db.close();
+    }
+  });
+
   it("liefert die Seite mit CSP-Nonce", async () => {
     const { server, basis } = await aufbau();
     try {

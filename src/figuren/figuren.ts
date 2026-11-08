@@ -1,8 +1,9 @@
 /**
- * Spielerfiguren im Arcade-Comicstil der Bosse (dicke dunkle Konturen, satte Farben,
- * harte Zellschatten, Glanzlichter). Reines SVG aus Baukastenteilen, keine Bilder:
- * Jede Pose steht damit sofort für alle Figuren bereit, auch in künftigen Minispielen.
+ * Spielerfiguren im Arcade-Comicstil der Bosse. Die zwölf festen Figuren verwenden
+ * illustrierte Posen aus einem gecachten Atlas; eigene Baukastenfiguren bleiben möglich.
  */
+
+import { arcadeSpieler } from "./arcade.js";
 
 export type Pose = "bereit" | "schlag" | "jubel" | "ko" | "ziehen" | "klettern";
 type Mimik = "grimm" | "schrei" | "freude" | "ko";
@@ -306,6 +307,15 @@ function sterne(): string {
 
 export function figurSvg(f: Figur, pose: Pose = "bereit", opt: FigurOptionen = {}): string {
   const id = opt.id ?? "f";
+  // Individuelle Mimik bleibt für eigene Baukastenfiguren verfügbar.
+  const illustration = opt.mimik ? null : arcadeSpieler(FIGUREN.indexOf(f), pose, id);
+  if (illustration) {
+    const w = opt.breite ? ` width="${opt.breite}"` : "";
+    const h = opt.hoehe ? ` height="${opt.hoehe}"` : "";
+    const filter = opt.zombie ? ` filter="url(#${id}z)"` : "";
+    const defs = opt.zombie ? `<defs><filter id="${id}z"><feColorMatrix type="matrix" values=".45 .45 .1 0 0  .55 .75 .15 0 .05  .2 .35 .2 0 0  0 0 0 1 0"/></filter></defs>` : "";
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${opt.viewBox || "-58 -12 116 172"}"${w}${h} role="img" aria-label="${f.name}" class="bz-spieler-illustriert">${defs}<g class="bz-spieler"${filter}>${illustration}</g></svg>`;
+  }
   const p = POSEN[pose];
   const mimik = opt.mimik || p.mimik;
   const r = p.faustR || 8.5;
