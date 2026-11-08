@@ -1,6 +1,10 @@
 # Treffer- und Niederlagenposen: alle sieben Bosse
 
-Mit dem eingebauten ImageGen-Werkzeug am 08.11.2026 aus den jeweiligen bestehenden Stufe-1-/Stufe-2-Illustrationen erstellt. Sofa und Chipstüte verwenden zwei separate Referenz-PNGs, die übrigen Bosse die bestehenden Doppelbilder. Die neutralen Originale bleiben erhalten. Die sieben transparenten RGBA-Atlanten sind 1254 × 1254 Pixel groß.
+Mit dem eingebauten ImageGen-Werkzeug am 08.11.2026 aus den jeweiligen bestehenden Stufe-1-/Stufe-2-Illustrationen erstellt. Sofa und Chipstüte verwenden zwei separate Referenz-PNGs, die übrigen Bosse die bestehenden Doppelbilder. Die neutralen Originale bleiben erhalten. Die sieben transparenten PNG-Atlanten sind 1254 × 1254 Pixel groß.
+
+Die Reaktionsatlanten sind mit pngquant 3.0.3 auf eine adaptive 256-Farben-Palette mit abgestuften Transparenzwerten optimiert. Die Auflösung, Anordnung und Zuschnitte bleiben unverändert. Die Farbquantisierung ist leicht verlustbehaftet; alle 28 Posen wurden im Browser in Anzeigegröße verglichen, zusätzlich auf hellem Hintergrund. Größe vorher zusammen 9.948.195 Bytes, danach 2.762.765 Bytes (72,2 % kleiner), je Atlas 352.618–452.427 Bytes. Die Tests begrenzen jeden Atlas auf 500.000 Bytes.
+
+Reproduzierbar aus den unoptimierten Dateien in Git-Revision `4d177d7`: `OMP_NUM_THREADS=2 pngquant --quality=80-95 --speed=1 --nofs --strip --force --output optimiert.png -- original.png`. Nur beim farbreichen Dönerteller wird `--quality=75-95` verwendet. Immer vom unoptimierten Original ausgehen, um wiederholte Quantisierung zu vermeiden. pngquant wird nur zur Medienvorbereitung benötigt; im Build und zur Laufzeit gibt es keine neue Abhängigkeit. Die Inhalts-Hashes der kleineren Dateien ändern sich automatisch, sodass der Browser die neue Version lädt.
 
 Layout: oben Stufe 1, unten Stufe 2; links Treffer, rechts Niederlage. Die Trennlinie verläuft bei Sofa bei x = 611 bei Chips bei x = 618 und beim Schweinehund bei x = 616 im transparenten Spalt. Die Muskelarme reichen über die rechnerische Mitte hinaus. Die anderen Atlanten werden mittig bei x = 627 getrennt. Die Zeilentrennung liegt bei y = 627. `reaktionen.ts` begrenzt jeden Ausschnitt zusätzlich mit einem SVG-Clip.
 

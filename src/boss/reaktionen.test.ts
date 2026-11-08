@@ -14,6 +14,7 @@ describe("Eigene Reaktionsposen für alle Bosse", () => {
         expect(r.atlas).toMatch(/^\/api\/bossbild\/[a-z]+-reaktionen-[a-f0-9]{12}\.png$/);
         const atlas = bossReaktionsMedium(r.atlas.slice(BOSS_REAKTIONS_PFAD.length))!;
         expect(atlas.subarray(0,8).toString("hex")).toBe("89504e470d0a1a0a");
+        expect(atlas.byteLength).toBeLessThan(500_000); // Mobiles Ladebudget pro Boss, nicht pro Pose.
         for (const svg of [r.treffer,r.ko]) {
           expect(svg).toContain('clip-path="url(#reaktion');
           const png = new Resvg(svg.replace(r.atlas,`data:image/png;base64,${atlas.toString("base64")}`)).render();
