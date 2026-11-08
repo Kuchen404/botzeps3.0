@@ -106,7 +106,7 @@
     if (!zeilen.length) liste.appendChild(neu('p', 'kg-leer', 'Noch keine Verfolger dabei.'));
     spuren.appendChild(liste);
     root.appendChild(spuren);
-    root.appendChild(neu('p', 'kg-hinweis', 'Nur mehr Wochenlast fängt den Gejagten. Bei Gleichstand ist er frei. Der Stand kann sich bis Sonntag ändern.'));
+    root.appendChild(neu('p', 'kg-hinweis', 'Nur wer mehr Wochenlast als ' + name(zielId) + ' hat, wirft das Lasso. Bei Gleichstand bleibt ' + name(zielId) + ' frei. Der Stand kann sich bis Sonntag ändern.'));
 
     // Eine Skala für den gesamten Verlauf: Die Figur rückt nur mit echter Last vor.
     var skala = 1;

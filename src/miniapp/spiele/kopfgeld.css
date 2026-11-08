@@ -66,3 +66,5 @@
 @keyframes kg-lasso-los { from { opacity: 1; transform: translateX(-50%) rotate(-15deg) scale(1); } to { opacity: 0; transform: translateX(-50%) translateY(12px) rotate(30deg) scale(1.5); } }
 /* Die Laufzeit meldet denselben Text für Screenreader; sichtbar steht er auf dem Holzschild. */
 .ms-kopfgeld > .ms-status { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+/* Initialen-Ersatz auf der schmalen Spur: Kreis passt in die 42 px breite Figur. */
+.ms-kopfgeld .kg-laeufer > .ms-avatar-ersatz { font-size: 14px; background: radial-gradient(circle closest-side at 50% 72%, var(--ms-avatar-farbe, #42658c) 0 95%, transparent 100%); align-items: flex-end; padding-bottom: 9px; }

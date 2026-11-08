@@ -65,6 +65,13 @@ function szene(aktuell: Stand, verlauf: Stand[] = [], mehr = 0) {
 }
 
 describe("Kopfgeldjagd-Animation", () => {
+  it("nennt im Hinweis den Gejagten beim Namen statt fest „er“", () => {
+    const { root } = szene(stand(120, 100));
+    const hinweis = root.find("kg-hinweis")[0]!.textContent;
+    expect(hinweis).toContain("Bei Gleichstand bleibt Käpt’n Ziel frei");
+    expect(hinweis).not.toMatch(/\ber\b/);
+  });
+
   it("zeigt bei Gleichstand einen freien Gejagten und niemals ein Fang-Lasso", () => {
     const gleich = stand(120, 120);
     const { root, zeichne } = szene(gleich);
