@@ -612,7 +612,7 @@ function bombenSzene(b) {
   return szene;
 }
 
-/** Nur die sichtbare Bombenkarte nachladen; spätere Trainingsantworten haben Vorrang. */
+/** Nur die sichtbare Minispielkarte nachladen; spätere Trainingsantworten haben Vorrang. */
 var bombenLaden = false;
 function aktualisiereBombe(knopf) {
   var s = daten && daten.seasons[seasonIndex];
@@ -621,14 +621,15 @@ function aktualisiereBombe(knopf) {
   var alt = daten, index = seasonIndex;
   bombenLaden = true;
   if (knopf) { knopf.disabled = true; knopf.textContent = "Lädt …"; }
-  var bombenId = s.minispiel.bombe.id;
+  var spielId = (s.minispiel.bombe || s.minispiel.animation).id;
   return api("/api/ich").then(function (j) {
     if (daten !== alt || seasonIndex !== index || tab !== "stand") return;
     daten = j;
     // Nur die Minispielkarte austauschen, damit Scrollposition und der Rest des Tabs bleiben.
     var neu = j.seasons[index];
     var alteKarte = document.querySelector(".minispiel-karte");
-    if (alteKarte && neu && neu.minispiel && neu.minispiel.bombe && neu.minispiel.bombe.id === bombenId) alteKarte.replaceWith(minispielKarte(neu.minispiel));
+    var neueSzene = neu && neu.minispiel && (neu.minispiel.bombe || neu.minispiel.animation);
+    if (alteKarte && neueSzene && neueSzene.id === spielId) alteKarte.replaceWith(minispielKarte(neu.minispiel));
     else zeichne(); // Woche oder Season gewechselt: dann doch alles neu
   }).catch(function () {
     if (knopf && knopf.isConnected) knopf.textContent = "Verbindung fehlgeschlagen – nochmal versuchen";
