@@ -140,7 +140,7 @@ function minispielJson(db: Db, s: Parameters<typeof minispielFuerApp>[1], tag: s
     const figur = vergeben.get(Number(sp.id)) ?? null;
     if (figur !== null) {
       // Eigenes Präfix: Boss und Minispiel können gleichzeitig im Dokument stehen.
-      figuren[figur] ??= Object.fromEntries((["bereit", "schlag", "jubel"] as const).map((pose) =>
+      figuren[figur] ??= Object.fromEntries((["bereit", "schlag", "jubel", "ko"] as const).map((pose) =>
         [pose, figurSvg(FIGUREN[figur]!, pose, { id: `bombe${figur}${pose}` })]));
     }
     return { ...sp, figur };

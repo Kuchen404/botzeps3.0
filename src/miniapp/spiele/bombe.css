@@ -1,0 +1,47 @@
+/* Zwei aktive Spieler im Rampenlicht, die ganze Gruppe auf der Tribüne darunter. */
+.bomben-szene { color: #f2f4df; background: #172c29; border: 1px solid #5b7160; border-radius: 14px; overflow: hidden; margin-bottom: 10px; isolation: isolate; }
+.bomben-status { padding: 11px 12px; min-height: 40px; color: #ffdf91; font-size: 13px; font-weight: 800; background: linear-gradient(110deg,#34453c,#243930); border-bottom: 1px solid #75805b55; overflow-wrap: anywhere; }
+.bomben-buehne { position: relative; height: 274px; overflow: hidden; background: radial-gradient(ellipse at 50% 72%,#8d92603b,transparent 55%),linear-gradient(110deg,transparent 15%,#d9e2b109 30%,transparent 44%),linear-gradient(250deg,transparent 15%,#d9e2b109 30%,transparent 44%),linear-gradient(#263e35,#132b28); }
+.bomben-buehne::before { content: ""; position: absolute; left: 6%; right: 6%; top: 195px; height: 45px; border-radius: 50%; background: radial-gradient(ellipse,#d2d3951a,#071a1766 65%,transparent 70%); border-bottom: 1px solid #e0d99b22; }
+.bomben-buehne::after { content: ""; position: absolute; bottom: 0; left: 0; right: 0; height: 5px; opacity: .6; background: repeating-linear-gradient(-50deg,#d9b252 0 12px,#182c28 12px 24px); }
+.bomben-akteur { position: absolute; top: 70px; width: 96px; z-index: 2; transform-origin: 50% 95%; text-align: center; }
+.bomben-links { left: calc(25% - 48px); }
+.bomben-rechts { left: calc(75% - 48px); }
+.bomben-zentrum { left: calc(50% - 48px); }
+.bomben-akteur .ms-avatar { width: 96px; height: 144px; }
+.bomben-akteur .ms-avatar > svg { width: 96px; height: 144px; }
+.bomben-akteur-name { width: 116px; margin: 7px 0 0 -10px; padding: 3px 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-radius: 5px; font-size: 12px; font-weight: 750; background: #10241dd9; color: #f7e9bf; }
+.bomben-szene .ms-avatar > .bz-spieler-illustriert { animation: none; }
+.bomben-kugel { position: absolute; left: -25px; top: -32px; width: 50px; height: 63px; z-index: 4; pointer-events: none; transform-origin: 50% 65%; filter: drop-shadow(0 3px 2px #0005); }
+.bomben-kugel > svg { display: block; width: 50px; height: 63px; }
+.bomben-funke { transform-origin: 61px 14px; }
+.bomben-bodenschatten { position: absolute; z-index: 1; top: 214px; left: -18px; width: 36px; height: 10px; border-radius: 50%; background: radial-gradient(ellipse,#0007,transparent 72%); }
+.bomben-szene[data-bombenphase="ende"] .bomben-kugel { left: calc(50% + 2px); top: 108px; }
+.bomben-szene[data-bombenphase="ende"] .bomben-bodenschatten { left: calc(50% + 9px); }
+.bomben-live .bomben-funke { animation: bomben-funkeln .35s ease-in-out infinite alternate; }
+.bomben-live .bomben-kugel { animation: bomben-ticken 1.3s ease-in-out infinite; }
+.bomben-effekt { pointer-events: none; position: absolute; }
+.bomben-ansage { z-index: 6; left: 6%; right: 6%; top: 13px; padding: 9px 5px; text-align: center; color: #ffe0a3; font-size: clamp(17px,5vw,22px); font-weight: 900; letter-spacing: .05em; border-block: 1px solid #eac87e66; background: linear-gradient(90deg,transparent,#11241cdd 15% 85%,transparent); }
+.bomben-flugspur { left: -5px; top: -5px; width: 10px; height: 10px; z-index: 3; background: #ffcc6e; box-shadow: 0 0 10px #ffbb4b88; border-radius: 50%; opacity: 0; }
+.bomben-fangring { top: 140px; width: 48px; height: 48px; z-index: 5; border: 3px solid #ffdd88; border-radius: 50%; }
+.bomben-wolke { left: 50%; top: 140px; z-index: 5; width: 210px; height: 150px; border-radius: 50%; background: radial-gradient(ellipse at 25% 55%,#d2c8a5 0 22%,transparent 25%),radial-gradient(ellipse at 70% 60%,#ebe0b8 0 28%,transparent 32%),radial-gradient(ellipse at 50% 28%,#fbe5b1 0 30%,transparent 34%); }
+.bomben-knall { left: 50%; top: 35px; z-index: 7; color: #ffdb81; font-size: 47px; font-weight: 950; letter-spacing: -.06em; text-shadow: 2px 3px #2b241b,-2px -1px #2b241b; white-space: nowrap; }
+.bomben-stern { top: 140px; width: 13px; height: 13px; z-index: 6; background: #ffdc7e; clip-path: polygon(50% 0,62% 36%,100% 50%,62% 64%,50% 100%,38% 64%,0 50%,38% 36%); }
+.bomben-ergebnis { z-index: 3; top: 23px; left: 10%; right: 10%; padding: 8px 3px; text-align: center; color: #ffdb81; font-size: 23px; font-weight: 900; letter-spacing: .07em; }
+.bomben-verlaufspur { height: 3px; background: #9baf7426; }
+.bomben-verlaufspur > span { display: block; height: 100%; background: #edc879; }
+.bomben-fortschritt { padding: 9px 12px 4px; min-height: 26px; font-size: 11px; color: #bfcdb2; }
+.bomben-fenster { overflow-x: auto; scrollbar-width: thin; padding-bottom: 3px; }
+.bomben-reihe { position: relative; display: flex; justify-content: safe center; width: max-content; min-width: 100%; gap: 6px; padding: 4px 10px; }
+.bomben-spieler { width: 58px; flex: 0 0 58px; padding: 3px 2px; border-radius: 8px; border: 1px solid transparent; text-align: center; }
+.bomben-spieler .ms-avatar { width: 46px; height: 69px; margin: auto; }
+.bomben-spieler .ms-avatar-ersatz { font-size: 15px; background: radial-gradient(circle,var(--ms-avatar-farbe) 0 20px,transparent 21px); }
+.bomben-spieler .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; line-height: 1.4; }
+.bomben-spieler.ich .name { color: #ffdb7a; font-weight: 800; }
+.bomben-spieler.traeger { background: #e9c17612; border-color: #d4b66b99; }
+.bomben-marke { min-height: 14px; font-size: 9px; color: #e3c58c; }
+.bomben-steuerung { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 10px 12px; }
+.bomben-steuerung .knopf { min-height: 38px; padding: 8px 10px; font-size: 11px; background: #344b3f; color: #efeed7; }
+@keyframes bomben-funkeln { to { opacity: .45; transform: scale(.8); } }
+@keyframes bomben-ticken { 50% { filter: drop-shadow(0 0 7px #ffbd4a66); } }
+@media (prefers-reduced-motion: reduce) { .bomben-szene *, .bomben-szene *::before, .bomben-szene *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
