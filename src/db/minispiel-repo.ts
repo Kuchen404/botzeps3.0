@@ -38,6 +38,11 @@ export function setzeMinispielPin(db: Db, seasonId: number, woche: number, nachr
   db.prepare("UPDATE minispiel SET pin_nachricht = ? WHERE season = ? AND woche = ?").run(nachricht, seasonId, woche);
 }
 
+/** Ist der Sonntagsbericht (oder das Finale) dieser Season-Woche schon raus? Er hinterlässt den Schnappschuss in `wochenstand`. */
+export function wochenberichtGesendet(db: Db, seasonId: number, woche: number): boolean {
+  return db.prepare("SELECT 1 FROM wochenstand WHERE season = ? AND woche = ? LIMIT 1").get(seasonId, woche) !== undefined;
+}
+
 export function spielWoche(s: Pick<SeasonZeile, "start" | "wochenziel_last">, woche: number): SpielWoche {
   return { start: plusTage(s.start, woche * 7), ziel: s.wochenziel_last };
 }
