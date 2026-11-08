@@ -1,3 +1,5 @@
+import { gruppenZeitzone, uhr } from "../bot/kontext.js";
+import { bombenTrainings, bombenVerlauf } from "./bombenverlauf.js";
 import type { Db } from "../db/index.js";
 import { type SeasonZeile, seasonNachId } from "../db/season-repo.js";
 import { gruppeNachId } from "../db/repo.js";
@@ -204,6 +206,11 @@ export function minispielFuerApp(db: Db, s: SeasonZeile, tag: string, ich: strin
         bombe: {
           id: `${s.id}:${spiel.woche}`,
           traeger,
+          zeitzone: gruppenZeitzone(),
+          verlauf: bombenVerlauf(
+            d, spieler, bombenTrainings(db, s.id, tag),
+            minispielZeitpunkt(s, spiel.woche, 0, gruppenZeitzone()).toISOString(), uhr.jetzt().toISOString(),
+          ),
           spieler: d.spieler.map((id) => ({ id, name: nm(id), ich: id === ich })),
         },
         liste: [...d.spieler]

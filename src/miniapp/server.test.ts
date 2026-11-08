@@ -165,12 +165,23 @@ describe("Mini App", () => {
       const danach = (await holen("/api/ich")).json.seasons[0].minispiel.bombe;
       expect(danach.traeger).toBe(String(peter));
       expect(danach.spieler[0].figur).toBe(0);
+      expect(danach.zeitzone).toBe("Europe/Berlin");
+      expect(danach.verlauf.map((e: { traeger: string }) => e.traeger)).toEqual([String(kevin), String(peter)]);
+      expect(danach.verlauf[0].art).toBe("start");
+      expect(danach.verlauf.at(-1).traeger).toBe(danach.traeger);
       // Gleiche Namen dürfen weder Figuren noch die Träger-ID vermischen.
       db.prepare("UPDATE nutzer SET name = 'Kevin' WHERE id = ?").run(peter);
       const gleich = (await holen("/api/ich")).json.seasons[0].minispiel.bombe;
       expect(gleich.spieler.map((sp: { name: string }) => sp.name)).toEqual(["Kevin", "Kevin"]);
       expect(gleich.traeger).toBe(String(peter));
       expect((await holen("/api/ich", PETER)).json.seasons[0].minispiel.bombe.spieler[1].ich).toBe(true);
+      // Eine spätere Löschung löscht nicht die historische Übergabe aus dem Rückblick.
+      uhr.jetzt = () => new Date("2026-10-20T08:05:00Z");
+      db.prepare("UPDATE training SET geloescht_am = '2026-10-20T08:04:00Z' WHERE nutzer = ? AND datum = '2026-10-20'").run(kevin);
+      const korrigiert = (await holen("/api/ich")).json.seasons[0].minispiel.bombe;
+      expect(korrigiert.verlauf.map((e: { traeger: string }) => e.traeger)).toEqual([String(kevin), String(peter), String(kevin)]);
+      expect(korrigiert.verlauf.at(-1)).toMatchObject({ traeger: korrigiert.traeger, art: "korrektur" });
+      expect(JSON.stringify(korrigiert.verlauf)).not.toMatch(/minuten|faktor|sportart/);
     } finally {
       server.close();
       db.close();

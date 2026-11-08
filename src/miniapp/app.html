@@ -166,6 +166,8 @@
   .bomben-kugel svg { width: 50px; height: 63px; }
   .bomben-funke { animation: bomben-funkeln .3s ease-in-out infinite alternate; transform-origin: 60px 13px; }
   .bomben-info { font-size: 12px; color: #d3dcc6; margin: 4px 12px 10px; }
+  .bomben-steuerung { display: flex; gap: 8px; margin: 0 12px 10px; }
+  .bomben-steuerung .knopf { background: #384934; color: #f3f1d7; }
   .bomben-szene > .knopf { margin-left: 12px; background: #384934; color: #f3f1d7; }
   .bomben-erschreckt .figur, .bomben-erschreckt .avatar { animation: bomben-schreck .45s ease-out; }
   @keyframes bomben-funkeln { to { opacity: .4; transform: scale(.75); } }
@@ -476,12 +478,11 @@ function berg(kletterer) {
   return svg;
 }
 
-/** Letzter angezeigter Träger je Season/Woche; Namen und Figuren sind keine Identität. */
+/** Bereits abgespielte Stationen je Season/Woche; Spieler-IDs statt Namen. */
 var bombenStaende = {};
 function bombenSzene(b) {
   var vorher = bombenStaende[b.id];
   var traeger = b.spieler.find(function (sp) { return sp.id === b.traeger; });
-  var wechsel = !!(vorher && vorher !== b.traeger && b.spieler.some(function (sp) { return sp.id === vorher; }));
   var status = el("div", { class: "bomben-status", role: "status", "aria-live": "polite", text: traeger ? "Tickt bei " + traeger.name : "Noch kein Bombenträger" });
   var bombe = el("div", { class: "bomben-kugel", "aria-hidden": "true" });
   // Feste Zeichnung. Spielernamen werden ausschließlich als Text eingefügt.
@@ -504,41 +505,106 @@ function bombenSzene(b) {
   var fenster = el("div", { class: "bomben-fenster", tabindex: "0", "aria-label": "Spieler am Bombenspiel, seitlich scrollbar" }, [feld]);
   var info = el("p", { class: "bomben-info", text: "Trainieren wirft die Bombe weiter. Wer sie Sonntagabend hat, ist dran." });
   var aktualisieren = el("button", { class: "knopf leise", text: "↻ Stand aktualisieren", onclick: function () { aktualisiereBombe(aktualisieren); } });
-  var szene = el("div", { class: "bomben-szene" }, [status, fenster, info, aktualisieren]);
+  var fortschritt = el("p", { class: "bomben-info", role: "status", "aria-live": "polite" });
+  var ueberspringen = el("button", { class: "knopf leise", text: "Überspringen" });
+  var nochmal = el("button", { class: "knopf leise", text: "↻ Nochmal ansehen" });
+  var steuerung = el("div", { class: "bomben-steuerung" }, [ueberspringen, nochmal]);
+  var szene = el("div", { class: "bomben-szene" }, [status, fenster, fortschritt, steuerung, info, aktualisieren]);
   function mitte(id) { var z = zellen[id]; return z ? z.offsetLeft + z.offsetWidth / 2 : 0; }
   function anzeigen(id) { fenster.scrollLeft = Math.max(0, mitte(id) - fenster.clientWidth / 2); }
+  var stationen = (b.verlauf || []).filter(function (e) { return !!zellen[e.traeger]; });
+  var signaturen = stationen.map(function (e) { return e.traeger + ":" + e.zeitpunkt + ":" + e.art; });
+  var durchlauf = 0, gestartet = false;
+  var dauer = 800;
+  function markiere(id) {
+    b.spieler.forEach(function (sp) {
+      var z = zellen[sp.id];
+      z.classList.toggle("traeger", sp.id === id);
+      z.setAttribute("aria-label", sp.name + (sp.id === id ? ", trägt die Bombe" : ""));
+      z.querySelector(".bomben-marke").textContent = sp.id === id ? "💣 am Zug" : sp.ich ? "Du" : "";
+      z.classList.remove("bomben-erschreckt");
+      pose(sp, z, "bereit");
+    });
+  }
+  function zeigeStation(index) {
+    var e = stationen[index];
+    if (!e) return;
+    var sp = b.spieler.find(function (s) { return s.id === e.traeger; });
+    var zeit = new Date(e.zeitpunkt).toLocaleString("de-DE", { timeZone: b.zeitzone || "Europe/Berlin", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+    status.textContent = "Rückblick · Bombe bei " + sp.name;
+    fortschritt.textContent = (index + 1) + " / " + stationen.length + " · " + zeit + (e.art === "start" ? " · Spielstart" : e.art === "korrektur" ? " · Training gelöscht" : " · Training eingetragen");
+    markiere(e.traeger);
+    anzeigen(e.traeger);
+  }
+  function ende() {
+    durchlauf++;
+    szene.setAttribute("data-rueckblick", "false");
+    bombenStaende[b.id] = { signaturen: signaturen, traeger: b.traeger };
+    bombe.hidden = !traeger;
+    bombe.style.transform = "translate(" + mitte(b.traeger) + "px, 0)";
+    markiere(b.traeger); anzeigen(b.traeger);
+    status.textContent = traeger ? "Tickt bei " + traeger.name : "Noch kein Bombenträger";
+    fortschritt.textContent = stationen.length > 1 ? "Aktueller Stand · " + (stationen.length - 1) + " Übergaben seit Spielstart" : "Aktueller Stand";
+    ueberspringen.hidden = true;
+    nochmal.hidden = stationen.length < 2;
+    nochmal.disabled = !BEWEGUNG;
+  }
+  function spiele(ab) {
+    if (!szene.isConnected || !traeger) return;
+    gestartet = true;
+    var lauf = ++durchlauf;
+    if (!BEWEGUNG || document.hidden || stationen.length < 2) { ende(); return; }
+    szene.setAttribute("data-rueckblick", "true");
+    ueberspringen.hidden = false; nochmal.hidden = true;
+    var index = ab;
+    zeigeStation(index);
+    bombe.style.transform = "translate(" + mitte(stationen[index].traeger) + "px, 0)";
+    function warte() {
+      setTimeout(function () {
+        if (lauf !== durchlauf || !szene.isConnected) return;
+        if (document.hidden || index >= stationen.length - 1) { ende(); return; }
+        werfen();
+      }, 550);
+    }
+    function werfen() {
+      var von = stationen[index].traeger, nach = stationen[index + 1].traeger;
+      var werfer = b.spieler.find(function (sp) { return sp.id === von; });
+      pose(werfer, zellen[von], "schlag");
+      var start = mitte(von), ziel = mitte(nach), zeit = null;
+      var links = fenster.scrollLeft;
+      var scrollZiel = Math.max(0, ziel - fenster.clientWidth / 2);
+      function flug(t) {
+        if (lauf !== durchlauf || !szene.isConnected) return;
+        if (document.hidden) { ende(); return; }
+        if (zeit === null) zeit = t;
+        var p = Math.min(1, (t - zeit) / dauer);
+        bombe.style.transform = "translate(" + (start + (ziel - start) * p) + "px," + (-45 * Math.sin(Math.PI * p)) + "px) rotate(" + (360 * p) + "deg)";
+        fenster.scrollLeft = links + (scrollZiel - links) * p;
+        if (p < 1) requestAnimationFrame(flug);
+        else {
+          index++; zeigeStation(index);
+          zellen[nach].classList.add("bomben-erschreckt");
+          pose(werfer, zellen[von], "jubel");
+          warte();
+        }
+      }
+      requestAnimationFrame(flug);
+    }
+    warte();
+  }
+  ueberspringen.onclick = ende;
+  nochmal.onclick = function () { spiele(0); };
   requestAnimationFrame(function () {
     if (!szene.isConnected) return;
-    bombenStaende[b.id] = b.traeger;
-    if (!traeger) { bombe.hidden = true; return; }
-    var ziel = mitte(b.traeger);
-    anzeigen(wechsel && BEWEGUNG ? vorher : b.traeger);
-    function ende() {
-      bombe.style.transform = "translate(" + ziel + "px, 0)";
-      b.spieler.forEach(function (sp) { pose(sp, zellen[sp.id], "bereit"); });
-      anzeigen(b.traeger);
-      status.textContent = "Tickt bei " + traeger.name;
+    var ab = 0;
+    // Nach dem ersten Rückblick nur die seitdem hinzugekommenen Stationen abspielen,
+    // auch wenn die Bombe inzwischen zum selben Träger zurückgekehrt ist.
+    if (vorher && vorher.signaturen && vorher.signaturen.length && vorher.signaturen.every(function (sig, i) { return signaturen[i] === sig; })) {
+      ab = vorher.signaturen.length - 1;
+      if (vorher.signaturen.length === signaturen.length) { ende(); return; }
     }
-    if (!wechsel || !BEWEGUNG || document.hidden) { ende(); return; }
-    var start = mitte(vorher), zeit = null;
-    var werfer = b.spieler.find(function (sp) { return sp.id === vorher; });
-    pose(werfer, zellen[vorher], "schlag");
-    status.textContent = "Die Bombe fliegt zu " + traeger.name + "!";
-    function flug(t) {
-      if (!szene.isConnected) return;
-      if (zeit === null) zeit = t;
-      var p = Math.min(1, (t - zeit) / 850);
-      var x = start + (ziel - start) * p, y = -45 * Math.sin(Math.PI * p);
-      bombe.style.transform = "translate(" + x + "px," + y + "px) rotate(" + (360 * p) + "deg)";
-      if (p < 1 && !document.hidden) requestAnimationFrame(flug);
-      else {
-        ende();
-        zellen[b.traeger].classList.add("bomben-erschreckt");
-        pose(werfer, zellen[vorher], "jubel");
-        setTimeout(function () { if (szene.isConnected) pose(werfer, zellen[vorher], "bereit"); }, 700);
-      }
-    }
-    requestAnimationFrame(flug);
+    spiele(ab);
+    if (!gestartet) ende();
   });
   return szene;
 }
@@ -547,6 +613,7 @@ function bombenSzene(b) {
 var bombenLaden = false;
 function aktualisiereBombe(knopf) {
   var s = daten && daten.seasons[seasonIndex];
+  if (!knopf && document.querySelector('.bomben-szene[data-rueckblick="true"]')) return;
   if (bombenLaden || !s || tab !== "stand" || !s.minispiel || !s.minispiel.bombe) return;
   var alt = daten, index = seasonIndex;
   bombenLaden = true;
