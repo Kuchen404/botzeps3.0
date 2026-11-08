@@ -1,0 +1,288 @@
+.tresor-inhalt { padding: 10px; }
+.tresor-szene {
+  --t-kontur: #202c40;
+  position: relative;
+  min-height: 354px;
+  overflow: hidden;
+  isolation: isolate;
+  color: #f5f1d9;
+  border: 2px solid #34465c;
+  border-radius: 19px;
+  background:
+    radial-gradient(ellipse at 50% 17%, #77919842, transparent 58%),
+    repeating-linear-gradient(0deg, transparent 0 52px, #14223866 53px 55px),
+    repeating-linear-gradient(90deg, transparent 0 92px, #14223855 93px 95px),
+    linear-gradient(#34475c, #24364b 70%, #172737);
+}
+.tresor-szene::before {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 79px;
+  background: linear-gradient(#18283799, #172231);
+  border-top: 2px solid #3a4a5a;
+  z-index: -1;
+}
+.tresor-kellerlicht {
+  position: absolute;
+  top: -6px;
+  left: calc(50% - 38px);
+  width: 76px;
+  height: 17px;
+  background: #e9d58e;
+  border: 4px solid #172737;
+  border-radius: 0 0 30px 30px;
+  box-shadow: 0 7px 35px #fff5b22e;
+}
+.tresor-ueberschrift {
+  position: absolute;
+  z-index: 7;
+  inset: 29px 12px auto;
+  margin: 0;
+  color: #b8ced9;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+}
+.tresor-gehaeuse {
+  position: absolute;
+  left: calc(50% - 98px);
+  top: 65px;
+  width: 196px;
+  height: 194px;
+  border: 5px solid var(--t-kontur);
+  border-radius: 19px 20px 14px 14px;
+  box-sizing: border-box;
+  background: #172530;
+  box-shadow: 10px 7px 0 #142331, 0 13px 0 -7px #111c29, 0 23px 20px -5px #101c2e80;
+  perspective: 700px;
+}
+.tresor-gehaeuse::before,
+.tresor-gehaeuse::after {
+  content: "";
+  position: absolute;
+  top: 21px;
+  width: 13px;
+  height: 30px;
+  background: #7e9da9;
+  border: 3px solid var(--t-kontur);
+  border-radius: 5px;
+  z-index: 5;
+  box-shadow: 0 103px 0 -3px #7e9da9, 0 103px 0 0 var(--t-kontur);
+}
+.tresor-gehaeuse::before { left: -11px; }
+.tresor-gehaeuse::after { right: -11px; }
+.tresor-innen {
+  position: absolute;
+  inset: 5px;
+  overflow: hidden;
+  border: 3px solid #182a35;
+  border-radius: 10px;
+  background: #1c2b36;
+}
+.tresor-goldlicht {
+  position: absolute;
+  inset: -65px;
+  opacity: 0;
+  background: radial-gradient(circle at center, #fff8c2 0 10%, #ffcf62 27%, #af792d 52%, #1c2b36 73%);
+  transition: opacity .5s ease;
+}
+.tresor-goldlicht::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-conic-gradient(from 10deg, #fff7bc55 0deg 12deg, transparent 12deg 32deg);
+}
+.tresor-stern {
+  position: absolute;
+  z-index: 1;
+  color: #fff9cb;
+  font-size: 32px;
+  transform: scale(0);
+  transition: transform .4s ease .55s;
+}
+.tresor-stern.eins { top: 28px; left: 26px; }
+.tresor-stern.zwei { top: 92px; right: 22px; font-size: 23px; }
+.tresor-stern.drei { bottom: 14px; left: 47px; font-size: 17px; }
+.tresor-tuer {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border: 4px solid var(--t-kontur);
+  border-radius: 13px;
+  background: linear-gradient(135deg, #b4d0d6 0 5%, #7597a6 6% 48%, #64828f 49% 100%);
+  box-shadow: inset 0 0 0 5px #a4c3ca, inset 0 0 0 9px #4a687b;
+  transform-origin: 0 50%;
+  transition: transform .85s cubic-bezier(.2,.65,.25,1) .25s;
+  backface-visibility: hidden;
+}
+.tresor-tuer::after {
+  content: "BOTZEPS · IV";
+  position: absolute;
+  bottom: 11px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  color: #263d50;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .17em;
+}
+.tresor-code {
+  position: absolute;
+  top: 19px;
+  left: 20px;
+  right: 20px;
+  display: flex;
+  gap: 5px;
+  padding: 5px;
+  border: 3px solid var(--t-kontur);
+  border-radius: 8px;
+  background: #34495a;
+  box-shadow: 0 3px 0 #b4cbd055;
+}
+.tresor-ziffer {
+  display: grid;
+  place-items: center;
+  flex: 1;
+  height: 28px;
+  min-width: 0;
+  border-radius: 3px;
+  background: linear-gradient(#2b3e50, #172734 55%, #344c5d);
+  color: #9bb3bd;
+  font: 800 23px/1 ui-monospace, monospace;
+  box-shadow: inset 0 2px 2px #0005;
+}
+.tresor-ziffer.geloest {
+  color: #ffe48d;
+  background: linear-gradient(#445444, #273c36 55%, #536347);
+  text-shadow: 0 0 9px #f9d97855;
+}
+.tresor-rad {
+  position: absolute;
+  top: 84px;
+  left: calc(50% - 30px);
+  width: 60px;
+  height: 60px;
+  border: 7px solid #d1e1df;
+  border-radius: 50%;
+  box-sizing: border-box;
+  filter: drop-shadow(3px 4px 0 #263d50);
+  transition: transform .6s ease;
+  transform: rotate(var(--tresor-drehung, 0deg));
+}
+.tresor-rad::before,
+.tresor-rad::after {
+  content: "";
+  position: absolute;
+  left: 18px;
+  top: -3px;
+  width: 9px;
+  height: 52px;
+  border-radius: 4px;
+  background: #d1e1df;
+}
+.tresor-rad::after { transform: rotate(90deg); }
+.tresor-nabe {
+  position: absolute;
+  z-index: 1;
+  left: 13px;
+  top: 13px;
+  width: 20px;
+  height: 20px;
+  box-sizing: border-box;
+  border: 4px solid #d1e1df;
+  border-radius: 50%;
+  background: #577382;
+}
+.tresor-riegel {
+  position: absolute;
+  top: 76px;
+  width: 19px;
+  height: 11px;
+  border: 2px solid #263d50;
+  border-radius: 3px;
+  background: #c5d7d6;
+  transition: transform .3s ease, background .3s ease;
+}
+.tresor-riegel.r0, .tresor-riegel.r2 { left: -9px; }
+.tresor-riegel.r1, .tresor-riegel.r3 { right: -9px; }
+.tresor-riegel.r2, .tresor-riegel.r3 { top: 132px; }
+.tresor-riegel.geloest { background: #f1cf75; }
+.tresor-riegel.r0.geloest, .tresor-riegel.r2.geloest { transform: translateX(12px); }
+.tresor-riegel.r1.geloest, .tresor-riegel.r3.geloest { transform: translateX(-12px); }
+.tresor-szene.offen .tresor-tuer { transform: rotateY(-78deg); }
+.tresor-szene.offen .tresor-rad { transform: rotate(calc(var(--tresor-drehung, 0deg) + 110deg)); }
+.tresor-szene.offen .tresor-goldlicht { opacity: 1; }
+.tresor-szene.offen .tresor-stern { transform: scale(1); }
+.tresor-szene.offen .tresor-ueberschrift { color: #ffe49a; }
+.tresor-team {
+  position: absolute;
+  z-index: 6;
+  inset: auto 9px 13px;
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  align-items: flex-end;
+  overflow-x: auto;
+  justify-content: safe center;
+  padding: 8px 0 2px;
+}
+.tresor-mitglied {
+  position: relative;
+  flex: 0 0 62px;
+  min-width: 0;
+  text-align: center;
+}
+.tresor-mitglied > .ms-avatar { margin: auto; width: 57px; height: 68px; }
+.tresor-mitglied > .ms-avatar > svg { width: 100%; height: 100%; }
+.tresor-wartet { padding: 22px 13px; text-align: center; font-size: 11px; color: #b4cbd2; }
+.tresor-ruhig *, .tresor-ruhig ~ .tresor-info .tresor-viertel > span { transition: none !important; animation: none !important; }
+.tresor-ziffer.neu { animation: tresor-ziffer .45s ease; }
+@keyframes tresor-ziffer { 0% { transform: translateY(-7px); color: #fff; } 60% { transform: translateY(2px); } 100% { transform: translateY(0); } }
+.tresor-mitglied .tresor-name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  line-height: 17px;
+  color: #e4eef3;
+  text-shadow: 0 1px 2px #101b2b;
+}
+.tresor-mitglied.ich .tresor-name { color: #ffe092; font-weight: 800; }
+.tresor-beitrag { color: #a9c5cf; font-size: 10px; line-height: 14px; }
+.tresor-mitglied.aktiv::before {
+  content: "+";
+  position: absolute;
+  top: -9px;
+  right: 8px;
+  color: #ffe48d;
+  font-size: 21px;
+  font-weight: 900;
+}
+.tresor-info {
+  margin-top: 9px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.tresor-fortschritt { display: flex; gap: 5px; margin: 8px 0; }
+.tresor-viertel {
+  flex: 1;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: #52657633;
+}
+.tresor-viertel > span { display: block; height: 100%; width: 0; background: #d6ad50; transition: width .35s ease; }
+.tresor-viertel.geloest > span { background: #72b69a; }
+.tresor-zusatz { margin-top: 4px; opacity: .7; font-size: 11px; }
+@media (max-width: 360px) {
+  .tresor-mitglied { flex-basis: 55px; }
+  .tresor-team { gap: 1px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tresor-szene *, .tresor-viertel > span { transition: none !important; animation: none !important; }
+}
