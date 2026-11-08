@@ -1,49 +1,67 @@
-/* Verlassene Muckibude: Alle Figuren bleiben echte, gewählte Spieleravatare. */
-.ms-zombie.ms-scene { border-color:#314a40; border-radius:18px; background:#172b29; }
-.ms-zombie > .ms-status { background:#263d32; color:#cce6b7; font-size:11px; }
-.ms-zombie > .ms-zeit { color:#b4c6aa; }
-.ms-zombie .ms-steuerung .knopf { background:#344d3f; color:#eaf1d7; }
-.ms-zombie .zombie-gym { --zg-ink:#172622; --zg-mint:#c7f17d; --zg-sick:#a9f84c; color:#f0f0d9; background:#172b29; border:2px solid #314a40; border-radius:18px; overflow:hidden; isolation:isolate; }
-.ms-zombie .zombie-gym * { box-sizing:border-box; }
-.ms-zombie .zombie-gym .zg-top { position:relative; z-index:2; padding:17px 18px 13px; background:#233b35; border-bottom:3px solid var(--zg-ink); }
-.ms-zombie .zombie-gym .zg-kicker { font-size:10px; font-weight:900; letter-spacing:2px; color:var(--zg-mint); text-transform:uppercase; }
-.ms-zombie .zombie-gym .zg-heading { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; margin-top:6px; }
-.ms-zombie .zombie-gym .zg-heading strong { font-size:22px; line-height:1.2; letter-spacing:-.5px; }
-.ms-zombie .zombie-gym .zg-day { font-size:11px; padding:4px 7px; color:#f2e9bd; border:1px solid #77885d; border-radius:4px; white-space:nowrap; }
-.ms-zombie .zombie-gym .zg-story { margin:9px 0 0; color:#d4dfc7; font-size:12px; line-height:1.5; min-height:36px; }
-.ms-zombie .zombie-gym .zg-room { position:relative; min-height:250px; background:linear-gradient(180deg,#3c5442 0,#607454 145px,#555a3c 146px,#263b30 147px,#354333 100%); }
-.ms-zombie .zombie-gym .zg-scenery { position:absolute; inset:0 0 auto; width:100%; height:255px; pointer-events:none; }
-.ms-zombie .zombie-gym .zg-floor { position:absolute; inset:147px 0 0; overflow:hidden; background:repeating-linear-gradient(0deg,transparent 0 60px,#172b293b 61px 63px),repeating-linear-gradient(98deg,transparent 0 68px,#1f332e55 69px 70px); }
-.ms-zombie .zombie-gym .zg-floor:after { content:""; position:absolute; width:210px; height:90px; border:3px solid #b4bc7540; border-radius:50%; left:calc(50% - 105px); top:35px; transform:rotate(-8deg); }
-.ms-zombie .zombie-gym .zg-roster { position:relative; z-index:1; display:grid; grid-template-columns:repeat(auto-fit,minmax(89px,1fr)); align-items:end; gap:20px 5px; padding:98px 12px 20px; }
-.ms-zombie .zombie-gym .zg-person { position:relative; min-width:0; text-align:center; padding:0 2px; }
-.ms-zombie .zombie-gym .zg-person[data-me="true"] .zg-name { color:#fff5c7; text-decoration:underline; text-decoration-color:#dfcb75; text-underline-offset:3px; }
-.ms-zombie .zombie-gym .zg-body { position:relative; display:flex; align-items:flex-end; justify-content:center; height:130px; margin:auto; max-width:130px; transform-origin:50% 94%; }
-.ms-zombie .zombie-gym .zg-body:before { content:""; position:absolute; width:74px; height:13px; bottom:2px; background:#10251f99; border-radius:50%; filter:blur(2px); }
-.ms-zombie .zombie-gym .zg-avatar { position:relative; z-index:1; width:90px; height:130px; display:flex; align-items:flex-end; justify-content:center; transform-origin:50% 94%; }
-.ms-zombie .zombie-gym .zg-avatar svg { width:100%; height:100%; overflow:visible; }
-.ms-zombie .zombie-gym .zg-person.is-human .zg-avatar { animation:zg-ready 3.6s ease-in-out infinite; animation-delay:var(--zg-delay); }
-.ms-zombie .zombie-gym .zg-person.is-zombie .zg-avatar { filter:sepia(.4) saturate(1.5) hue-rotate(35deg); animation:zg-shamble 4.2s ease-in-out infinite; animation-delay:var(--zg-delay); }
-.ms-zombie .zombie-gym .zg-fog { position:absolute; z-index:2; inset:30px -3px 5px; pointer-events:none; opacity:0; transition:opacity .5s; }
-.ms-zombie .zombie-gym .is-zombie .zg-fog { opacity:1; }
-.ms-zombie .zombie-gym .zg-fog:before { content:""; position:absolute; inset:40px -3px -5px; border-radius:50%; background:radial-gradient(ellipse at 50% 75%,#a8e84d30,transparent 70%); }
-.ms-zombie .zombie-gym .zg-fog i { position:absolute; left:15%; bottom:0; width:50px; height:40px; border-radius:50%; background:radial-gradient(ellipse,#bcf96aa0, #78b74145 50%,transparent 72%); animation:zg-spore 4s ease-out infinite; animation-delay:var(--zg-delay); }
-.ms-zombie .zombie-gym .zg-fog i:nth-child(2) { left:45%; width:40px; animation-delay:calc(var(--zg-delay) - 1.6s); }
-.ms-zombie .zombie-gym .zg-fog i:nth-child(3) { left:30%; width:60px; animation-delay:calc(var(--zg-delay) - 2.7s); }
-.ms-zombie .zombie-gym .zg-name { display:block; margin-top:3px; color:#f3f0d7; font-size:12px; font-weight:800; line-height:1.35; overflow-wrap:anywhere; }
-.ms-zombie .zombie-gym .zg-badge { display:inline-block; max-width:100%; margin-top:4px; padding:3px 6px; border:1px solid #81a785; border-radius:5px; background:#1b372f; color:#d9edbd; font-size:9px; font-weight:750; line-height:1.3; overflow-wrap:anywhere; }
-.ms-zombie .zombie-gym .is-zombie .zg-badge { border-color:#8aa84d; background:#34482a; color:#d9f79a; }
-.ms-zombie .zombie-gym .zg-person.is-new .zg-body { animation:zg-bite .9s ease-out; }
-.ms-zombie .zombie-gym .zg-person.is-new .zg-badge { box-shadow:0 0 14px #b5ed6566; }
-.ms-zombie .zombie-gym .zg-bottom { position:relative; z-index:2; display:flex; flex-wrap:wrap; gap:8px 14px; justify-content:space-between; padding:12px 16px; border-top:2px solid #101e1b; background:#182e29; color:#c3d5bc; font-size:11px; }
-.ms-zombie .zombie-gym .zg-counter { display:flex; align-items:center; gap:6px; }
-.ms-zombie .zombie-gym .zg-dot { width:7px; height:7px; border-radius:50%; background:#93cab6; box-shadow:0 0 6px #93cab644; }
-.ms-zombie .zombie-gym .zg-counter.zg-infected .zg-dot { background:#b2ed56; box-shadow:0 0 6px #b2ed5666; }
-.ms-zombie .zombie-gym .zg-rule { margin:0; padding:11px 16px; color:#b4c6aa; font-size:10px; line-height:1.55; background:#172b25; border-top:1px solid #2b4033; }
-.ms-zombie .zombie-gym .zg-empty { grid-column:1/-1; min-height:110px; display:grid; place-items:center; margin:0; font-size:12px; text-align:center; color:#d7e2ca; }
-@keyframes zg-ready { 0%,100% { transform:translateY(0) rotate(-.7deg); } 50% { transform:translateY(-2px) rotate(.7deg); } }
+/* Feste Bühne im verlassenen Gym; alle Spieler bleiben auf der Tribüne erreichbar. */
+.ms-zombie.zombie-gym { border:1px solid #4e6a50; border-radius:14px; background:#172b29; color:#eff2da; isolation:isolate; }
+.ms-zombie > .ms-status { background:#263d32; color:#d4e9b4; font-size:12px; overflow-wrap:anywhere; }
+.ms-zombie .zg-top { padding:12px 14px 9px; background:#233b35; border-bottom:1px solid #142a23; }
+.ms-zombie .zg-heading { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:6px; }
+.ms-zombie .zg-heading strong { font-size:20px; line-height:1.2; letter-spacing:-.3px; overflow-wrap:anywhere; }
+.ms-zombie .zg-day { font-size:10px; padding:4px 6px; color:#eddfae; border:1px solid #77885d; border-radius:4px; white-space:nowrap; }
+.ms-zombie .zg-story { margin:7px 0 0; min-height:32px; font-size:11px; line-height:1.45; color:#c5d4b8; }
+.ms-zombie .zg-room { position:relative; height:274px; overflow:hidden; background:linear-gradient(#354c3d 0,#4f6247 145px,#263b30 147px,#293e31 100%); }
+.ms-zombie .zg-scenery { position:absolute; inset:0 0 auto; width:100%; height:255px; pointer-events:none; opacity:.8; }
+.ms-zombie .zg-floor { position:absolute; inset:147px 0 0; background:repeating-linear-gradient(0deg,transparent 0 60px,#172b293b 61px 63px),repeating-linear-gradient(98deg,transparent 0 68px,#1f332e55 69px 70px); }
+.ms-zombie .zg-stage { position:absolute; inset:0; }
+.ms-zombie .zg-stage::before { content:""; position:absolute; left:7%; right:7%; top:209px; height:34px; border-radius:50%; background:radial-gradient(ellipse,#bccf8c22,#10241c66 65%,transparent 72%); border-bottom:1px solid #d1d99b22; }
+.ms-zombie .zg-focus { position:absolute; top:75px; width:104px; z-index:2; transform-origin:50% 95%; text-align:center; }
+.ms-zombie .zg-focus .ms-avatar { width:104px; height:156px; }
+.ms-zombie .zg-focus-name { display:block; width:116px; margin:4px 0 0 -6px; padding:3px 4px; border-radius:5px; background:#10251fe6; color:#e8ecc9; font-size:11px; font-weight:750; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ms-zombie .zg-center { left:calc(50% - 52px); }
+.ms-zombie .zg-opfer { left:calc(66% - 52px); }
+.ms-zombie .zg-gruppe { top:98px; width:84px; }
+.ms-zombie .zg-gruppe .ms-avatar { width:84px; height:126px; }
+.ms-zombie .zg-gruppe .zg-focus-name { width:90px; margin-left:-3px; font-size:10px; }
+.ms-zombie .zg-anzahl2.zg-platz1 { left:calc(32% - 42px); }
+.ms-zombie .zg-anzahl2.zg-platz2 { left:calc(68% - 42px); }
+.ms-zombie .zg-anzahl3.zg-platz1 { left:calc(20% - 42px); }
+.ms-zombie .zg-anzahl3.zg-platz2 { left:calc(50% - 42px); }
+.ms-zombie .zg-anzahl3.zg-platz3 { left:calc(80% - 42px); }
+.ms-zombie .is-zombie > .ms-avatar { filter:sepia(.65) saturate(1.45) hue-rotate(35deg); }
+.ms-zombie .ms-avatar > .bz-spieler-illustriert { animation:none; }
+.ms-zombie.zg-live .zg-focus.is-zombie > .ms-avatar { animation:zg-shamble 3.8s ease-in-out infinite; }
+.ms-zombie.zg-live .zg-focus.is-human > .ms-avatar { animation:zg-ready 3.6s ease-in-out infinite; }
+.ms-zombie .zg-effekt { position:absolute; pointer-events:none; }
+.ms-zombie .zg-banner,.ms-zombie .zg-ergebnis { left:5%; right:5%; top:12px; z-index:6; padding:8px 4px; color:#daf59e; background:linear-gradient(90deg,transparent,#14291fef 15% 85%,transparent); border-block:1px solid #a2bd6588; text-align:center; font-size:21px; font-weight:950; letter-spacing:.07em; }
+.ms-zombie .zg-gerettet { color:#ffe39b; border-color:#e5c36d88; }
+.ms-zombie .zg-schatten { left:calc(24% - 45px); top:88px; width:90px; height:142px; z-index:2; filter:drop-shadow(0 0 8px #b4e65c33); }
+.ms-zombie .zg-schatten > svg { width:100%; height:100%; }
+.ms-zombie .zg-bissfunken { left:calc(66% - 31px); top:113px; width:62px; height:62px; z-index:5; background:#d3f89d; clip-path:polygon(50% 0,60% 30%,85% 10%,72% 42%,100% 50%,70% 60%,88% 88%,59% 70%,50% 100%,39% 72%,12% 90%,29% 59%,0 50%,29% 40%,12% 11%,40% 29%); }
+.ms-zombie .zg-bissring { left:66%; top:144px; width:55px; height:55px; border:3px solid #c8ef9b; border-radius:50%; z-index:4; }
+.ms-zombie .zg-nebel { left:calc(50% - 90px); top:157px; width:180px; height:84px; z-index:3; border-radius:50%; background:radial-gradient(ellipse at 28% 60%,#b1dc72b3 0 20%,transparent 25%),radial-gradient(ellipse at 68% 58%,#99c75aa6 0 25%,transparent 30%),radial-gradient(ellipse at 50% 35%,#d3eda080 0 30%,transparent 35%); }
+.ms-zombie .zg-nebel-opfer { left:calc(66% - 90px); }
+.ms-zombie .zg-spore { top:209px; width:15px; height:15px; border-radius:50%; background:radial-gradient(circle,#d9f6a6,#9bc75977 50%,transparent 72%); z-index:5; }
+.ms-zombie .zg-konfetti { top:25px; width:7px; height:12px; background:#e5cf79; border-radius:2px; z-index:5; }
+.ms-zombie .zg-konfetti:nth-child(3n) { background:#c3e393; }
+.ms-zombie .zg-bottom { display:flex; flex-wrap:wrap; justify-content:space-between; gap:8px; padding:10px 12px; background:#1b3028; border-block:1px solid #45604366; font-size:11px; color:#d5e2bf; }
+.ms-zombie .zg-counter { display:flex; align-items:center; gap:6px; }
+.ms-zombie .zg-dot { width:7px; height:7px; border-radius:50%; background:#a6d5bd; }
+.ms-zombie .zg-infected .zg-dot { background:#bde770; }
+.ms-zombie .zg-fenster { overflow-x:auto; scrollbar-width:thin; }
+.ms-zombie .zg-roster { position:relative; display:flex; justify-content:safe center; gap:5px; width:max-content; min-width:100%; padding:8px; }
+.ms-zombie .zg-person { position:relative; width:65px; flex:0 0 65px; text-align:center; border:1px solid #7e98513b; border-radius:7px; padding:3px 2px; }
+.ms-zombie .zg-person.is-zombie { background:#a7ce5820; border-color:#a7ce5855; }
+.ms-zombie .zg-person .ms-avatar { width:46px; height:69px; margin:auto; }
+.ms-zombie .zg-person .ms-avatar-ersatz { font-size:15px; background:radial-gradient(circle,var(--ms-avatar-farbe) 0 20px,transparent 21px); }
+.ms-zombie .zg-name { display:block; font-size:10px; line-height:1.4; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ms-zombie .zg-person[data-me="true"] .zg-name { color:#ffe29b; font-weight:850; }
+.ms-zombie .zg-badge { display:block; min-height:16px; margin-top:3px; color:#c9dbb1; font-size:9px; line-height:1.3; }
+.ms-zombie .zg-person.is-zombie .zg-badge { color:#d3ec94; }
+.ms-zombie .zg-schreck .ms-avatar { animation:zg-schreck .4s ease-out; }
+.ms-zombie > .ms-zeit { font-size:10px; color:#aebf9f; }
+.ms-zombie .ms-steuerung { gap:6px; padding:8px 10px 12px; }
+.ms-zombie .ms-steuerung .knopf { min-height:38px; padding:8px 10px; font-size:11px; background:#344d3f; color:#eaf1d7; }
+.ms-zombie .zg-rule { margin:0; padding:10px 12px; background:#172b25; border-top:1px solid #2b4033; color:#b4c6aa; font-size:10px; line-height:1.5; }
+.ms-zombie .zg-empty { max-width:240px; min-height:72px; display:grid; place-items:center; margin:0; font-size:11px; color:#d7e2ca; }
 @keyframes zg-shamble { 0%,100% { transform:translateX(-2px) rotate(-3deg); } 50% { transform:translateX(2px) rotate(2deg); } }
-@keyframes zg-spore { 0% { transform:translate(-5px,10px) scale(.7); opacity:0; } 25% { opacity:.8; } 100% { transform:translate(9px,-80px) scale(1.5); opacity:0; } }
-@keyframes zg-bite { 0%,100% { transform:translateX(0); } 20% { transform:translateX(-5px) rotate(-3deg); } 40% { transform:translateX(4px) rotate(3deg); } 60% { transform:translateX(-2px); } }
-@media (max-width:360px) { .ms-zombie .zombie-gym .zg-roster { grid-template-columns:repeat(auto-fit,minmax(76px,1fr)); padding-left:7px; padding-right:7px; } .ms-zombie .zombie-gym .zg-heading strong { font-size:20px; } .ms-zombie .zombie-gym .zg-avatar { width:80px; height:120px; } }
-@media (prefers-reduced-motion:reduce) { .ms-zombie .zombie-gym *, .ms-zombie .zombie-gym *:before, .ms-zombie .zombie-gym *:after { animation:none!important; transition:none!important; } .ms-zombie .zombie-gym .zg-fog i { opacity:.55; transform:translateY(-5px); } }
+@keyframes zg-ready { 50% { transform:translateY(-2px) rotate(1deg); } }
+@keyframes zg-schreck { 35% { transform:translateX(3px) rotate(5deg); } 70% { transform:translateX(-2px) rotate(-3deg); } }
+@media (max-width:350px) { .ms-zombie .zg-heading strong { font-size:18px; } .ms-zombie .zg-banner { font-size:18px; } }
+@media (prefers-reduced-motion:reduce) { .ms-zombie *, .ms-zombie *::before, .ms-zombie *::after { animation:none!important; transition:none!important; scroll-behavior:auto!important; } }
