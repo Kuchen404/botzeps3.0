@@ -7,6 +7,7 @@ import type { Db } from "./db/index.js";
 import { pruefeInitData } from "./miniapp/auth.js";
 import { type Gruppenpost, type Gruppensenden, bearbeiteApi } from "./miniapp/api.js";
 import { log } from "./log.js";
+import { BOSS_REAKTIONS_PFAD, bossReaktionsMedium } from "./boss/reaktionen.js";
 import { FIGUREN_MEDIEN_PFAD, figurMedium } from "./figuren/arcade.js";
 
 export const WEBHOOK_PFAD = "/telegram";
@@ -120,6 +121,13 @@ export function erstelleServer(optionen: { bot?: Bot; webhookSecret?: string; mi
     if (optionen.miniApp && req.method === "GET" && (pfad === MINIAPP_PFAD || pfad === `${MINIAPP_PFAD}/`)) {
       seite(res);
       return;
+    }
+    if (optionen.miniApp && pfad.startsWith(BOSS_REAKTIONS_PFAD)) {
+      const bild = req.method === "GET" ? bossReaktionsMedium(pfad.slice(BOSS_REAKTIONS_PFAD.length)) : null;
+      if (!bild) { res.writeHead(404).end(); return; }
+      res.writeHead(200, { "content-type": "image/png", "content-length": bild.length,
+        "cache-control": "public, max-age=31536000, immutable", "x-content-type-options": "nosniff" });
+      res.end(bild); return;
     }
     if (optionen.miniApp && pfad.startsWith(FIGUREN_MEDIEN_PFAD)) {
       // Öffentlich ohne Anmeldung (Bilder lädt der Browser ohne unseren Header), nur GET

@@ -34,3 +34,21 @@
 @keyframes boss-team-jubel { 50% { transform: translateY(-7px); } }
 @media (max-width: 350px) { .boss-arcade .boss-buehne { height: 285px; } .boss-arcade .bossbild { width: 206px; height: 208px; margin-left: -103px; } .boss-arcade .bossbild > svg, .boss-arcade.stufe2 .bossbild > svg { width: 206px; height: 208px; } }
 @media (prefers-reduced-motion: reduce) { .boss-arcade *, .boss-arcade *::before { animation: none !important; transition: none !important; } .boss-arcade .bossbild { animation: none !important; } }
+
+/* Boss-Auftritt und eigene Reaktionsposen. */
+.boss-auftritt { position: absolute; z-index: 6; left: 2%; right: 2%; bottom: 15px; text-align: center; padding: 10px 6px; background: linear-gradient(90deg, transparent, #111a2ce8 16% 84%, transparent); border-block: 1px solid #efc7767a; color: #fff0bd; }
+.boss-auftritt strong { display: block; font-size: clamp(17px,5vw,23px); line-height: 1.15; font-weight: 900; text-shadow: 0 2px 3px #000; }
+.boss-auftritt-stufe { display: block; font-size: 10px; font-weight: 800; letter-spacing: .16em; color: #ffce62; margin-bottom: 5px; }
+.boss-arcade.stufe2 .boss-auftritt { border-color: #ff9a72; }
+.boss-arcade[data-kampfphase="auftritt"] .kaempfer, .boss-arcade[data-kampfphase="landung"] .kaempfer { opacity: .7; }
+.boss-auftritt-staub { bottom: 65px; }
+.boss-schnipsel { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
+.boss-splitter { position: absolute; display: block; width: 24px; height: 20px; opacity: 0; }
+.boss-splitter svg { width: 100%; height: 100%; }
+.boss-splitter-kissen { width: 28px; height: 22px; background: #ba38ec; border: 2px solid #5d157a; border-radius: 7px; box-shadow: inset 0 3px #e993ff, inset 0 -3px #8425a7; }
+.boss-splitter-kissen::after { content: ""; position: absolute; inset: 4px; border: 1px solid #edb4fa; border-radius: 3px; }
+.boss-splitter-polster { width: 12px; height: 10px; background: #fff3d9; border-radius: 50% 40% 55% 30%; box-shadow: -4px 2px #e8dcc2, 3px -3px #fff3d9; }
+.boss-arcade .bossplatz.tot .bossbild[data-boss-pose="ko"] { transform: translateY(14px); opacity: 1; filter: none; }
+.boss-arcade .boss-reaktionspose, .boss-arcade .boss-reaktionspose * { animation: none !important; }
+
+.boss-arcade .bossbild[data-boss-pose="ko"] ~ .stempel { top: 80%; font-size: 22px; }

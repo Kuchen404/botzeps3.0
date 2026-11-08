@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { bossReaktionen } from "../boss/reaktionen.js";
 import { bossSvg } from "../boss/figur.js";
 import type { Db } from "../db/index.js";
 import { type NutzerZeile, gruppenDesNutzers, messMittel, setzeGruppenNachricht, speichereNutzer, sportartNachId, sportartenFuerAuswahl } from "../db/repo.js";
@@ -92,7 +93,9 @@ function bossJson(
     const nr = figur(st);
     if (nr !== null) zeichnungen[nr] = { ...zeichnungen[nr], ...posen(nr, ["ko"]) };
   }
+  const reaktion = bossReaktionen(boss.name, boss.stufe);
   return {
+    ...(reaktion ? { reaktion } : {}),
     name: bossAnzeigename(boss.name, boss.stufe),
     emoji: bossEmoji(boss.name),
     bild: bossSvg(boss.name, boss.stufe),

@@ -4,7 +4,7 @@ Mit dem eingebauten ImageGen-Werkzeug erstellte transparente Illustrationen im g
 
 Die PNGs sind auf maximal 1024 × 512 bzw. 512 × 512 Pixel und 256 Farben reduziert. `arcade.ts` bettet sie gecacht als Daten-URLs ein und begrenzt Doppelbilder im SVG auf die jeweilige Hälfte. Damit benötigen Mini-App und Telegram-Steckbriefe weder externe Bildserver noch neue öffentliche Routen. Der Build kopiert die Assets nach `dist/boss/medien` (auch im Docker-Build).
 
-Die Mini-App animiert die gesamte Figur mit Atmen/Posieren, Trefferreaktionen und dem bestehenden Kampfablauf. Arme und Gesichter sind keine separat animierten Ebenen. Bei reduzierter Bewegung und nach dem Sieg stoppt die Bewegung.
+Die Mini-App animiert den Auftritt und die ganze Figur mit Atmen/Posieren und dem Kampfablauf. Sofa und Chipstüte verwenden zusätzlich eigene Treffer- und Niederlagenposen in beiden Stufen, ergänzt um bewegte Kissen/Füllung bzw. Chips. Arme und Gesichter sind keine separat animierten Ebenen. Bei reduzierter Bewegung und nach dem Sieg stoppt die Bewegung. Details und Zuschnitte stehen in `reaktionen-README.md`.
 
 Die Prompts der neuen Motive stehen in `prompts.json`; Sofa und Chipstüte in Stufe 2 stammen aus den zuvor abgestimmten Arcade-Entwürfen.
 
