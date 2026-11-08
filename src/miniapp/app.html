@@ -1025,12 +1025,10 @@ function figurKarte() {
     return karte("Deine Kämpferfigur", [el("p", { class: "hint", text: "Lädt …" })]);
   }
   var s = daten.seasons[seasonIndex];
-  if (!s) return karte("Deine Kämpferfigur", [el("p", { class: "hint", text: "Figuren gibt es in einer Season ab der ersten Boss-Woche." })]);
   var d = s.figur, waehlbar = d.darfWaehlen && d.meine == null;
   var text = d.meine != null ? "Das ist deine Figur für „" + s.name + "“. Gewählt ist gewählt."
     : waehlbar ? "Such dir eine aus! Gewählt ist gewählt."
-    : d.freiAb ? "Trag ein Training ab dem " + datum(d.freiAb) + " ein, dann darfst du wählen. Wer zuerst kommt, hat die volle Auswahl."
-    : "Ab der ersten Boss-Woche: Wer zuerst ein Training einträgt, sucht sich zuerst eine Figur aus.";
+    : "";
   var status = el("p", { class: "hint", text: text });
   var raster = el("div", { class: "figurwahl" }, figurDaten.figuren.map(function (f) {
     f = { nr: f.nr, name: f.name, bild: f.bild, vergeben: d.meine === f.nr ? null : d.vergeben[f.nr] || null };
@@ -1056,14 +1054,12 @@ function figurKarte() {
 }
 
 function verdeckteFiguren(s) {
+  // Kein Spoiler: weder Wort noch Bild verraten, was hier kommt
   var d = s && s.figur;
-  var text = !s ? "Figuren gibt es in einer Season ab der ersten Boss-Woche."
-    : d && d.freiAb ? "Trag ein Training ab dem " + datum(d.freiAb) + " ein, dann werden die Figuren aufgedeckt und du darfst wählen. Wer zuerst kommt, hat die volle Auswahl."
-    : "Ab der ersten Boss-Woche: Wer zuerst ein Training einträgt, deckt die Figuren auf und sucht sich zuerst eine aus.";
   var raster = el("div", { class: "figurwahl" }, Array.apply(null, Array(12)).map(function () {
-    return el("button", { class: "verdeckt", disabled: "", "aria-label": "Verdeckte Figur" }, [el("span", { class: "fragezeichen", text: "?" }), el("span", { text: "???" })]);
+    return el("button", { class: "verdeckt", disabled: "", "aria-label": "Verdeckt" }, [el("span", { class: "fragezeichen", text: "?" }), el("span", { text: "???" })]);
   }));
-  return karte("Deine Kämpferfigur", [raster, el("p", { class: "hint", text: text })]);
+  return karte("Geheimnis", [raster, d && d.freiAb ? el("p", { class: "hint", text: "Hier tut sich ab dem " + datum(d.freiAb) + " was." }) : null]);
 }
 
 function bestaetige(frage, dann) {
