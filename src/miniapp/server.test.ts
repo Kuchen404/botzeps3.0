@@ -170,7 +170,8 @@ describe("Mini App", () => {
         { id: String(peter), name: "Peter", ich: false, figur: null },
       ]);
       expect(Object.keys(b.figuren)).toEqual(["0"]);
-      expect(Object.keys(b.figuren[0])).toEqual(["bereit", "schlag", "jubel"]);
+      expect(Object.keys(b.figuren[0])).toEqual(["bereit", "schlag", "jubel", "ko"]);
+      expect(b.figuren[0].ko.match(/href="([^"]+)"/)[1]).toBe(b.figuren[0].bereit.match(/href="([^"]+)"/)[1]);
       expect(b.figuren[0].bereit).toContain("/api/figurbild/");
       expect(b.figuren[0].bereit).toContain("bombe0bereit");
       // Gleicher Trainingstag: Eintragszeit entscheidet, nicht Name oder Reihenfolge.
