@@ -103,6 +103,7 @@ function bossJson(
     besiegt: k.besiegt,
     bonus: k.bonus,
     schwaeche: boss.schwaecheName ?? null,
+    resistenz: boss.resistenzName ?? null,
     kaempfer: kaempfer
       .sort((a, b) => last(b) - last(a) || a.name.localeCompare(b.name))
       .map((st) => ({ name: st.name, schaden: last(st), ich: st.id === ich, figur: figur(st) })),

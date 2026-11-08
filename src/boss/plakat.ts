@@ -1,4 +1,4 @@
-import { BOSS_STUFEN, type BossStufe, SCHWAECHE_FAKTOR, bossAnzeigename } from "../scoring/boss.js";
+import { BOSS_STUFEN, type BossStufe, RESISTENZ_FAKTOR, SCHWAECHE_FAKTOR, bossAnzeigename } from "../scoring/boss.js";
 import { fuelle } from "../texte/sprueche.js";
 import { bossZeichnung } from "./figur.js";
 import { bossTexte } from "./texte.js";
@@ -20,7 +20,14 @@ function zeilen(text: string, max: number): string[] {
 }
 
 /** WANTED-Steckbrief des Bosses für die Ankündigung in der Gruppe (SVG, 600 × 840). */
-export function steckbriefSvg(name: string, stufe: BossStufe, lebenspunkte: number, opfer: string, schwaeche: string | null = null): string {
+export function steckbriefSvg(
+  name: string,
+  stufe: BossStufe,
+  lebenspunkte: number,
+  opfer: string,
+  schwaeche: string | null = null,
+  resistenz: string | null = null,
+): string {
   const t = bossTexte(name);
   const anzeige = bossAnzeigename(name, stufe);
   const rot = "#8f1d14";
@@ -30,6 +37,7 @@ export function steckbriefSvg(name: string, stufe: BossStufe, lebenspunkte: numb
     ["Lebenspunkte", lebenspunkte.toLocaleString("de-DE")],
     ["Kopfgeld", `+${BOSS_STUFEN[stufe].bonus} Punkte für jeden, der mitprügelt`],
     ...(schwaeche ? ([["Schwäche", `${schwaeche} (${SCHWAECHE_FAKTOR}× Schaden)`]] as [string, string][]) : []),
+    ...(resistenz ? ([["Abgehärtet gegen", `${resistenz} (nur ${String(RESISTENZ_FAKTOR).replace(".", ",")}× Schaden)`]] as [string, string][]) : []),
     ["Angst vor", t.schwaeche],
     ["Zuletzt gesehen", fuelle(t.zuletztGesehen, { opfer })],
   ];

@@ -179,7 +179,23 @@ describe("Gamification", () => {
         .get() as { name: string; faktor: number };
       expect(boss.faktor).toBeGreaterThanOrEqual(3);
       expect(["Spazierengehen", "Yoga", "Dehnen", "Pilates", "Wandern", "Radfahren locker"]).not.toContain(boss.name);
+      const resistenz = db
+        .prepare("SELECT sp.faktor FROM boss b JOIN sportart sp ON sp.id = b.resistenz WHERE b.stufe = 1")
+        .get() as { faktor: number };
+      expect(resistenz.faktor).toBeLessThan(3);
     }
+  });
+  it("Resistenz des Bosses: eine lockere Sportart macht nur halben Schaden", async () => {
+    const { bot, gesendet, lauf, letzterText } = await aufbau();
+    await lauf("2026-10-19T07:00:30Z");
+    expect(gesendet.at(-1)).toContain("🛡 Dagegen ist er abgehärtet: Spazierengehen");
+    tag("2026-10-20");
+    await bot.handleUpdate(befehl("/sport 120 Yoga"));
+    expect(letzterText()).not.toContain("Abgeprallt");
+    expect(letzterText()).toContain("noch 880 von 1.000 Lebenspunkten"); // Yoga ×1: 120 Schaden
+    await bot.handleUpdate(befehl("/sport 120 Spazierengehen"));
+    expect(letzterText()).toContain("🛡 Abgeprallt! Spazierengehen kitzelt");
+    expect(letzterText()).toContain("noch 850 von 1.000 Lebenspunkten"); // ×0,5 halbiert: 30 statt 60
   });
   it("Schwäche des Bosses: eine zufällige Sportart macht doppelten Schaden", async () => {
     const { bot, db, gesendet, lauf, letzterText } = await aufbau();

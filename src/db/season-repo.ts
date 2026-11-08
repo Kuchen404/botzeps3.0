@@ -22,14 +22,17 @@ export interface SeasonZeile {
 const SPALTEN =
   "id, gruppe, name, start, wochen, berichtszeit, gewicht_fleiss, gewicht_fortschritt, wochenziel_last, erstellt_von";
 
-export type Boss = BossEinstellung & { name: string; schwaecheName?: string | null };
+export type Boss = BossEinstellung & { name: string; schwaecheName?: string | null; resistenzName?: string | null };
 
 /** Bereits angekündigte Bosse der Season. */
 export function bosseDerSeason(db: Db, s: Pick<SeasonZeile, "id" | "wochen">): Boss[] {
   const zeilen = db
     .prepare(
-      `SELECT b.stufe, b.name, b.lebenspunkte, b.schwaeche, sp.name AS schwaecheName FROM boss b
-       LEFT JOIN sportart sp ON sp.id = b.schwaeche WHERE b.season = ? ORDER BY b.stufe`,
+      `SELECT b.stufe, b.name, b.lebenspunkte, b.schwaeche, sp.name AS schwaecheName, b.resistenz, re.name AS resistenzName
+       FROM boss b
+       LEFT JOIN sportart sp ON sp.id = b.schwaeche
+       LEFT JOIN sportart re ON re.id = b.resistenz
+       WHERE b.season = ? ORDER BY b.stufe`,
     )
     .all(s.id) as {
     stufe: BossStufe;
@@ -37,6 +40,8 @@ export function bosseDerSeason(db: Db, s: Pick<SeasonZeile, "id" | "wochen">): B
     lebenspunkte: number;
     schwaeche: number | null;
     schwaecheName: string | null;
+    resistenz: number | null;
+    resistenzName: string | null;
   }[];
   return zeilen.flatMap((z) => {
     const woche = bossWoche(z.stufe, s.wochen);
@@ -52,11 +57,12 @@ export function kuendigeBossAn(
   name: string,
   lebenspunkte: number,
   schwaeche: number | null = null,
+  resistenz: number | null = null,
 ): boolean {
   return (
     db
-      .prepare("INSERT OR IGNORE INTO boss (season, stufe, name, lebenspunkte, schwaeche) VALUES (?, ?, ?, ?, ?)")
-      .run(seasonId, stufe, name, lebenspunkte, schwaeche).changes > 0
+      .prepare("INSERT OR IGNORE INTO boss (season, stufe, name, lebenspunkte, schwaeche, resistenz) VALUES (?, ?, ?, ?, ?, ?)")
+      .run(seasonId, stufe, name, lebenspunkte, schwaeche, resistenz).changes > 0
   );
 }
 

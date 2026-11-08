@@ -159,6 +159,7 @@ describe("Mini App", () => {
         besiegt: false,
         bonus: 5,
         schwaeche: null,
+        resistenz: null,
         kaempfer: [
           { name: "Kevin", schaden: 450, ich: true, figur: 3 },
           { name: "Peter", schaden: 30, ich: false, figur: null },

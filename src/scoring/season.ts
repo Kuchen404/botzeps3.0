@@ -1,6 +1,6 @@
 import { type IsoDatum, plusTage, tageZwischen, imZeitraum } from "./datum.js";
 import { type Faktor, type Training, type Wochenwertung, FLEISS, gesamtLast, werteWochen } from "./fleiss.js";
-import { type BossEinstellung, SCHWAECHE_FAKTOR, bossKampf } from "./boss.js";
+import { type BossEinstellung, bossKampf, bossTrefferFaktor } from "./boss.js";
 import {
   type Fortschrittswertung,
   type Koerpermassen,
@@ -53,7 +53,7 @@ export interface TeilnehmerStand {
   ohneWaage?: boolean;
   /** Bonus für Siege gegen Bosse, ungewichtet in `gesamt` enthalten. */
   bossBonus: number;
-  /** Schaden je Boss-Woche (Einheiten in der Schwäche doppelt), nur für Wochen mit Boss */
+  /** Schaden je Boss-Woche (Einheiten in der Schwäche doppelt, in der Resistenz halb), nur für Wochen mit Boss */
   bossSchaden?: Record<number, number>;
   /** Gewichtete Gesamtpunkte. */
   gesamt: number;
@@ -129,7 +129,10 @@ export function teilnehmerStand(
     const liste = proWoche[boss.woche];
     if (!liste) continue;
     bossSchaden[boss.woche] = gesamtLast(
-      liste.map((tr) => (boss.schwaeche != null && tr.sportartId === boss.schwaeche ? { ...tr, faktor: (tr.faktor * SCHWAECHE_FAKTOR) as Faktor } : tr)),
+      liste.map((tr) => {
+        const treffer = bossTrefferFaktor(boss, tr.sportartId);
+        return treffer === 1 ? tr : { ...tr, faktor: (tr.faktor * treffer) as Faktor };
+      }),
     );
   }
   const fleiss = wochen.reduce((summe, w) => summe + w.punkte, 0);

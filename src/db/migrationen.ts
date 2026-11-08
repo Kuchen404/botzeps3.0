@@ -385,6 +385,12 @@ export const MIGRATIONEN: readonly Migration[] = [
   },
   {
     version: 14,
+    name: "boss_resistenz",
+    // Sportart, die beim Boss nur halben Schaden macht. Schon angekündigte Bosse bleiben ohne.
+    sql: `ALTER TABLE boss ADD COLUMN resistenz INTEGER REFERENCES sportart(id) ON DELETE SET NULL;`,
+  },
+  {
+    version: 15,
     name: "spielerfigur",
     // Kämpferfigur (Nummer im Baukasten), einmal pro Season selbst ausgesucht, jede nur einmal
     sql: `
