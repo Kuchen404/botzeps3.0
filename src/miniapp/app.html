@@ -468,6 +468,12 @@ function standTab(s) {
   var kinder = [];
   if (!s) return [karte(null, [el("p", { text: "Du bist in keiner Season. In der Gruppe /season tippen oder trainieren, dann bist du dabei." })])];
   var ich = s.ich;
+  if (daten.figurWaehlen) {
+    kinder.push(karte("🎭 Kämpferfigur", [
+      el("p", { text: "Du darfst dir jetzt eine Figur aussuchen. Wer zuerst kommt, hat die volle Auswahl, wer trödelt, kriegt die Reste." }),
+      el("button", { class: "knopf", text: "Figur aussuchen", onclick: function () { zeigeTab("einstellungen"); } })
+    ]));
+  }
   if (!s.gestartet) {
     kinder.push(karte("Vor dem Start", [
       el("p", { text: "„" + s.name + "“ startet am " + datum(s.start) + "." }),
@@ -817,25 +823,34 @@ function einstellungenTab() {
 }
 
 var figurDaten = null;
-/** Eigene Kämpferfigur für Bosskampf und Minispiele aussuchen; jede Figur gibt es pro Gruppe nur einmal. */
+/** Eigene Kämpferfigur aussuchen: einmalig, ab dem ersten Training in der ersten Boss-Woche; jede Figur gibt es pro Gruppe nur einmal. */
 function figurKarte() {
   if (!figurDaten) {
     api("/api/figuren").then(function (j) { figurDaten = j; if (tab === "einstellungen") zeichne(); }).catch(zeigeFehler);
     return karte("Deine Kämpferfigur", [el("p", { class: "hint", text: "Lädt …" })]);
   }
-  var status = el("p", { class: "hint", text: figurDaten.gewaehlt ? "" : "Noch automatisch zugeteilt. Such dir eine aus!" });
-  var raster = el("div", { class: "figurwahl" }, figurDaten.figuren.map(function (f) {
-    var knopf = el("button", { class: f.nr === figurDaten.meine ? "meine" : "", "aria-label": f.name }, []);
+  var d = figurDaten, waehlbar = d.darfWaehlen && d.meine == null;
+  var text = d.meine != null ? "Das ist deine Figur. Gewählt ist gewählt."
+    : waehlbar ? "Such dir eine aus! Gewählt ist gewählt."
+    : d.freiAb ? "Trag ein Training ab dem " + datum(d.freiAb) + " ein, dann darfst du wählen. Wer zuerst kommt, hat die volle Auswahl."
+    : "Ab der ersten Boss-Woche: Wer zuerst ein Training einträgt, sucht sich zuerst eine Figur aus.";
+  var status = el("p", { class: "hint", text: text });
+  var raster = el("div", { class: "figurwahl" }, d.figuren.map(function (f) {
+    var knopf = el("button", { class: f.nr === d.meine ? "meine" : "", "aria-label": f.name }, []);
     var bild = el("span"); bild.innerHTML = f.bild; // fester Baukasten vom eigenen Server
     knopf.appendChild(bild);
     knopf.appendChild(el("span", { text: f.name }));
-    if (f.vergeben && f.nr !== figurDaten.meine) { knopf.disabled = true; knopf.appendChild(el("span", { class: "wer", text: f.vergeben })); }
+    if (f.vergeben) knopf.appendChild(el("span", { class: "wer", text: f.vergeben }));
+    knopf.disabled = !waehlbar || !!f.vergeben;
+    if (f.nr === d.meine) knopf.disabled = false;
     knopf.addEventListener("click", function () {
-      if (f.nr === figurDaten.meine && figurDaten.gewaehlt) return;
-      status.textContent = "Speichert …";
-      api("/api/figur", { figur: f.nr }).then(function () {
-        figurDaten = null; erfolg(); return neuLaden();
-      }).catch(function (e) { status.textContent = e.message; figurDaten = null; });
+      if (!waehlbar) return;
+      bestaetige("„" + f.name + "“ nehmen? Danach lässt sie sich nicht mehr ändern.", function () {
+        status.textContent = "Speichert …";
+        api("/api/figur", { figur: f.nr }).then(function () {
+          figurDaten = null; erfolg(); return neuLaden();
+        }).catch(function (e) { status.textContent = e.message; figurDaten = null; });
+      });
     });
     return knopf;
   }));

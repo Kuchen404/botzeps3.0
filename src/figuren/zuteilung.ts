@@ -1,70 +1,98 @@
 import type { Db } from "../db/index.js";
+import { bosseDerSeason, type SeasonZeile } from "../db/season-repo.js";
+import { plusTage } from "../scoring/datum.js";
 import { FIGUREN } from "./figuren.js";
 
 export const ANZAHL_FIGUREN = FIGUREN.length;
 
 /**
- * Figur je Mitglied einer Gruppe. Selbst gewählte Figuren bleiben, alle anderen bekommen
- * in Beitrittsreihenfolge (Nutzer-id) die erste noch freie. Sind alle vergeben, wird
- * reihum doppelt vergeben.
+ * Figuren werden nicht verteilt, sondern ausgesucht: Ab dem ersten Spiel, das Figuren
+ * braucht (die erste Boss-Woche), darf sich jeder nach seinem ersten Training dort eine
+ * der noch freien Figuren nehmen. Wer zuerst trainiert, hat die volle Auswahl.
  */
-export function teileFigurenZu(mitglieder: readonly { id: number; figur: number | null }[]): Map<number, number> {
-  const ergebnis = new Map<number, number>();
-  const belegt = new Set<number>();
-  for (const m of mitglieder) {
-    if (m.figur !== null && m.figur >= 0 && m.figur < ANZAHL_FIGUREN) {
-      ergebnis.set(m.id, m.figur);
-      belegt.add(m.figur);
+
+/** Ab wann in einer Gruppe gewählt werden darf: Beginn der frühesten Boss-Woche. */
+function freigabeDerGruppe(db: Db, gruppeId: number): string | null {
+  const seasons = db.prepare("SELECT id, start, wochen FROM season WHERE gruppe = ?").all(gruppeId) as Pick<
+    SeasonZeile,
+    "id" | "start" | "wochen"
+  >[];
+  let frueheste: string | null = null;
+  for (const s of seasons) {
+    for (const b of bosseDerSeason(db, s)) {
+      const ab = plusTage(s.start, b.woche * 7);
+      if (frueheste === null || ab < frueheste) frueheste = ab;
     }
   }
-  const offen = mitglieder.filter((m) => !ergebnis.has(m.id)).sort((a, b) => a.id - b.id);
-  let naechste = 0;
-  for (const m of offen) {
-    while (naechste < ANZAHL_FIGUREN && belegt.has(naechste)) naechste++;
-    const nr = naechste < ANZAHL_FIGUREN ? naechste : m.id % ANZAHL_FIGUREN;
-    ergebnis.set(m.id, nr);
-    belegt.add(nr);
-  }
-  return ergebnis;
+  return frueheste;
 }
 
-export function figurenDerGruppe(db: Db, gruppeId: number): Map<number, number> {
-  const zeilen = db
-    .prepare("SELECT n.id, n.figur FROM gruppe_mitglied m JOIN nutzer n ON n.id = m.nutzer WHERE m.gruppe = ?")
-    .all(gruppeId) as { id: number; figur: number | null }[];
-  return teileFigurenZu(zeilen);
+function gruppenIds(db: Db, nutzerId: number): number[] {
+  return (db.prepare("SELECT gruppe FROM gruppe_mitglied WHERE nutzer = ?").all(nutzerId) as { gruppe: number }[]).map((z) => z.gruppe);
+}
+
+/** Frühester Tag, ab dem ein Training zur Figurwahl berechtigt, oder null, solange es kein Figurenspiel gab. */
+export function figurFreigabe(db: Db, nutzerId: number): string | null {
+  let frueheste: string | null = null;
+  for (const g of gruppenIds(db, nutzerId)) {
+    const ab = freigabeDerGruppe(db, g);
+    if (ab !== null && (frueheste === null || ab < frueheste)) frueheste = ab;
+  }
+  return frueheste;
+}
+
+export function figurVon(db: Db, nutzerId: number): number | null {
+  const z = db.prepare("SELECT figur FROM nutzer WHERE id = ?").get(nutzerId) as { figur: number | null } | undefined;
+  return z?.figur ?? null;
 }
 
 /**
- * Figuren, die andere Mitglieder in einer der Gruppen des Nutzers schon haben
- * (gewählt oder zugeteilt), mit dem Namen der Person.
+ * Noch keine Figur und mindestens ein Training ab der Freigabe.
+ * `ohneTraining` blendet ein Training aus, um zu erkennen, ob genau dieses die Wahl freigeschaltet hat.
  */
+export function darfFigurWaehlen(db: Db, nutzerId: number, ohneTraining?: number): boolean {
+  if (figurVon(db, nutzerId) !== null) return false;
+  const ab = figurFreigabe(db, nutzerId);
+  if (ab === null) return false;
+  return (
+    db
+      .prepare("SELECT 1 FROM training WHERE nutzer = ? AND geloescht_am IS NULL AND datum >= ? AND id != ? LIMIT 1")
+      .get(nutzerId, ab, ohneTraining ?? -1) !== undefined
+  );
+}
+
+/** Gewählte Figuren der Mitglieder einer Gruppe (Nutzer-id → Figur). Wer noch keine hat, fehlt. */
+export function figurenDerGruppe(db: Db, gruppeId: number): Map<number, number> {
+  const zeilen = db
+    .prepare("SELECT n.id, n.figur FROM gruppe_mitglied m JOIN nutzer n ON n.id = m.nutzer WHERE m.gruppe = ? AND n.figur IS NOT NULL")
+    .all(gruppeId) as { id: number; figur: number }[];
+  return new Map(zeilen.map((z) => [z.id, z.figur]));
+}
+
+/** Figuren, die andere Mitglieder in einer der Gruppen des Nutzers schon genommen haben, mit Namen. */
 export function vergebeneFiguren(db: Db, nutzerId: number): Map<number, string> {
-  const gruppen = db.prepare("SELECT gruppe FROM gruppe_mitglied WHERE nutzer = ?").all(nutzerId) as { gruppe: number }[];
   const vergeben = new Map<number, string>();
-  for (const { gruppe } of gruppen) {
+  for (const g of gruppenIds(db, nutzerId)) {
     const zeilen = db
-      .prepare("SELECT n.id, n.name, n.figur FROM gruppe_mitglied m JOIN nutzer n ON n.id = m.nutzer WHERE m.gruppe = ?")
-      .all(gruppe) as { id: number; name: string; figur: number | null }[];
-    // Ohne den Nutzer selbst zuteilen: seine bisherige Figur gilt als frei
-    const andere = zeilen.filter((z) => z.id !== nutzerId);
-    for (const [id, nr] of teileFigurenZu(andere)) {
-      if (!vergeben.has(nr)) vergeben.set(nr, andere.find((z) => z.id === id)!.name);
-    }
+      .prepare(
+        `SELECT n.name, n.figur FROM gruppe_mitglied m JOIN nutzer n ON n.id = m.nutzer
+         WHERE m.gruppe = ? AND n.id != ? AND n.figur IS NOT NULL ORDER BY n.id`,
+      )
+      .all(g, nutzerId) as { name: string; figur: number }[];
+    for (const z of zeilen) if (!vergeben.has(z.figur)) vergeben.set(z.figur, z.name);
   }
   return vergeben;
 }
 
-/** Eigene Figur: gewählt, sonst die Zuteilung in der zuletzt beigetretenen Gruppe. */
-export function eigeneFigur(db: Db, nutzerId: number): { nr: number; gewaehlt: boolean } {
-  const z = db.prepare("SELECT figur FROM nutzer WHERE id = ?").get(nutzerId) as { figur: number | null } | undefined;
-  if (z?.figur !== null && z?.figur !== undefined) return { nr: z.figur, gewaehlt: true };
-  const g = db.prepare("SELECT gruppe FROM gruppe_mitglied WHERE nutzer = ? ORDER BY seit DESC, gruppe DESC LIMIT 1").get(nutzerId) as
-    | { gruppe: number }
-    | undefined;
-  return { nr: g ? (figurenDerGruppe(db, g.gruppe).get(nutzerId) ?? 0) : 0, gewaehlt: false };
-}
+export type Wahlergebnis = "ok" | "schon_gewaehlt" | "noch_nicht" | "vergeben";
 
-export function setzeFigur(db: Db, nutzerId: number, nr: number | null): void {
-  db.prepare("UPDATE nutzer SET figur = ? WHERE id = ?").run(nr, nutzerId);
+/** Figur nehmen. Wer zuerst kommt, mahlt zuerst; gewählt ist gewählt. */
+export function waehleFigur(db: Db, nutzerId: number, nr: number): Wahlergebnis {
+  return db.transaction((): Wahlergebnis => {
+    if (figurVon(db, nutzerId) !== null) return "schon_gewaehlt";
+    if (!darfFigurWaehlen(db, nutzerId)) return "noch_nicht";
+    if (vergebeneFiguren(db, nutzerId).has(nr)) return "vergeben";
+    db.prepare("UPDATE nutzer SET figur = ? WHERE id = ?").run(nr, nutzerId);
+    return "ok";
+  })();
 }

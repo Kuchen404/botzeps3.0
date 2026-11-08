@@ -122,6 +122,7 @@ describe("Mini App", () => {
       tag("2026-10-20");
       await bot.handleUpdate(befehl("/sport 30 Yoga", GRUPPE, PETER));
       await bot.handleUpdate(befehl("/sport 100 Joggen"));
+      expect((await holen("/api/figur", KEVIN, { figur: 3 })).status).toBe(200);
       const boss = (await holen("/api/ich")).json.seasons[0].boss;
       expect(boss).toEqual({
         name: "König Bierbauch",
@@ -136,14 +137,13 @@ describe("Mini App", () => {
         bonus: 5,
         schwaeche: null,
         kaempfer: [
-          { name: "Kevin", schaden: 450, ich: true, figur: 1 },
-          { name: "Peter", schaden: 30, ich: false, figur: 0 },
+          { name: "Kevin", schaden: 450, ich: true, figur: 3 },
+          { name: "Peter", schaden: 30, ich: false, figur: null },
         ],
         drueckeberger: [],
         pennen: [],
         figuren: {
-          0: { bereit: expect.stringContaining("<svg"), schlag: expect.stringContaining("<svg"), jubel: expect.stringContaining("<svg") },
-          1: { bereit: expect.stringContaining("<svg"), schlag: expect.stringContaining("<svg"), jubel: expect.stringContaining("<svg") },
+          3: { bereit: expect.stringContaining("<svg"), schlag: expect.stringContaining("<svg"), jubel: expect.stringContaining("<svg") },
         },
       });
       // Nach der Boss-Woche bleibt er als Ergebnis sichtbar
@@ -154,21 +154,41 @@ describe("Mini App", () => {
     }
   });
 
-  it("/api/figur: eigene Figur wählen, vergebene sind gesperrt", async () => {
-    const { server, holen } = await aufbau();
+  it("/api/figur: wer in der ersten Boss-Woche zuerst trainiert, wählt zuerst", async () => {
+    const { server, holen, bot, db, letzterText } = await aufbau();
     try {
+      // Noch kein Spiel mit Figuren: keine Wahl
+      expect((await holen("/api/figuren")).json).toMatchObject({ meine: null, darfWaehlen: false, freiAb: null });
+      kuendigeBossAn(db, 1, 1, "König Bierbauch", 650);
+      tag("2026-10-20");
       const vorher = (await holen("/api/figuren")).json;
-      expect(vorher).toMatchObject({ meine: 1, gewaehlt: false });
+      expect(vorher).toMatchObject({ meine: null, darfWaehlen: false, freiAb: "2026-10-19" });
       expect(vorher.figuren).toHaveLength(12);
-      expect(vorher.figuren[0]).toMatchObject({ nr: 0, vergeben: "Peter", bild: expect.stringContaining("<svg") });
-      expect(vorher.figuren[1].vergeben).toBeNull();
-      expect((await holen("/api/figur", KEVIN, { figur: 0 })).status).toBe(409);
+      expect(vorher.figuren[0]).toMatchObject({ nr: 0, vergeben: null, bild: expect.stringContaining("<svg") });
+      expect((await holen("/api/figur", KEVIN, { figur: 0 })).status).toBe(403);
+
+      // Erstes Training in der Boss-Woche schaltet frei und kündigt es im Post an
+      await bot.handleUpdate(befehl("/sport 30 Joggen"));
+      expect(letzterText()).toContain("Kämpferfigur");
+      expect((await holen("/api/ich")).json.figurWaehlen).toBe(true);
+      await bot.handleUpdate(befehl("/sport 20 Joggen"));
+      expect(letzterText()).not.toContain("Kämpferfigur");
+
       expect((await holen("/api/figur", KEVIN, { figur: 12 })).status).toBe(400);
-      expect((await holen("/api/figur", KEVIN, { figur: 10 })).status).toBe(200);
-      expect((await holen("/api/figuren")).json).toMatchObject({ meine: 10, gewaehlt: true });
+      expect((await holen("/api/figur", KEVIN, { figur: 0 })).status).toBe(200);
+      expect((await holen("/api/figuren")).json).toMatchObject({ meine: 0, darfWaehlen: false });
+      expect((await holen("/api/ich")).json.figurWaehlen).toBe(false);
+      // Gewählt ist gewählt
+      expect((await holen("/api/figur", KEVIN, { figur: 1 })).status).toBe(409);
+
+      // Peter kommt später und bekommt, was übrig ist
+      expect((await holen("/api/figur", PETER, { figur: 5 })).status).toBe(403);
+      await bot.handleUpdate(befehl("/sport 30 Yoga", GRUPPE, PETER));
       const peter = (await holen("/api/figuren", PETER)).json;
-      expect(peter).toMatchObject({ meine: 0, gewaehlt: false });
-      expect(peter.figuren[10].vergeben).toBe("Kevin");
+      expect(peter).toMatchObject({ meine: null, darfWaehlen: true });
+      expect(peter.figuren[0].vergeben).toBe("Kevin");
+      expect((await holen("/api/figur", PETER, { figur: 0 })).status).toBe(409);
+      expect((await holen("/api/figur", PETER, { figur: 5 })).status).toBe(200);
     } finally {
       server.close();
     }

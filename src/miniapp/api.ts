@@ -25,7 +25,7 @@ import { laternen } from "../db/laterne-repo.js";
 import { aktuelleMarken, minispielFuerApp } from "../minispiel/ablauf.js";
 import type { MiniAppNutzer } from "./auth.js";
 import { FIGUREN, type Pose, figurSvg } from "../figuren/figuren.js";
-import { ANZAHL_FIGUREN, eigeneFigur, figurenDerGruppe, setzeFigur, vergebeneFiguren } from "../figuren/zuteilung.js";
+import { ANZAHL_FIGUREN, darfFigurWaehlen, figurFreigabe, figurVon, figurenDerGruppe, vergebeneFiguren, waehleFigur } from "../figuren/zuteilung.js";
 
 /**
  * JSON-API der Mini App. Jeder Aufruf gilt nur für den angemeldeten Nutzer selbst:
@@ -185,6 +185,8 @@ function ich(db: Db, nutzerId: number, telegramId: number) {
     seasons,
     messungen,
     einstellungen: { erinnerungen: n.erinnerungen === 1, uhrzeit: n.erinnerung_uhrzeit },
+    // Darf sich jetzt eine Kämpferfigur aussuchen: Hinweis oben im Stand
+    figurWaehlen: darfFigurWaehlen(db, nutzerId),
   };
 }
 
@@ -379,12 +381,12 @@ export async function bearbeiteApi(db: Db, a: Anfrage, gruppenpost: Gruppenpost,
   }
   if (a.methode === "GET" && a.pfad === "/api/figuren") {
     const vergeben = vergebeneFiguren(db, nutzer.id);
-    const meine = eigeneFigur(db, nutzer.id);
     return {
       status: 200,
       json: {
-        meine: meine.nr,
-        gewaehlt: meine.gewaehlt,
+        meine: figurVon(db, nutzer.id),
+        darfWaehlen: darfFigurWaehlen(db, nutzer.id),
+        freiAb: figurFreigabe(db, nutzer.id),
         figuren: FIGUREN.map((f, nr) => ({ nr, name: f.name, bild: figurSvg(f, "bereit", { id: `w${nr}` }), vergeben: vergeben.get(nr) ?? null })),
       },
     };
@@ -392,10 +394,16 @@ export async function bearbeiteApi(db: Db, a: Anfrage, gruppenpost: Gruppenpost,
   if (a.methode === "POST" && a.pfad === "/api/figur") {
     const b = FigurSchema.safeParse(a.body);
     if (!b.success) return fehler(400, "Ungültige Figur");
-    const besitzer = vergebeneFiguren(db, nutzer.id).get(b.data.figur);
-    if (besitzer) return fehler(409, `Die Figur hat schon ${besitzer}.`);
-    setzeFigur(db, nutzer.id, b.data.figur);
-    return { status: 200, json: { ok: true } };
+    switch (waehleFigur(db, nutzer.id, b.data.figur)) {
+      case "ok":
+        return { status: 200, json: { ok: true } };
+      case "schon_gewaehlt":
+        return fehler(409, "Du hast deine Figur schon. Gewählt ist gewählt.");
+      case "noch_nicht":
+        return fehler(403, "Erst ab der ersten Boss-Woche: Trag ein Training ein, dann darfst du dir eine Figur aussuchen.");
+      case "vergeben":
+        return fehler(409, `Die Figur hat schon ${vergebeneFiguren(db, nutzer.id).get(b.data.figur)}. Zu langsam!`);
+    }
   }
   return fehler(404, "Gibt's nicht");
 }
