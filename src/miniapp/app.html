@@ -189,6 +189,7 @@
   @keyframes aufsteigen { from { opacity: 1; transform: translate(-50%, 0); } to { opacity: 0; transform: translate(-50%, -46px); } }
   @keyframes stempeln { from { transform: translate(-50%, -50%) rotate(-12deg) scale(2.2); opacity: 0; } to { transform: translate(-50%, -50%) rotate(-12deg) scale(1); opacity: 1; } }
   @media (prefers-reduced-motion: reduce) { .bossbild, .stufe2 .bossbild, .stempel, .zahl, .trefferfunken, .figur > .bz-spieler-illustriert { animation: none !important; } .bossplatz.tot .bossbild, .lp > .rest { transition: none; } }
+  /* {{MINISPIEL_STILE}} */
 </style>
 </head>
 <body>
@@ -611,23 +612,24 @@ function bombenSzene(b) {
   return szene;
 }
 
-/** Nur die sichtbare Bombenkarte nachladen; spätere Trainingsantworten haben Vorrang. */
+/** Nur die sichtbare Minispielkarte nachladen; spätere Trainingsantworten haben Vorrang. */
 var bombenLaden = false;
 function aktualisiereBombe(knopf) {
   var s = daten && daten.seasons[seasonIndex];
-  if (!knopf && document.querySelector('.bomben-szene[data-rueckblick="true"]')) return;
-  if (bombenLaden || !s || tab !== "stand" || !s.minispiel || !s.minispiel.bombe) return;
+  if (!knopf && document.querySelector('[data-rueckblick="true"]')) return;
+  if (bombenLaden || !s || tab !== "stand" || !s.minispiel || !(s.minispiel.bombe || s.minispiel.animation)) return;
   var alt = daten, index = seasonIndex;
   bombenLaden = true;
   if (knopf) { knopf.disabled = true; knopf.textContent = "Lädt …"; }
-  var bombenId = s.minispiel.bombe.id;
+  var spielId = (s.minispiel.bombe || s.minispiel.animation).id;
   return api("/api/ich").then(function (j) {
     if (daten !== alt || seasonIndex !== index || tab !== "stand") return;
     daten = j;
     // Nur die Minispielkarte austauschen, damit Scrollposition und der Rest des Tabs bleiben.
     var neu = j.seasons[index];
     var alteKarte = document.querySelector(".minispiel-karte");
-    if (alteKarte && neu && neu.minispiel && neu.minispiel.bombe && neu.minispiel.bombe.id === bombenId) alteKarte.replaceWith(minispielKarte(neu.minispiel));
+    var neueSzene = neu && neu.minispiel && (neu.minispiel.bombe || neu.minispiel.animation);
+    if (alteKarte && neueSzene && neueSzene.id === spielId) alteKarte.replaceWith(minispielKarte(neu.minispiel));
     else zeichne(); // Woche oder Season gewechselt: dann doch alles neu
   }).catch(function () {
     if (knopf && knopf.isConnected) knopf.textContent = "Verbindung fehlgeschlagen – nochmal versuchen";
@@ -635,13 +637,17 @@ function aktualisiereBombe(knopf) {
 }
 setInterval(function () { if (!document.hidden) aktualisiereBombe(); }, 30000);
 
+/* {{MINISPIEL_SKRIPTE}} */
+
 /** Minispiel der laufenden Woche: Regel, Stand und je nach Spiel Berg, Seil oder Code. */
 function minispielKarte(m) {
   var kinder = [el("p", { class: "hint regel", text: m.regel })];
-  if (m.status && !m.bombe) kinder.push(el("div", { class: "spielstatus", text: m.status }));
+  var szene = m.animation && window.MINISPIEL_SZENEN && window.MINISPIEL_SZENEN[m.art] ? window.MINISPIEL_SZENEN[m.art](m.animation) : null;
+  if (szene) kinder.push(szene);
+  if (m.status && !m.bombe && !szene) kinder.push(el("div", { class: "spielstatus", text: m.status }));
   if (m.bombe) kinder.push(bombenSzene(m.bombe));
-  if (m.gipfel) kinder.push(berg(m.gipfel));
-  if (m.seil) {
+  if (m.gipfel && !szene) kinder.push(berg(m.gipfel));
+  if (m.seil && !szene) {
     var links = 50 - m.seil.zug * 50;
     kinder.push(el("div", { class: "seil" }, [el("div", { class: "knoten", style: "left:" + links + "%" })]));
     kinder.push(el("div", { class: "seilteams" }, [
@@ -649,7 +655,7 @@ function minispielKarte(m) {
       el("span", { text: m.seil.rechts + " (" + zahl(m.seil.schnitt[1], 0) + ")" })
     ]));
   }
-  if (m.code) kinder.push(el("div", { class: "code", text: m.code }));
+  if (m.code && !szene) kinder.push(el("div", { class: "code", text: m.code }));
   m.liste.forEach(function (x) { kinder.push(zeile(x.name, x.text, x.ich ? "ich" : "")); });
   var k = karte(m.emoji + " " + m.name + " · Woche " + m.woche, kinder);
   k.classList.add("minispiel-karte");

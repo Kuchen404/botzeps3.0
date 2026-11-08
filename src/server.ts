@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { gzipSync } from "node:zlib";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { webhookCallback, type Bot } from "grammy";
@@ -12,7 +12,12 @@ import { FIGUREN_MEDIEN_PFAD, figurMedium } from "./figuren/arcade.js";
 export const WEBHOOK_PFAD = "/telegram";
 export const MINIAPP_PFAD = "/app";
 
-const SEITE = readFileSync(new URL("./miniapp/app.html", import.meta.url), "utf8");
+const SPIELE = new URL("./miniapp/spiele/", import.meta.url);
+const dateien = readdirSync(SPIELE).sort();
+const skripte = ["runtime.js", ...dateien.filter((f) => f.endsWith(".js") && f !== "runtime.js")];
+const SEITE = readFileSync(new URL("./miniapp/app.html", import.meta.url), "utf8")
+  .replace("/* {{MINISPIEL_STILE}} */", () => dateien.filter((f) => f.endsWith(".css")).map((f) => readFileSync(new URL(f, SPIELE), "utf8")).join("\n"))
+  .replace("/* {{MINISPIEL_SKRIPTE}} */", () => skripte.map((f) => readFileSync(new URL(f, SPIELE), "utf8")).join("\n"));
 const MAX_BODY = 16 * 1024;
 
 export interface MiniAppOptionen {

@@ -22,6 +22,7 @@ import { erfolgeDesNutzers, lebenslangeLast, ruhmeshalle } from "../db/erfolg-re
 import { ERFOLGE, ERFOLG_ARTEN } from "../scoring/erfolge.js";
 import { RAENGE, naechsterRang, rangFuer } from "../scoring/raenge.js";
 import { laternen } from "../db/laterne-repo.js";
+import { animationFuerApp } from "../minispiel/animation.js";
 import { aktuelleMarken, minispielFuerApp } from "../minispiel/ablauf.js";
 import type { MiniAppNutzer } from "./auth.js";
 import { FIGUREN, type Pose, figurSvg } from "../figuren/figuren.js";
@@ -116,7 +117,20 @@ function bossJson(
 /** Dieselben gewählten Season-Figuren wie beim Boss, nur die benötigten Posen. */
 function minispielJson(db: Db, s: Parameters<typeof minispielFuerApp>[1], tag: string, ich: string) {
   const m = minispielFuerApp(db, s, tag, ich);
-  if (!m || !("bombe" in m)) return m;
+  if (!m) return m;
+  if (!("bombe" in m)) {
+    const a = animationFuerApp(db, s, tag, ich);
+    if (!a) return m;
+    const vergeben = figurenDerSeason(db, s.id);
+    const figuren: Record<number, Partial<Record<Pose, string>>> = {};
+    const spieler = a.spieler.map((sp) => {
+      const figur = vergeben.get(Number(sp.id)) ?? null;
+      if (figur !== null) figuren[figur] ??= Object.fromEntries((["bereit", "schlag", "jubel", "ko", "ziehen", "klettern"] as const).map((pose) =>
+        [pose, figurSvg(FIGUREN[figur]!, pose, { id: `ms${a.art}${figur}${pose}` })]));
+      return { ...sp, figur };
+    });
+    return { ...m, animation: { ...a, spieler, figuren } };
+  }
   const vergeben = figurenDerSeason(db, s.id);
   const figuren: Record<number, Partial<Record<Pose, string>>> = {};
   const spieler = m.bombe.spieler.map((sp) => {
