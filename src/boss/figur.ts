@@ -1,4 +1,5 @@
 import type { BossStufe } from "../scoring/boss.js";
+import { ARCADE_BEWEGUNG, hatArcadeBild, arcadeZeichnung } from "./arcade.js";
 
 /**
  * Gezeichnete Bosse als SVG im Cartoon-Stil: geschwungene Formen mit Schatten unten rechts,
@@ -1727,6 +1728,8 @@ let zaehler = 0;
 export function bossZeichnung(name: string, stufe: BossStufe): string {
   const f = figurVon(name);
   const id = `b${++zaehler}`;
+  const neu = arcadeZeichnung(name, stufe, id);
+  if (neu) return neu;
   const st = new Stift(id);
   const [lx, ly, rx, ry] = f.schulter;
   if (stufe === 1) {
@@ -1756,5 +1759,6 @@ export function bossZeichnung(name: string, stufe: BossStufe): string {
 
 /** Fertiges SVG in beliebiger Größe. */
 export function bossSvg(name: string, stufe: BossStufe, groesse = 240): string {
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-30 -20 300 280" width="${groesse}" height="${groesse}">${bossZeichnung(name, stufe)}</svg>`;
+  const animiert = hatArcadeBild(name);
+  return `<svg xmlns="http://www.w3.org/2000/svg"${animiert ? ` class="boss-illustriert${stufe === 2 ? ' aufgepumpt' : ''}"` : ""} viewBox="-30 -20 300 280" width="${groesse}" height="${groesse}">${animiert ? `<style>${ARCADE_BEWEGUNG}</style>` : ""}${bossZeichnung(name, stufe)}</svg>`;
 }

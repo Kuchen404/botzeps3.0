@@ -1,0 +1,16 @@
+import {readFileSync, writeFileSync} from 'node:fs';
+import {bossSvg} from '../dist/boss/figur.js';
+import {BOSS_NAMEN} from '../dist/scoring/boss.js';
+const app=readFileSync(new URL('../src/miniapp/app.html',import.meta.url),'utf8');
+const css=app.slice(app.indexOf('<style>')+7,app.indexOf('</style>'));
+const helpers=app.slice(app.indexOf('function el('),app.indexOf('function zeile('));
+const fight=app.slice(app.indexOf('var bossGezeigt'),app.indexOf('/** Mount Botzeps'));
+const drawings=BOSS_NAMEN.map(name=>[bossSvg(name,1),bossSvg(name,2)]);
+const html=`<!doctype html><html lang="de"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Botzeps · Arcade-Bosse</title><style>${css}
+body{max-width:480px;margin:auto;padding:16px;background:#101522;color:#f4eef7;--bg:#101522;--bg2:#20283b;--text:#f4eef7;--hint:#b8adc8;--button:#9465d0;--button-text:white;--link:#c7a6ef}label{display:block;margin:10px 0}select,button{font:inherit;padding:10px;max-width:100%;min-height:44px}h1{font-size:24px}.controls{margin-bottom:16px}.note{font-size:12px;color:#b8adc8}
+</style><h1>Botzeps · Arcade-Bosse</h1><p class="note">Lokale Vorschau mit Beispieldaten und der Kampflogik der Mini-App.</p><div class="controls"><label>Boss <select id="boss">${BOSS_NAMEN.map((name,i)=>`<option value="${i}">${name}</option>`).join('')}</select></label><label>Form <select id="stage"><option value="1">Stufe 1 · gemütlich</option><option value="2" selected>Stufe 2 · aufgepumpt</option></select></label><label><input type="checkbox" id="won"> Sieg zeigen</label></div><div id="demo"></div><script>${helpers}\n${fight}
+const names=${JSON.stringify(BOSS_NAMEN)}, drawings=${JSON.stringify(drawings)};
+function render(){const i=Number(document.getElementById('boss').value),stufe=Number(document.getElementById('stage').value),won=document.getElementById('won').checked;bossGezeigt={};document.getElementById('demo').replaceChildren(bossKarte({name:names[i],stufe,woche:4,bild:drawings[i][stufe-1],lebenspunkte:2400,schaden:won?2600:1380,besiegt:won,aktiv:true,bonus:stufe===2?10:5,schwaeche:'Joggen',drueckeberger:[],kaempfer:[{name:'Alex',schaden:won?1400:680,ich:true},{name:'Sam',schaden:450},{name:'Kim',schaden:won?750:250}]}));}
+['boss','stage','won'].forEach(id=>document.getElementById(id).addEventListener('change',render));render();</script></html>`;
+new Function(html.match(/<script>([\s\S]*)<\/script>/)[1]);
+const target=process.argv[2] || 'boss-vorschau.html';writeFileSync(target,html);console.log(target);
