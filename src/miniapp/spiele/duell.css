@@ -1,0 +1,55 @@
+.duell-szene { --duell-ink:#241c3b; --duell-paper:#fff5df; --duell-red:#ff7970; --duell-blue:#6ddbd9; display:grid; gap:14px; padding:12px; }
+.duell-szene * { box-sizing:border-box; }
+.duell-regel { margin:0; color:var(--hint,#9aa5b5); font-size:12px; line-height:1.55; }
+.duell-paar { position:relative; overflow:hidden; border:2px solid var(--duell-ink); border-radius:20px; background:#24243d; color:var(--duell-paper); box-shadow:0 5px 0 rgba(12,10,25,.3); isolation:isolate; }
+.duell-kopf { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:12px 14px 8px; }
+.duell-nummer { font-size:10px; text-transform:uppercase; font-weight:850; letter-spacing:1.5px; color:#cfbfdc; }
+.duell-live { padding:4px 8px; border:1px solid #71607c; border-radius:20px; color:#e6deef; font-size:10px; font-weight:700; }
+.duell-live::before { content:""; display:inline-block; width:6px; height:6px; margin-right:5px; border-radius:50%; background:#baf0a1; }
+.duell-stand { display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); gap:5px; align-items:start; padding:0 12px; text-align:center; position:relative; z-index:3; }
+.duell-name { display:block; font-size:13px; line-height:1.3; font-weight:800; overflow-wrap:anywhere; }
+.duell-ich { display:inline-block; padding:1px 4px; margin-left:3px; border-radius:4px; font-size:9px; background:#fff0b3; color:#352544; vertical-align:middle; }
+.duell-last { display:block; font-variant-numeric:tabular-nums; font-size:25px; line-height:1.3; font-weight:900; color:var(--duell-red); }
+.duell-rechts .duell-last { color:var(--duell-blue); }
+.duell-einheit { font-size:9px; font-weight:650; letter-spacing:.5px; color:#bdb0cc; }
+.duell-vs { padding-top:13px; font-size:11px; font-style:italic; font-weight:900; color:#b4a5c2; }
+.duell-ring { position:relative; height:227px; margin-top:-2px; overflow:hidden; background:radial-gradient(ellipse at 50% 95%,#69648955,transparent 62%),repeating-linear-gradient(0deg,transparent 0 19px,#ffffff03 20px 21px); }
+.duell-ring::before,.duell-ring::after { content:""; position:absolute; top:-40px; height:255px; width:120px; background:linear-gradient(#fff5bd25,#fff5bd00); clip-path:polygon(40% 0,60% 0,100% 100%,0 100%); pointer-events:none; opacity:.2; transition:opacity .3s; }
+.duell-ring::before { left:7%; transform:rotate(-13deg); }
+.duell-ring::after { right:7%; transform:rotate(13deg); }
+.duell-paar[data-vorne="links"] .duell-ring::before,.duell-paar[data-vorne="rechts"] .duell-ring::after { opacity:1; }
+.duell-boden { position:absolute; bottom:12px; left:4%; width:92%; height:70px; background:#75628f; border:3px solid var(--duell-ink); border-radius:50% 50% 18px 18px / 25% 25% 18px 18px; box-shadow:inset 0 8px #a08eb2,inset 0 -8px #59416e,0 7px 0 #161225; }
+.duell-boden::after { content:""; position:absolute; width:60px; height:20px; left:calc(50% - 30px); top:17px; border:2px dashed #e5d8ef60; border-radius:50%; }
+.duell-seile { position:absolute; left:7%; right:7%; bottom:61px; height:73px; border-left:8px solid #e3c2b4; border-right:8px solid #b2ccdb; border-radius:5px; transform:perspective(300px) rotateX(-4deg); }
+.duell-seile::before,.duell-seile::after { content:""; position:absolute; left:-5px; right:-5px; height:4px; border:1px solid #241c3b; border-radius:4px; background:#b7a8ca; }
+.duell-seile::before { top:10px; box-shadow:0 23px 0 #aca0c0; }
+.duell-seile::after { bottom:1px; }
+.duell-athlet { position:absolute; bottom:39px; width:39%; max-width:160px; height:165px; z-index:2; transform-origin:50% 94%; }
+.duell-athlet-links { left:10%; --duell-richtung:1; }
+.duell-athlet-rechts { right:10%; --duell-richtung:-1; }
+.duell-athlet::before { content:""; position:absolute; bottom:-3px; left:22%; width:58%; height:10px; border-radius:50%; background:#241c3b66; filter:blur(2px); }
+.duell-avatar { position:relative; height:100%; width:100%; transform-origin:50% 92%; }
+.duell-avatar > svg,.duell-avatar > img,.duell-avatar > div { height:100%; width:100%; object-fit:contain; }
+.duell-athlet-rechts .duell-avatar { transform:scaleX(-1); }
+.duell-avatar svg text { fill:currentColor; }
+.duell-ersatz { display:grid; place-items:center; width:84px!important; height:94px!important; position:absolute; bottom:0; left:calc(50% - 42px); border:3px solid var(--duell-ink); border-radius:42px 42px 22px 22px; background:var(--duell-red); box-shadow:inset -8px -8px #0002,0 5px 0 var(--duell-ink); font-size:26px; font-weight:900; color:var(--duell-ink); }
+.duell-athlet-rechts .duell-ersatz { transform:scaleX(-1); background:var(--duell-blue); }
+.duell-ersatz::before,.duell-ersatz::after { content:""; position:absolute; width:27px; height:32px; top:32px; border:3px solid var(--duell-ink); border-radius:11px; background:#fff1bd; }
+.duell-ersatz::before { left:-18px; transform:rotate(-16deg); }
+.duell-ersatz::after { right:-18px; transform:rotate(16deg); }
+.duell-bot { overflow:visible; }
+.duell-vorsprung { position:relative; z-index:3; margin:0 12px 11px; min-height:31px; display:flex; align-items:center; justify-content:center; gap:5px; padding:7px 9px; border-radius:9px; background:#161326; color:#e4d8ef; text-align:center; font-size:11px; line-height:1.4; }
+.duell-bot-hinweis { display:block; padding:0 14px 12px; margin-top:-4px; color:#baaaca; font-size:10px; line-height:1.5; text-align:center; }
+.duell-puls { position:absolute; top:57px; left:calc(50% - 23px); width:46px; height:46px; z-index:4; display:grid; place-items:center; border:3px solid var(--duell-ink); border-radius:16px; background:#fff0b3; color:var(--duell-ink); font-size:21px; font-weight:900; opacity:0; transform:scale(.4) rotate(-9deg); pointer-events:none; }
+.duell-paar.duell-wechsel { animation:duell-wechsel .85s ease-out; }
+.duell-paar.duell-wechsel .duell-puls { animation:duell-puls .85s ease-out; }
+.duell-athlet.duell-angriff { animation:duell-antippen .7s ease-in-out; }
+.duell-athlet.duell-reaktion { animation:duell-abfedern .7s ease-in-out; }
+.duell-leer { padding:24px 12px; border:1px dashed #77638c; border-radius:16px; text-align:center; color:var(--hint,#a9a0b7); }
+@keyframes duell-antippen { 0%,100%{ transform:translateX(0) rotate(0); } 30%{ transform:translateX(calc(17px * var(--duell-richtung))) rotate(calc(5deg * var(--duell-richtung))); } 65%{ transform:translateX(calc(4px * var(--duell-richtung))) rotate(calc(-2deg * var(--duell-richtung))); } }
+@keyframes duell-abfedern { 0%,100%{ transform:translateX(0) rotate(0); } 39%{ transform:translateX(calc(-7px * var(--duell-richtung))) rotate(calc(-5deg * var(--duell-richtung))); } }
+@keyframes duell-puls { 0%,100%{ opacity:0; transform:scale(.4) rotate(-9deg); } 24%,72%{ opacity:1; transform:scale(1) rotate(-9deg); } }
+@keyframes duell-wechsel { 25%{ box-shadow:0 0 0 3px #ffe49c,0 0 28px #ffe49c44; } }
+@media(min-width:620px) { .duell-szene { grid-template-columns:repeat(2,minmax(0,1fr)); } .duell-regel,.duell-leer { grid-column:1/-1; } }
+@media(max-width:350px) { .duell-ring { height:207px; } .duell-athlet { height:148px; } .duell-name { font-size:12px; } .duell-last { font-size:23px; } }
+@media(prefers-reduced-motion:reduce) { .duell-szene *, .duell-szene *::before, .duell-szene *::after { animation:none!important; transition:none!important; } }
