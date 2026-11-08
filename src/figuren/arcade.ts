@@ -2,7 +2,8 @@ import { readFileSync } from "node:fs";
 import { ATLAS_DATEIEN } from "./atlanten.js";
 import type { Pose } from "./figuren.js";
 
-export const FIGUREN_MEDIEN_PFAD = "/app/figuren/";
+// Unter /api/, weil der Reverse-Proxy auf dem Server nur /app selbst und /api/ an die App weiterreicht
+export const FIGUREN_MEDIEN_PFAD = "/api/figurbild/";
 const POSEN: readonly Pose[] = ["bereit", "schlag", "jubel", "ko", "ziehen", "klettern"];
 const cache = new Map<string, Buffer>();
 
