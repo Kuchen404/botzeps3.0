@@ -1,0 +1,36 @@
+/* Eine Bühne für den Boss, davor die tatsächlichen Spielerfiguren. */
+.boss-arcade { padding: 14px 8px 12px; isolation: isolate; }
+.boss-arcade .boss-kamera { position: relative; transform-origin: 50% 55%; }
+.boss-arcade .boss-buehne { height: 302px; display: block; overflow: visible; }
+.boss-arcade .boss-buehne::before { content: ""; position: absolute; left: 7%; right: 7%; bottom: 10px; height: 90px; border-radius: 50%; background: radial-gradient(ellipse, #c9bddc25, #11142266 65%, transparent 70%); border-bottom: 1px solid #aebde43b; }
+.boss-arcade .bossbild { position: absolute; top: 8px; left: 50%; margin-left: -112px; width: 224px; height: 218px; display: flex; align-items: center; justify-content: center; transform-origin: 50% 95%; }
+.boss-arcade .bossbild > svg, .boss-arcade.stufe2 .bossbild > svg { width: 224px; height: 218px; max-width: 100%; }
+.boss-arcade .bossplatz.tot .bossbild { transform: translateY(35px) rotate(15deg) scale(.94,.55); opacity: .4; filter: grayscale(.7); transition: none; }
+.boss-arcade .boss-buehne .stempel { top: 42%; z-index: 5; font-size: clamp(21px,6vw,29px); background: #14212ad9; white-space: nowrap; }
+.boss-arcade .lp { height: 20px; border: 1px solid #ffffff24; box-shadow: 0 3px 12px #0004; z-index: 6; }
+.boss-arcade .lp > .text { line-height: 18px; }
+.boss-arcade .lp > .rest { z-index: 1; transition: width .22s ease-out; }
+.boss-lp-spur { position: absolute; inset: 0 auto 0 0; height: 100%; background: #ffe3a4; transition: width .65s ease-out .22s; }
+.boss-lp-sofort .lp > .rest, .boss-lp-sofort .boss-lp-spur { transition: none; }
+.boss-kampf-status { min-height: 26px; padding: 2px 5px 8px; text-align: center; color: #f8dfae; font-size: 12px; font-weight: 700; }
+.boss-steuerung { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.boss-steuerung .knopf { min-height: 38px; }
+.boss-angreifer { position: absolute; z-index: 4; width: 86px; height: 128px; transform-origin: 50% 100%; pointer-events: none; filter: drop-shadow(0 7px 5px #0006); }
+.boss-angreifer .figur { width: 86px; height: 128px; margin: 0; }
+.boss-angreifer .figur > svg { width: 86px; height: 128px; }
+.boss-angreifer .figur::before { width: 64px; }
+.boss-angreifer .avatar { width: 64px; height: 64px; margin: 45px auto 0; font-size: 23px; border-width: 3px; }
+.boss-angreifer-ich .figur::before { background: radial-gradient(ellipse, #ffcf55a8, transparent 70%); }
+.boss-angreifer .figur > .bz-spieler-illustriert { animation: none; }
+.boss-hitstop .bz-figure, .boss-hitstop .bz-figure *, .boss-hitstop .bz-spieler-illustriert, .boss-hitstop .trefferfunken, .boss-hitstop .boss-ring, .boss-hitstop .zahl { animation-play-state: paused !important; }
+.boss-arcade .trefferfunken { left: 55%; top: 49%; width: 84px; height: 84px; z-index: 5; background: #ffe6a2; filter: drop-shadow(0 0 10px #ffbe40); }
+.boss-ring { position: absolute; top: 49%; left: 55%; z-index: 4; width: 90px; height: 90px; border: 4px solid #ffdf8c; border-radius: 50%; animation: boss-ring .38s ease-out forwards; pointer-events: none; }
+.boss-arcade .zahl { left: 59%; top: 34%; z-index: 6; font-size: 29px; text-shadow: 0 2px #19202c, 2px 0 #19202c, 0 -2px #19202c, -2px 0 #19202c; }
+.boss-ko { position: absolute; top: 35%; left: 14%; right: 14%; z-index: 7; text-align: center; color: #ffdb6f; font-size: 68px; font-weight: 950; letter-spacing: -.08em; line-height: 1; text-shadow: 3px 4px #251727, -2px -2px #251727, 0 0 30px #ffb72f80; }
+.boss-staub { position: absolute; bottom: 53px; left: 15%; width: 70%; height: 55px; border-radius: 50%; background: radial-gradient(ellipse at 25% 60%, #dacdb1 0 20%, transparent 24%), radial-gradient(ellipse at 50% 45%, #dacdb1 0 32%, transparent 36%), radial-gradient(ellipse at 77% 65%, #dacdb1 0 23%, transparent 27%); z-index: 3; }
+.boss-belohnung { padding: 10px 12px; border: 1px solid #a67c22; border-radius: 10px; background: #ffc54c16; font-weight: 700; }
+.boss-team-jubel { animation: boss-team-jubel .46s ease-out 2; }
+@keyframes boss-ring { from { transform: translate(-50%,-50%) scale(.25); opacity: .9; } to { transform: translate(-50%,-50%) scale(1.65); opacity: 0; } }
+@keyframes boss-team-jubel { 50% { transform: translateY(-7px); } }
+@media (max-width: 350px) { .boss-arcade .boss-buehne { height: 285px; } .boss-arcade .bossbild { width: 206px; height: 208px; margin-left: -103px; } .boss-arcade .bossbild > svg, .boss-arcade.stufe2 .bossbild > svg { width: 206px; height: 208px; } }
+@media (prefers-reduced-motion: reduce) { .boss-arcade *, .boss-arcade *::before { animation: none !important; transition: none !important; } .boss-arcade .bossbild { animation: none !important; } }
