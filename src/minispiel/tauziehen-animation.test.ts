@@ -58,32 +58,31 @@ describe("Tauziehen-Szene", () => {
     // Links 120 insgesamt, rechts 90: Nur die Durchschnitte 60:90 dürfen entscheiden.
     config.zeichne(stand, meta);
     expect(root.attributes.get("data-zug")).toBe("-0.2");
-    expect(parseFloat(root.find("tz-rope")[0]!.properties.get("--tz-shift")!)).toBeCloseTo(2.8);
+    expect(parseFloat(root.find("tz-rope")[0]!.properties.get("--tz-shift")!)).toBeCloseTo(7.2);
     expect(config.beschreibe(stand, meta)).toContain("Team Pizza zieht");
     expect(root.find("tz-average").map((e) => e.textContent)).toEqual(["60", "90"]);
     expect(posen).toHaveLength(3);
     expect(posen.every((p) => p.pose === "ziehen")).toBe(true);
   });
 
-  it("zeigt während der Woche selbst bei extremem Vorsprung keine Schlamm-Niederlage", () => {
-    const { config, stand, meta, root } = szene();
+  it("zeigt selbst bei extremem Vorsprung keine Schlamm-Niederlage und begrenzt den Seilweg", () => {
+    const { config, stand, meta, root, posen } = szene(true);
     stand.schnitt = [1000, 0];
     config.zeichne(stand, meta);
     expect(root.attributes.has("data-ergebnis")).toBe(false);
     expect(config.beschreibe(stand, meta)).toContain("noch alles offen");
-    expect(root.find("tz-rope")[0]!.properties.get("--tz-shift")).toBe("-14%");
+    expect(config.beschreibe(stand, meta)).not.toContain("gewinnt");
+    expect(posen.every((p) => p.pose === "ziehen")).toBe(true);
+    expect(root.find("tz-rope")[0]!.properties.get("--tz-shift")).toBe("-16.0%");
   });
 
-  it("zeigt nur die letzte Station eines ausdrücklich abgeschlossenen Spiels als Ergebnis", () => {
-    const { config, stand, meta, root, posen } = szene(true);
-    config.zeichne(stand, { ...meta, index: 0 });
-    expect(root.attributes.has("data-ergebnis")).toBe(false);
+  it("lässt auch einen knappen Vorsprung sichtbar am Seil ziehen", () => {
+    const { config, stand, meta, root } = szene();
+    stand.schnitt = [80, 90];
     config.zeichne(stand, meta);
-    expect(root.attributes.get("data-ergebnis")).toBe("rechts");
-    expect(posen.slice(-3).map((p) => p.pose)).toEqual(["ko", "ko", "jubel"]);
-    expect(config.beschreibe(stand, meta)).toContain("Team Pizza gewinnt");
-    config.zeichne(stand, { ...meta, index: 0 });
-    expect(root.attributes.has("data-ergebnis")).toBe(false);
+    // Zug ≈ -0,06 – linear wären das unter 1 %, so sind es gut 3 %.
+    expect(parseFloat(root.find("tz-rope")[0]!.properties.get("--tz-shift")!)).toBeGreaterThan(3);
+    expect(root.find("tz-rope")[0]!.properties.get("--tz-shift")).not.toContain(",");
   });
 
   it.each([[0, 0], [42, 42]])("hält Gleichstand und fehlende Last neutral: %s:%s", (links, rechts) => {
@@ -107,7 +106,7 @@ describe("Tauziehen-Szene", () => {
     expect(root.className).not.toContain("tz-tug");
   });
 
-  it("begrenzt Figuren bei großen Teams, zeigt alle Mitglieder und behält die eigene Figur", () => {
+  it("begrenzt Figuren bei großen Teams und behält die eigene Figur", () => {
     const { config, stand, meta, root, posen } = szene(false, 80);
     stand.teams[0]!.mitglieder = [...stand.teams[0]!.mitglieder.slice(1), "79"];
     stand.teams[1]!.mitglieder = ["0"];
@@ -115,7 +114,6 @@ describe("Tauziehen-Szene", () => {
     expect(posen).toHaveLength(5);
     expect(posen.slice(0, 4).some((p) => p.id === "79")).toBe(true);
     expect(root.find("tz-more")[0]!.textContent).toBe("+75 am Seil");
-    expect(root.find("tz-roster")[0]!.children).toHaveLength(79);
-    expect(root.find("tz-roster")[0]!.children[0]!.children[0]!.textContent).toBe("<img onerror=alert(1)>");
+    expect(root.find("tz-roster")).toHaveLength(0); // Teamliste steht nur noch einmal, unter der Szene
   });
 });
