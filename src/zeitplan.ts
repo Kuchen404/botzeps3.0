@@ -1,7 +1,7 @@
 import type { Db } from "./db/index.js";
 import { type SeasonZeile, bossPin, bosseDerSeason, kuendigeBossAn, ladeTeilnehmer, seasonNachId, setzeBossPin } from "./db/season-repo.js";
 import { alleTrainings, vergebeErfolge } from "./db/erfolg-repo.js";
-import { BOSS_ANKUENDIGUNG, BOSS_NAMEN, BOSS_STUFEN, type BossStufe, STUFEN, bossAnzeigename, bossKampf, bossLebenspunkte, bossWoche, lebensbalken, SCHWAECHE_FAKTOR } from "./scoring/boss.js";
+import { BOSS_ANKUENDIGUNG, BOSS_NAMEN, BOSS_STUFEN, type BossStufe, STUFEN, bossAnzeigename, bossKampf, bossLebenspunkte, bossWoche, lebensbalken, SCHWAECHE_FAKTOR, SCHWAECHE_MIN_FAKTOR } from "./scoring/boss.js";
 import { type ErfolgArt, finaleErfolge, trainingsErfolge, wochenErfolge } from "./scoring/erfolge.js";
 import { fuelle } from "./texte/sprueche.js";
 import { BOSS_NERVOES, bossBeben, bossTeaser, bossTexte } from "./boss/texte.js";
@@ -401,8 +401,11 @@ async function kuendigeAn(
   if (schon && !wiederholung) return false;
   const name = schon?.name ?? frueher?.name ?? BOSS_NAMEN[Math.floor(Math.random() * BOSS_NAMEN.length)]!;
   const lebenspunkte = schon?.lebenspunkte ?? bossLebenspunkte(stufe, teilnehmer, s.wochenziel_last);
-  // Zufällige Schwäche aus den Sportarten der Gruppe, beim zweiten Auftritt möglichst eine andere
-  const sportarten = db.prepare("SELECT id, name FROM sportart WHERE gruppe = ? ORDER BY id").all(s.gruppe) as { id: number; name: string }[];
+  // Zufällige Schwäche aus den harten Sportarten der Gruppe (mindestens Krafttraining, kein Spazieren oder Yoga),
+  // beim zweiten Auftritt möglichst eine andere
+  const sportarten = db
+    .prepare("SELECT id, name FROM sportart WHERE gruppe = ? AND faktor >= ? ORDER BY id")
+    .all(s.gruppe, SCHWAECHE_MIN_FAKTOR) as { id: number; name: string }[];
   const auswahl = sportarten.length > 1 ? sportarten.filter((sp) => sp.id !== frueher?.schwaeche) : sportarten;
   const schwaeche = schon
     ? schon.schwaeche === null ? null : { id: schon.schwaeche, name: schon.schwaecheName ?? "" }
