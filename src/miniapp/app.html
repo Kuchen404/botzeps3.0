@@ -339,138 +339,7 @@ function farbe(name) {
   return FARBEN[h % FARBEN.length];
 }
 
-/** Boss mit Lebensbalken und den Kämpfern davor; beim ersten Anzeigen schlagen sie nacheinander zu. */
-function bossKarte(b) {
-  var lpText = el("div", { class: "text" });
-  var rest = el("div", { class: "rest" });
-  var bild = el("div", { class: "bossbild" + (b.bild ? " gezeichnet" : ""), text: b.bild ? "" : b.emoji });
-  // Die Zeichnung kommt vom eigenen Server (feste Bosse, keine Nutzereingaben)
-  if (b.bild) bild.innerHTML = b.bild;
-  var illustriert = !!bild.querySelector(".boss-illustriert");
-  if (illustriert) bild.classList.add("neu");
-  var platz = el("div", { class: "bossplatz" }, [
-    b.stufe === 2 && !b.bild ? el("span", { class: "muckis l", text: "💪" }) : null,
-    bild,
-    b.stufe === 2 && !b.bild ? el("span", { class: "muckis r", text: "💪" }) : null
-  ]);
-  var figuren = b.figuren || {};
-  function figurBild(nr, pose) {
-    var z = nr != null && figuren[nr] && figuren[nr][pose];
-    if (!z) return null;
-    // Illustrationen kommen vom eigenen Server (feste Figuren, keine Nutzereingaben)
-    var f = el("div", { class: "figur" });
-    f.innerHTML = z;
-    return f;
-  }
-  function stellePose(zelle, pose) {
-    var k = zelle._k;
-    if (k.figur == null || !figuren[k.figur] || !figuren[k.figur][pose]) return;
-    var alt = zelle.querySelector(".figur");
-    if (alt && alt.getAttribute("data-pose") === pose) return;
-    var neu = figurBild(k.figur, pose);
-    neu.setAttribute("data-pose", pose);
-    alt.replaceWith(neu);
-  }
-  var reihe = el("div", { class: "kaempfer" }, b.kaempfer.map(function (k) {
-    var bildchen = figurBild(k.figur, "bereit");
-    if (bildchen) bildchen.setAttribute("data-pose", "bereit");
-    var zelle = el("div", { class: (k.ich ? "ich" : "") + (bildchen ? " mitfigur" : "") }, [
-      bildchen || el("div", { class: "avatar", style: "background:" + farbe(k.name), text: initialen(k.name) }),
-      el("div", { class: "name", text: k.name }),
-      el("div", { class: "schaden", text: "−" + zahl(k.schaden, 0) })
-    ]);
-    zelle._k = k;
-    return zelle;
-  }));
-  // Wer nichts gemacht hat, liegt k.o. daneben
-  (b.pennen || []).forEach(function (p) {
-    var bildchen = figurBild(p.figur, "ko");
-    if (!bildchen) return;
-    bildchen.appendChild(el("div", { class: "zzz", text: "Zzz" }));
-    reihe.appendChild(el("div", { class: "mitfigur pennt" + (p.ich ? " ich" : "") }, [bildchen, el("div", { class: "name", text: p.name }), el("div", { class: "schaden", text: "pennt" })]));
-  });
-  var arena = el("div", { class: "arena" + (b.stufe === 2 ? " stufe2" : "") + (illustriert ? " illustriert" : "") }, [el("div", { class: "lp" }, [rest, lpText]), platz, reihe]);
-  if (!b.kaempfer.length) reihe.appendChild(el("div", { class: "hint", style: "width:auto;color:#ddd", text: "Noch keiner hat sich getraut." }));
-
-  var info = el("div", { class: "bossinfo" });
-  var nochmal = el("button", { class: "knopf leise", text: "↻ Nochmal kämpfen", onclick: function () { spiele(true); } });
-  nochmal.hidden = !b.kaempfer.length || !BEWEGUNG;
-  var durchlauf = 0;
-
-  function setzeLp(schaden) {
-    var uebrig = Math.max(0, b.lebenspunkte - schaden);
-    rest.style.width = (uebrig / b.lebenspunkte * 100) + "%";
-    lpText.textContent = zahl(uebrig, 0) + " / " + zahl(b.lebenspunkte, 0) + " LP";
-  }
-  function ende() {
-    setzeLp(b.schaden);
-    platz.querySelectorAll(".stempel").forEach(function (x) { x.remove(); });
-    platz.classList.toggle("tot", b.besiegt);
-    Array.prototype.forEach.call(reihe.children, function (z) { if (z._k) stellePose(z, b.besiegt ? "jubel" : "bereit"); });
-    if (b.besiegt) platz.appendChild(el("div", { class: "stempel sieg", text: "BESIEGT" }));
-    else if (!b.aktiv) platz.appendChild(el("div", { class: "stempel niederlage", text: "ÜBERLEBT" }));
-    var texte = [];
-    if (b.besiegt) texte.push(el("p", { text: "💀 Erledigt! +" + b.bonus + " Punkte für alle, die mitgeprügelt haben." }));
-    else if (b.aktiv) texte.push(el("p", { text: "Noch " + zahl(b.lebenspunkte - b.schaden, 0) + " Lebenspunkte. Hau rein, jeder Lastpunkt bis Sonntag ist Schaden. Fällt er, gibt's +" + b.bonus + " Punkte." }));
-    if (b.aktiv && b.schwaeche) texte.push(el("p", { text: "💥 Schwäche: " + b.schwaeche + ". Jede Einheit davon macht doppelten Schaden." }));
-    if (b.aktiv && b.resistenz) texte.push(el("p", { text: "🛡 Abgehärtet gegen " + b.resistenz + ". Das macht nur halben Schaden." }));
-    if (!b.besiegt && !b.aktiv) texte.push(el("p", { text: "Er hat überlebt und lacht euch aus. Kein Bonus." }));
-    if (b.drueckeberger.length) texte.push(el("p", { class: "hint", text: "Versteckt sich hinter dem Sofa: " + b.drueckeberger.join(", ") }));
-    info.replaceChildren.apply(info, texte);
-  }
-  function spiele(erzwingen) {
-    var lauf = ++durchlauf;
-    arena.getAnimations({ subtree: true }).forEach(function (a) { if (!(a instanceof CSSAnimation)) a.cancel(); });
-    arena.querySelectorAll(".faust, .zahl, .trefferfunken").forEach(function (x) { x.remove(); });
-    var schluessel = b.name + ":" + b.woche + ":" + b.schaden;
-    if (!BEWEGUNG || !b.kaempfer.length || (bossGezeigt[schluessel] && !erzwingen)) { ende(); return; }
-    bossGezeigt[schluessel] = true;
-    platz.classList.remove("tot");
-    Array.prototype.forEach.call(reihe.children, function (z) { if (z._k) stellePose(z, "bereit"); });
-    platz.querySelectorAll(".stempel").forEach(function (x) { x.remove(); });
-    info.replaceChildren();
-    setzeLp(0);
-    // Schwächste zuerst, der stärkste Schlag zum Schluss
-    var reihenfolge = b.kaempfer.map(function (k, i) { return i; }).reverse();
-    var takt = Math.max(320, Math.min(750, 4500 / reihenfolge.length));
-    var summe = 0;
-    reihenfolge.forEach(function (i, n) {
-      setTimeout(function () {
-        if (!arena.isConnected || lauf !== durchlauf) return;
-        var k = b.kaempfer[i], kaempfer = reihe.children[i];
-        stellePose(kaempfer, "schlag");
-        setTimeout(function () { if (lauf === durchlauf) stellePose(kaempfer, "bereit"); }, takt * 0.85);
-        kaempfer.animate([{ transform: "translateY(0)" }, { transform: "translateY(-16px) scale(1.12)" }, { transform: "translateY(0)" }], { duration: takt * 0.8 });
-        var a = arena.getBoundingClientRect(), von = kaempfer.getBoundingClientRect(), ziel = bild.getBoundingClientRect();
-        var faust = el("span", { class: "faust", text: "👊" });
-        faust.style.left = (von.left - a.left + von.width / 2 - 11) + "px";
-        faust.style.top = (von.top - a.top) + "px";
-        arena.appendChild(faust);
-        var dx = ziel.left + ziel.width / 2 - von.left - von.width / 2, dy = ziel.top + ziel.height / 2 - von.top;
-        faust.animate([{ transform: "translate(0,0) scale(.8)" }, { transform: "translate(" + dx + "px," + dy + "px) scale(1.4)" }], { duration: takt * 0.45, easing: "ease-in" })
-          .onfinish = function () {
-            faust.remove();
-            if (!arena.isConnected || lauf !== durchlauf) return;
-            summe += k.schaden;
-            setzeLp(summe);
-            bild.animate([{ transform: "translateX(0)", filter: "brightness(2.5)" }, { transform: "translateX(-9px)" }, { transform: "translateX(9px)" }, { transform: "translateX(0)", filter: "brightness(1)" }], { duration: 260 });
-            if (illustriert) {
-              var funken = el("div", { class: "trefferfunken" });
-              platz.appendChild(funken);
-              setTimeout(function () { funken.remove(); }, 350);
-            }
-            platz.appendChild(el("div", { class: "zahl", text: "−" + zahl(k.schaden, 0) }));
-            setTimeout(function () { platz.querySelectorAll(".zahl")[0] && platz.querySelectorAll(".zahl")[0].remove(); }, 950);
-            if (n === reihenfolge.length - 1) setTimeout(function () { if (lauf === durchlauf && arena.isConnected) ende(); }, 450);
-          };
-      }, 400 + n * takt);
-    });
-  }
-  setzeLp(0);
-  setTimeout(function () { spiele(false); }, 0);
-  var titel = (b.aktiv ? "🐉 Boss-Woche " : "🐉 Boss aus Woche ") + b.woche;
-  return karte(titel, [el("div", { class: "gross", style: "font-size:20px", text: b.name }), arena, info, nochmal]);
-}
+/* bossKarte wird mit den Szenen aus spiele/bosskampf.js eingebunden. */
 
 /** Mount Botzeps mit allen Kletterern, abwechselnd auf beiden Hängen, damit sie sich nicht verdecken. */
 function berg(kletterer) {
@@ -700,7 +569,7 @@ function standTab(s) {
     ]));
     return kinder;
   }
-  if (s.boss && s.boss.aktiv) kinder.push(bossKarte(s.boss));
+  if (s.boss && s.boss.aktiv) kinder.push(bossKarte(s.boss, s.chat + ":" + s.start));
   if (s.minispiel) kinder.push(minispielKarte(s.minispiel));
   kinder.push(karte(s.laeuft ? "Woche " + s.woche + " von " + s.wochen : "Endstand", [
     el("div", { class: "gross", text: zahl(ich.gesamt) + " Punkte" }),
@@ -724,7 +593,7 @@ function standTab(s) {
       zeile("Muskelmasse", zahl(ich.muskelKg.start) + " → " + zahl(ich.muskelKg.aktuell) + " kg")
     ]));
   }
-  if (s.boss && !s.boss.aktiv) kinder.push(bossKarte(s.boss));
+  if (s.boss && !s.boss.aktiv) kinder.push(bossKarte(s.boss, s.chat + ":" + s.start));
   if (s.verlauf) kinder.push(karte("Punkteverlauf", [diagramm(s.verlauf.x, s.verlauf.reihen, "Punkte", s.verlauf.achse)]));
   if (s.teams.length) kinder.push(karte("Teams", s.teams.map(function (t) {
     return zeile(t.platz + ". " + t.name, zahl(t.gesamt) + (t.bonus ? " (inkl. " + zahl(t.bonus) + " Bonus)" : ""));
@@ -1103,6 +972,7 @@ function zeigeFehler(f) {
 }
 
 function zeichne() {
+  if (bossKampfAbbrechen) bossKampfAbbrechen();
   var s = daten.seasons[seasonIndex];
   var kinder = tab === "stand" ? standTab(s) : tab === "ruhm" ? ruhmTab() : tab === "halle" ? halleTab() : tab === "waage" ? waageTab() : tab === "eintraege" ? eintraegeTab() : einstellungenTab();
   inhalt.replaceChildren.apply(inhalt, kinder.filter(Boolean));
