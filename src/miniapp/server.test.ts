@@ -5,6 +5,7 @@ import { uhr } from "../bot/kontext.js";
 import { GRUPPE, KEVIN, PETER, PRIVAT, befehl, knopf, testBot } from "../bot/testhilfe.js";
 import { signiereInitData } from "./auth.js";
 import { kuendigeBossAn } from "../db/season-repo.js";
+import { FIGUREN, figurSvg } from "../figuren/figuren.js";
 
 const TOKEN = "test-token";
 const echteUhr = uhr.jetzt;
@@ -65,8 +66,7 @@ describe("Mini App", () => {
   it("liefert Figuren ohne Anmeldung als langfristig gecachte PNGs, nur aus der festen Medienliste", async () => {
     const t = await aufbau();
     try {
-      const daten = await t.holen("/api/figuren");
-      const pfad = daten.json.figuren[0].bild.match(/href="([^"]+)"/)[1];
+      const pfad = figurSvg(FIGUREN[0]!, "bereit").match(/href="([^"]+)"/)![1]!;
       const bild = await fetch(t.basis + pfad);
       expect(bild.status).toBe(200);
       expect(bild.headers.get("content-type")).toBe("image/png");
@@ -234,9 +234,8 @@ describe("Mini App", () => {
     const figur = async (von = KEVIN) => (await holen("/api/ich", von)).json.seasons[0].figur;
     const waehle = async (nr: number, von = KEVIN) => (await holen("/api/figur", von, { chat: GRUPPE.id, figur: nr })).status;
     try {
-      const alle = (await holen("/api/figuren")).json.figuren;
-      expect(alle).toHaveLength(12);
-      expect(alle[0]).toMatchObject({ nr: 0, name: "Der Pumper", bild: expect.stringContaining("<svg") });
+      // Kein Spoiler: vor der Freischaltung bleiben die Figuren verdeckt
+      expect((await holen("/api/figuren")).json).toEqual({ verdeckt: true, anzahl: 12, figuren: [] });
       // Noch kein Spiel mit Figuren: keine Wahl
       expect(await figur()).toEqual({ meine: null, darfWaehlen: false, freiAb: null, vergeben: {} });
       kuendigeBossAn(db, 1, 1, "König Bierbauch", 650);
@@ -248,6 +247,11 @@ describe("Mini App", () => {
       await bot.handleUpdate(befehl("/sport 30 Joggen"));
       expect(letzterText()).toContain("Kämpferfigur");
       expect(await figur()).toMatchObject({ darfWaehlen: true });
+      const alle = (await holen("/api/figuren")).json;
+      expect(alle.verdeckt).toBe(false);
+      expect(alle.figuren).toHaveLength(12);
+      expect(alle.figuren[0]).toMatchObject({ nr: 0, name: "Der Pumper", bild: expect.stringContaining("<svg") });
+      expect((await holen("/api/figuren", PETER)).json.verdeckt).toBe(true);
       await bot.handleUpdate(befehl("/sport 20 Joggen"));
       expect(letzterText()).not.toContain("Kämpferfigur");
 

@@ -147,6 +147,8 @@
   .figurwahl button svg { width: 60px; height: 88px; display: block; margin: 0 auto; }
   .figurwahl button.meine { border-color: #ffcc00; box-shadow: 0 0 8px rgba(255,204,0,.6); }
   .figurwahl button:disabled { opacity: .4; }
+  .figurwahl button.verdeckt { opacity: 1; background: repeating-linear-gradient(135deg, var(--bg2) 0 8px, rgba(127,127,127,.12) 8px 16px); color: var(--hint); }
+  .figurwahl .fragezeichen { display: flex; align-items: center; justify-content: center; width: 60px; height: 88px; margin: 0 auto; font-size: 40px; font-weight: 900; }
   .figurwahl .wer { display: block; color: var(--hint); font-size: 10px; }
   /* Tickende Bombe: die gewählten Season-Avatare im Trainingsraum. */
   .bomben-szene { color: #f3f1d7; background: radial-gradient(ellipse at 50% 30%, #48543b, #202e24 80%); border: 1px solid #536344; border-radius: 12px; overflow: hidden; padding-bottom: 12px; margin-bottom: 10px; }
@@ -619,9 +621,15 @@ function aktualisiereBombe(knopf) {
   var alt = daten, index = seasonIndex;
   bombenLaden = true;
   if (knopf) { knopf.disabled = true; knopf.textContent = "Lädt …"; }
+  var bombenId = s.minispiel.bombe.id;
   return api("/api/ich").then(function (j) {
     if (daten !== alt || seasonIndex !== index || tab !== "stand") return;
-    daten = j; zeichne();
+    daten = j;
+    // Nur die Minispielkarte austauschen, damit Scrollposition und der Rest des Tabs bleiben.
+    var neu = j.seasons[index];
+    var alteKarte = document.querySelector(".minispiel-karte");
+    if (alteKarte && neu && neu.minispiel && neu.minispiel.bombe && neu.minispiel.bombe.id === bombenId) alteKarte.replaceWith(minispielKarte(neu.minispiel));
+    else zeichne(); // Woche oder Season gewechselt: dann doch alles neu
   }).catch(function () {
     if (knopf && knopf.isConnected) knopf.textContent = "Verbindung fehlgeschlagen – nochmal versuchen";
   }).finally(function () { bombenLaden = false; if (knopf) knopf.disabled = false; });
@@ -648,7 +656,9 @@ function minispielKarte(m) {
   }
   if (m.code && !szene) kinder.push(el("div", { class: "code", text: m.code }));
   m.liste.forEach(function (x) { kinder.push(zeile(x.name, x.text, x.ich ? "ich" : "")); });
-  return karte(m.emoji + " " + m.name + " · Woche " + m.woche, kinder);
+  var k = karte(m.emoji + " " + m.name + " · Woche " + m.woche, kinder);
+  k.classList.add("minispiel-karte");
+  return k;
 }
 
 function standTab(s) {
@@ -1012,7 +1022,10 @@ function einstellungenTab() {
 var figurDaten = null;
 /** Eigene Kämpferfigur der Season aussuchen: einmalig, ab dem ersten Training in der ersten Boss-Woche; jede Figur gibt es pro Season nur einmal. */
 function figurKarte() {
-  if (!figurDaten) {
+  var s0 = daten.seasons[seasonIndex];
+  // Kein Spoiler: vor der Freischaltung nur verdeckte Karten, Bilder werden gar nicht erst geladen
+  if (!s0 || !s0.figur || (s0.figur.meine == null && !s0.figur.darfWaehlen)) return verdeckteFiguren(s0);
+  if (!figurDaten || figurDaten.verdeckt) {
     api("/api/figuren").then(function (j) { figurDaten = j; if (tab === "einstellungen") zeichne(); }).catch(zeigeFehler);
     return karte("Deine Kämpferfigur", [el("p", { class: "hint", text: "Lädt …" })]);
   }
@@ -1045,6 +1058,17 @@ function figurKarte() {
     return knopf;
   }));
   return karte("Deine Kämpferfigur", [raster, status, el("p", { class: "hint", text: "Deine Figur kämpft für dich gegen die Bosse und taucht in den Minispielen auf." })]);
+}
+
+function verdeckteFiguren(s) {
+  var d = s && s.figur;
+  var text = !s ? "Figuren gibt es in einer Season ab der ersten Boss-Woche."
+    : d && d.freiAb ? "Trag ein Training ab dem " + datum(d.freiAb) + " ein, dann werden die Figuren aufgedeckt und du darfst wählen. Wer zuerst kommt, hat die volle Auswahl."
+    : "Ab der ersten Boss-Woche: Wer zuerst ein Training einträgt, deckt die Figuren auf und sucht sich zuerst eine aus.";
+  var raster = el("div", { class: "figurwahl" }, Array.apply(null, Array(12)).map(function () {
+    return el("button", { class: "verdeckt", disabled: "", "aria-label": "Verdeckte Figur" }, [el("span", { class: "fragezeichen", text: "?" }), el("span", { text: "???" })]);
+  }));
+  return karte("Deine Kämpferfigur", [raster, el("p", { class: "hint", text: text })]);
 }
 
 function bestaetige(frage, dann) {
