@@ -245,7 +245,8 @@ describe("Mini App", () => {
 
       // Erstes Training in der Boss-Woche schaltet frei und kündigt es im Post an
       await bot.handleUpdate(befehl("/sport 30 Joggen"));
-      expect(letzterText()).toContain("Kämpferfigur");
+      expect(letzterText()).toContain("hat etwas freigeschaltet");
+      expect(letzterText()).not.toMatch(/Figur/i);
       expect(await figur()).toMatchObject({ darfWaehlen: true });
       const alle = (await holen("/api/figuren")).json;
       expect(alle.verdeckt).toBe(false);
@@ -253,7 +254,7 @@ describe("Mini App", () => {
       expect(alle.figuren[0]).toMatchObject({ nr: 0, name: "Der Pumper", bild: expect.stringContaining("<svg") });
       expect((await holen("/api/figuren", PETER)).json.verdeckt).toBe(true);
       await bot.handleUpdate(befehl("/sport 20 Joggen"));
-      expect(letzterText()).not.toContain("Kämpferfigur");
+      expect(letzterText()).not.toContain("freigeschaltet");
 
       expect((await holen("/api/figur", KEVIN, { chat: GRUPPE.id, figur: 12 })).status).toBe(400);
       expect((await holen("/api/figur", KEVIN, { chat: 1, figur: 0 })).status).toBe(404);
