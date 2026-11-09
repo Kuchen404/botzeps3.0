@@ -1,6 +1,6 @@
 # Zombie-Gym: die ganze Gruppe und eine aktive Horde
 
-Alle Spieler stehen gleichzeitig in derselben Szene. Über jeder Figur stehen Name und Infektionsstatus; die eigene Figur ist markiert. Menschen stehen im Gym, die bereits Infizierten hinter einer Barrikade im Vordergrund. Es gibt keine Auswahl von nur drei Stellvertretern mehr. Das Raster reserviert Platz an der Front für Begegnungen und wächst bei großen Gruppen in die Höhe, damit Figuren und Namen lesbar bleiben. Die zusätzliche Statusliste ist als Detailansicht einklappbar.
+Alle Spieler stehen gleichzeitig in derselben Szene. Über jeder Figur stehen Name und Infektionsstatus; die eigene Figur ist markiert. Menschen stehen im Gym, die bereits Infizierten vor der Barrikade im Vordergrund. Es gibt keine Auswahl von nur drei Stellvertretern mehr. Das Raster reserviert Platz an der Front für Begegnungen und wächst bei großen Gruppen in die Höhe, damit Figuren und Namen lesbar bleiben. Die zusätzliche Statusliste ist als Detailansicht einklappbar.
 
 Gewählte Season-Avatare bleiben erhalten. Wer noch keine Figur gewählt hat, wird durch eine neutrale illustrierte Trainingsfigur dargestellt, nicht nur durch einen Buchstaben-Kreis. Vier Posen zeigen Bereitschaft, Abwehr, Jubel und Zombiehaltung. Dies ist ausschließlich eine Szenendarstellung; sie wählt oder belegt keine Season-Figur. Die Detailansicht kennzeichnet die fehlende Avatarwahl. Bei fehlenden neuen Bildern greifen die vorhandenen Namensinitialen und die Grundkulisse.
 

@@ -33,6 +33,7 @@ function zombieSignaturen(stationen) {
   // Eine neue Abrufzeit allein ist kein neuer Biss und wiederholt keinen Rückblick.
   return stationen.map(function (s) { return JSON.stringify([s.art, s.stand]); });
 }
+function zombieVerlaufGeaendert(alt, neu) { return !!(alt && alt.length && !alt.every(function (s, i) { return s === neu[i]; })); }
 function zombieVersuch(s, spieler, index) {
   var ids = zombieInfizierte(s), zombies = spieler.filter(function (sp) { return ids.has(sp.id); }), menschen = spieler.filter(function (sp) { return !ids.has(sp.id); });
   if (!zombies.length || !menschen.length) return null;
@@ -61,6 +62,7 @@ window.MINISPIEL_SZENEN.zombie = function (a) {
   var aktuell = a.aktuell || { zombies: [], patientNull: null }, stationen = (a.verlauf || []).filter(function (s) { return !!s.stand; });
   if (!stationen.length) stationen = [{ art: 'start', zeitpunkt: null, stand: aktuell }];
   var signaturen = zombieSignaturen(stationen), gesehen = zombieStaende[a.id], ab = zombieFortsetzung(gesehen && gesehen.signaturen, signaturen);
+  var geaendert = zombieVerlaufGeaendert(gesehen && gesehen.signaturen, signaturen);
   var spieler = new Map(a.spieler.map(function (sp) { return [sp.id, sp]; })), figuren = new Map(), lauf = 0, lebenMarke = 0, lebenAktiv = false, versuche = 0, animationen = new Set(), wartende = new Map();
   var status = el('div', { class: 'ms-status', role: 'status', 'aria-live': 'polite' }), titel = el('strong', { text: 'BOTZEPS · ZOMBIE GYM' });
   var hintergrund = el('div', { class: 'zh-hintergrund', 'aria-hidden': 'true' }), nebel = el('div', { class: 'zh-hordenlicht', 'aria-hidden': 'true' });
@@ -206,7 +208,7 @@ window.MINISPIEL_SZENEN.zombie = function (a) {
     if (nr === lauf) { reinigen(); if (root.isConnected) endstand(true, true); }
   }
   skip.onclick = function () { abbrechen(); starteLeben(); }; replay.onclick = function () { spiele(0, true); }; medien();
-  var rueckblick = bewegung() && !document.hidden && a.spieler.length && ab !== null && !(gesehen && ab === 0);
+  var rueckblick = bewegung() && !document.hidden && a.spieler.length && ab !== null && !geaendert;
   if (rueckblick) { phase('bereit'); zeichne(stationen[ab].stand, false); status.textContent = 'Die Gruppe sammelt sich im Gym'; replay.hidden = true; }
   else endstand(false, false);
   zombieDarstellung = function () { if (root.isConnected) { lauf++; reinigen(); endstand(false, true); } };
@@ -215,6 +217,6 @@ window.MINISPIEL_SZENEN.zombie = function (a) {
     if (!root.isConnected || lauf !== anfang) return;
     if (!bewegung() || document.hidden) { endstand(true, false); return; }
     if (ab === null) { if (a.abgeschlossen && gesehen && !gesehen.abgeschlossen) spiele(stationen.length - 1, false); else endstand(true, true); }
-    else if (gesehen && ab === 0) korrigiere(); else spiele(ab, !gesehen);
+    else if (geaendert) korrigiere(); else spiele(ab, !gesehen);
   }); return root;
 };

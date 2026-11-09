@@ -58,7 +58,8 @@ describe("Zombie-Inszenierung folgt den Serverzuständen", () => {
   });
 });
 
-const extra = runInNewContext(readFileSync(new URL('../miniapp/spiele/zombie.js', import.meta.url), 'utf8') + ';({ zombiePositionen, zombieVersuch })', { window: { addEventListener() {} }, document: { addEventListener() {} } }) as {
+const extra = runInNewContext(readFileSync(new URL('../miniapp/spiele/zombie.js', import.meta.url), 'utf8') + ';({ zombiePositionen, zombieVersuch, zombieVerlaufGeaendert })', { window: { addEventListener() {} }, document: { addEventListener() {} } }) as {
+  zombieVerlaufGeaendert: (alt: string[] | undefined, neu: string[]) => boolean;
   zombiePositionen: (s: Stand, spieler: { id: string }[], breite: number) => { hoehe: number; plan: Map<string, { x: number; y: number; w: number; zombie: boolean }> };
   zombieVersuch: (s: Stand, spieler: { id: string }[], index: number) => { angreifer: string; ziel: string } | null;
 };
@@ -93,4 +94,12 @@ describe('Zombie-Gym-Medien', () => {
     for (let i = 0; i < 4; i++) { const x = i % 2 * 200, y = Math.floor(i / 2) * 300; expect(raster[(y * 400 + x) * 4 + 3]).toBe(0); const b = Buffer.concat(Array.from({ length: 300 }, (_, j) => raster.subarray(((y + j) * 400 + x) * 4, ((y + j) * 400 + x + 200) * 4))); expect(b.some((n, j) => j % 4 === 3 && n > 0)).toBe(true); hashes.push(createHash('sha256').update(b).digest('hex')); }
     expect(new Set(hashes).size).toBe(4); expect(figurMedium('../zombie-medien.ts')).toBe(null); expect(figurMedium('zombie-fremd.png')).toBe(null);
   });
+});
+
+it('spielt den ersten neuen Biss nach einem gesehenen Start ab statt ihn als Korrektur zu überspringen', () => {
+  expect(zombieFortsetzung(['start'], ['start', 'biss-a'])).toBe(0);
+  expect(extra.zombieVerlaufGeaendert(['start'], ['start', 'biss-a'])).toBe(false);
+  expect(extra.zombieVerlaufGeaendert(['start', 'biss-a'], ['start', 'biss-b'])).toBe(true);
+  expect(extra.zombieVerlaufGeaendert(['start', 'biss-a'], ['start'])).toBe(true);
+  expect(extra.zombieVerlaufGeaendert(undefined, ['start'])).toBe(false);
 });
