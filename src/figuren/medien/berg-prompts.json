@@ -1,0 +1,71 @@
+{
+  "werkzeug": "ImageGen",
+  "referenzen": "Jeweils der originale Avatar-Atlas aus FIGUREN; zusätzlich der korrigierte Kletterzyklus von Figur 0 als Posenreferenz.",
+  "raster": {
+    "spalten": 2,
+    "zeilen": 2,
+    "posen": [
+      "Rechter Griff hoch",
+      "Zug am rechten Griff",
+      "Linker Griff hoch",
+      "Zug am linken Griff"
+    ]
+  },
+  "prompt": "Exact same character identity, rich muscular chibi illustration, clothing, headgear, gloves, shoes, skin and emblem. Four genuinely different hand-over-hand climbing poses in equal 2x2 transparent cells. Top pair reaches/pulls with high glove and knee on the right side, bottom pair with opposite high glove and knee on the left, consistent three-quarter face looking upward. Bent elbows/knees and natural weight transfer. Same body scale, fully contained characters with padding; no wall, holds, ropes, shadows, text or grid.",
+  "bilder": {
+    "panorama": "exec-0df858ff-e66e-42ff-96b9-22ed695f64f1.png",
+    "felswand": "exec-549df7fa-ca92-4197-98ef-d385cdbdea99.png",
+    "gipfelblick": "exec-747fe325-295f-4f1a-83fb-2966adccd328.png"
+  },
+  "normalisierung": "scripts/berg-optimieren.mjs; identischer Maßstab innerhalb jedes Zyklus, transparente 200×300-Zellen, 224 Farben, versionierte SHA-256-Dateinamen. Rohdateien bleiben unverändert außerhalb des Repositories.",
+  "quellen": [
+    {
+      "nr": 0,
+      "rohdatei": "exec-33ead5b6-3ea9-425a-b4d9-5867bd2782bf.png"
+    },
+    {
+      "nr": 1,
+      "rohdatei": "exec-961bac7c-4b74-4e88-b866-99189e6ac4ac.png"
+    },
+    {
+      "nr": 2,
+      "rohdatei": "exec-1e1e1dcd-c129-4044-8577-1e144038dc10.png"
+    },
+    {
+      "nr": 3,
+      "rohdatei": "exec-8692f10b-bcbb-46f1-aa66-368f6adde5e5.png"
+    },
+    {
+      "nr": 4,
+      "rohdatei": "exec-a750f4d3-464e-44dd-b496-8e53137f2614.png"
+    },
+    {
+      "nr": 5,
+      "rohdatei": "exec-c82fad2e-3034-4379-94ef-3df268c7038f.png"
+    },
+    {
+      "nr": 6,
+      "rohdatei": "exec-d7ca8f8a-40c3-4c32-8f0a-bb96c80a2658.png"
+    },
+    {
+      "nr": 7,
+      "rohdatei": "exec-f1dca051-7253-48f1-98e0-242cc9f76821.png"
+    },
+    {
+      "nr": 8,
+      "rohdatei": "exec-db08e096-762d-4ebe-859c-89eb597d6f34.png"
+    },
+    {
+      "nr": 9,
+      "rohdatei": "exec-b78433e3-047b-4c60-870e-c3032a325b31.png"
+    },
+    {
+      "nr": 10,
+      "rohdatei": "exec-45f3809c-af5d-4a8e-b676-c179c500c05b.png"
+    },
+    {
+      "nr": 11,
+      "rohdatei": "exec-57ae0a17-e87a-45d5-8ebc-04e4ab704383.png"
+    }
+  ]
+}

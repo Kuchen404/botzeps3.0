@@ -1,39 +1,31 @@
-/* Mount Botzeps: feste Seilschaften halten auch große Gruppen lesbar. */
-.ms-gipfel { color: #23334a; }
-.ms-gipfel .gipfel-expedition { padding: 12px 10px 0; }
-.ms-gipfel .gipfel-kopf { display: flex; justify-content: space-between; align-items: start; gap: 12px; padding: 2px 2px 12px; }
-.ms-gipfel .gipfel-titel { color: var(--text, #23334a); margin: 0; font-size: 17px; font-weight: 900; letter-spacing: -.4px; }
-.ms-gipfel .gipfel-untertitel { margin: 3px 0 0; font-size: 11px; color: var(--hint, #8492a6); }
-.ms-gipfel .gipfel-hoehe { flex: none; border: 2px solid #27384e; border-radius: 7px; background: #fff3c6; box-shadow: 2px 2px 0 #27384e; padding: 5px 7px; font-size: 12px; font-weight: 900; transform: rotate(3deg); }
-.ms-gipfel .gipfel-seilschaft { margin-bottom: 12px; }
-.ms-gipfel .gipfel-landschaft { position: relative; height: 350px; overflow: hidden; border: 2px solid #27384e; border-radius: 13px; background: #b7dfe5; isolation: isolate; }
-.ms-gipfel .gipfel-kulisse { position: absolute; inset: 0; width: 100%; height: 100%; }
-.ms-gipfel .gipfel-etikett { position: absolute; top: 9px; left: 10px; z-index: 1; background: #ffffffe6; padding: 4px 7px; border-radius: 5px; font-size: 10px; font-weight: 800; }
-.ms-gipfel .gipfel-lager { position: absolute; bottom: 8px; left: 9px; font-size: 10px; font-weight: 900; color: #fcf1cf; text-shadow: 1px 1px #24394a; }
-.ms-gipfel .gipfel-spur { position: absolute; top: 110px; bottom: 41px; width: 1px; border-left: 2px dotted #e6f3ed90; }
-.ms-gipfel .gipfel-kletterer { position: absolute; bottom: 39px; width: 62px; margin-left: -31px; transform: translate(0, 0); z-index: 2; }
-.ms-gipfel .gipfel-kletterer.ich { z-index: 3; }
-.ms-gipfel .gipfel-figur { width: 54px; height: 78px; position: relative; margin: 0 auto; transform-origin: 50% 95%; }
-.ms-gipfel .gipfel-figur > * { width: 54px; height: 78px; }
-.ms-gipfel .gipfel-figur svg { display: block; overflow: visible; }
-.ms-gipfel .gipfel-figur .ms-figur { width: 54px; height: 78px; }
-.ms-gipfel .gipfel-schatten { position: absolute; bottom: 13px; left: 11px; width: 40px; height: 8px; border-radius: 50%; background: #23334a40; }
-.ms-gipfel .gipfel-kletterer.ich .gipfel-schatten { background: #ffd357aa; box-shadow: 0 0 8px #ffd357; }
-.ms-gipfel .gipfel-name { display: block; position: relative; max-width: 62px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: #20364bec; color: #fff8e7; border-radius: 4px; text-align: center; font-size: 10px; font-weight: 800; line-height: 17px; padding: 0 3px; }
-.ms-gipfel .gipfel-kletterer.ich .gipfel-name { color: #25374d; background: #ffe073; }
-.ms-gipfel .gipfel-fahne { position: absolute; right: -1px; top: 4px; color: #20364b; background: #ffe073; border: 2px solid #20364b; border-radius: 4px 7px 7px 0; font-size: 11px; font-weight: 900; padding: 2px 4px; transform-origin: 0 100%; }
-.ms-gipfel .gipfel-fahne[hidden] { display: none; }
-.ms-gipfel .gipfel-stand { list-style: none; padding: 8px 0 0; margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px 10px; }
-.ms-gipfel .gipfel-stand li { min-width: 0; display: flex; align-items: center; gap: 5px; font-size: 10px; color: var(--hint, #8492a6); }
-.ms-gipfel .gipfel-stand .gipfel-person { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; color: var(--text, #23334a); }
-.ms-gipfel .gipfel-stand .gipfel-wert { white-space: nowrap; margin-left: auto; }
-.ms-gipfel .gipfel-stand li.ich .gipfel-person { color: #e6b634; }
-.ms-gipfel .gipfel-fazit { font-size: 12px; line-height: 1.5; color: var(--text, #23334a); padding: 2px 0 5px; }
-.ms-gipfel .gipfel-leer { padding: 28px 16px; text-align: center; font-size: 13px; }
-.ms-gipfel .gipfel-kletterer.steigt .gipfel-figur { animation: gipfel-schritt .48s ease-in-out infinite alternate; }
-.ms-gipfel .gipfel-kletterer.angekommen .gipfel-figur { animation: gipfel-freude .5s ease-in-out 2; }
-@keyframes gipfel-schritt { from { transform: rotate(-5deg) translateY(0); } to { transform: rotate(5deg) translateY(-4px); } }
-@keyframes gipfel-freude { 50% { transform: translateY(-6px) rotate(-3deg); } }
-@media (prefers-reduced-motion: reduce) {
-  .ms-gipfel *, .ms-gipfel *::before, .ms-gipfel *::after { animation: none !important; transition: none !important; }
-}
+/* Eine gemeinsame Expedition; Zahlen und bestätigte Ankunftsränge bleiben lesbar. */
+.ms-scene.ms-gipfel{color:#263c4b;background:#edf2ec;border:2px solid #293f4f;border-radius:16px;overflow:hidden;box-shadow:0 5px 0 #293f4f26;isolation:isolate}
+.ms-gipfel,.ms-gipfel *{box-sizing:border-box}.ms-gipfel>.ms-status{min-height:58px;line-height:1.5;padding:11px 13px;background:#293f4f;color:#fff2cf;font-size:12px;overflow-wrap:anywhere}
+.gp-kopf{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 12px;background:#e4ede9}.gp-kopf strong{font:900 16px/1.2 Georgia,serif}.gp-kopf span{font-size:10px;color:#54707c}
+.gp-arena{position:relative;width:100%;aspect-ratio:4/5;overflow:hidden;background:linear-gradient(#8fc6db,#f4d9b7 35%,#687f8d 36%,#314e5e)}
+.gp-welt,.gp-landschaft,.gp-feld,.gp-wetter{position:absolute;inset:0;width:100%;height:100%}.gp-welt{isolation:isolate;transform-origin:50% 0}.gp-landschaft img{display:block;width:100%;height:100%;object-fit:fill}.gp-feld{z-index:3}.gp-wetter{pointer-events:none;z-index:4}.gp-landschaft{z-index:0}
+.gp-laeufer{position:absolute;transform:translate(-50%,calc(-100% + 14px));text-align:center;z-index:2}.gp-laeufer::before{content:"";position:absolute;bottom:14px;left:13%;width:74%;height:5px;background:#162c3a55;border-radius:50%;z-index:-1}
+.ms-gipfel .gp-koerper{width:100%;height:calc(var(--gp-figur,34px)*1.5)}.ms-gipfel .gp-koerper>.ms-avatar,.ms-gipfel .gp-koerper>.ms-avatar svg{width:100%;height:100%;animation:none}
+.gp-name{display:block;max-width:100%;height:14px;padding:0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-radius:3px;background:#243e4dde;color:#fff9e6;font-size:8px;font-weight:800;line-height:14px}
+.gp-laeufer[data-ich="true"]{z-index:5}.gp-laeufer[data-ich="true"] .gp-name{background:#ffdf83;color:#293f4f;box-shadow:0 0 0 1px #886933}.gp-oben .gp-name{background:#edc35b;color:#293f4f;border:1px solid #896e34;line-height:12px}
+.ms-gipfel[data-feld="gross"] .gp-laeufer{transform:translate(-50%,-100%)}.ms-gipfel[data-feld="gross"] .gp-laeufer::before{bottom:0;height:3px}.ms-gipfel[data-feld="gross"] .gp-laeufer .gp-name{display:none}.ms-gipfel[data-feld="gross"] .gp-laeufer[data-ich="true"] .gp-name{display:block;position:absolute;left:50%;transform:translateX(-50%);width:54px;max-width:none}
+.gp-auftritt{position:absolute;top:23%;left:7%;max-width:83%;padding:13px 15px;background:#203b4be6;color:#fff4d7;border:1px solid #f5d595;border-radius:5px;box-shadow:2px 4px 0 #1e384b30;z-index:7}.gp-auftritt span,.gp-auftritt strong,.gp-auftritt small{display:block}.gp-auftritt span{font-size:8px;letter-spacing:.13em}.gp-auftritt strong{font:900 25px/1.4 Georgia,serif}.gp-auftritt small{font-size:10px;color:#d6e4e7}
+.gp-wolke{position:absolute;width:90px;height:24px;border-radius:50%;background:#fff;filter:blur(8px)}.gp-schnee{position:absolute;width:4px;height:4px;background:#fff;border-radius:50%;box-shadow:12px 9px 0 #fff9,-9px 18px 0 #fff8}
+.gp-legende{padding:7px 10px;font-size:9px;line-height:1.4;background:#d7e3e1;color:#506d78;border-top:1px solid #758b94}.gp-fazit{padding:9px 11px;font-size:11px;font-weight:800;line-height:1.5}
+.gp-fenster{position:relative;padding:3px 9px 10px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;scrollbar-color:#809b9f #dfe9e5}.gp-liste{display:flex;gap:7px;width:max-content;min-width:100%}
+.gp-person{flex:0 0 100px;width:100px;padding:5px;text-align:center;border:1px solid #bacdd0;border-radius:8px;background:#f8faf2}.gp-person[data-ich="true"]{border:2px solid #b18c39;padding:4px;box-shadow:0 0 0 1px #efd99d}.gp-angekommen{background:#fff2cd;border-color:#c3a354}
+.ms-gipfel .gp-person>.ms-avatar,.ms-gipfel .gp-person>.ms-avatar svg{width:40px;height:60px;margin:0 auto;animation:none}.gp-person-name,.gp-last,.gp-wert{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.gp-person-name{font-size:10px;font-weight:800;line-height:17px}.gp-last{font-size:10px;font-variant-numeric:tabular-nums}.gp-wert{font-size:8px;color:#58727b;line-height:19px}.gp-angekommen .gp-wert{font-weight:800;color:#796023}.gp-balken{position:relative;height:5px;background:#d6e3e2;border-radius:3px}.gp-balken i{position:absolute;left:0;top:0;height:5px;background:#6b9f9c;border-radius:3px}.gp-angekommen .gp-balken i{background:#d3af4f}.gp-leer{padding:12px;font-size:12px;color:#58727b}
+.ms-gipfel>.ms-zeit{margin:0;padding:5px 10px;color:#647e87;font-size:10px}.ms-gipfel>.ms-steuerung{padding:7px 9px 11px;margin:0;gap:6px}.ms-gipfel>.ms-steuerung .knopf{font-size:11px;min-height:40px;background:#dbe6e1;color:#2e4b59}
+.ms-gipfel .gp-laeufer .ms-avatar-ersatz{font-size:12px;background:radial-gradient(circle closest-side at 50% 65%,var(--ms-avatar-farbe,#42658c) 0 95%,transparent 100%)}
+.ms-gipfel .bz-berg-figur,.ms-gipfel .bz-lauf-figur{overflow:hidden}.ms-gipfel .bz-lauf-spiegel,.ms-gipfel .bz-berg-spiegel{transform-box:view-box;transform-origin:0 0}
+.gp-kino{position:absolute;inset:0 0 auto;height:var(--gp-kino-h,218px);overflow:hidden;isolation:isolate;z-index:10;pointer-events:none;background:linear-gradient(#8fc6db,#d6e9ed 60%,#809393 61%,#657e87);border-bottom:2px solid #48616d}.gp-kino[hidden]{display:none}.gp-kino-kulisse{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}.gp-kino::after{content:"";position:absolute;inset:0;background:linear-gradient(#1d354333,transparent 30%,transparent 75%,#1d35434d);z-index:1;pointer-events:none}
+.ms-gipfel[data-kino="true"] .gp-welt{transform:translateY(var(--gp-karte-y,226px)) scale(var(--gp-karte-scale,.45))}
+.gp-kino-titel{position:absolute;top:8px;left:10px;max-width:92%;padding:4px 7px;background:#233e4de8;color:#fff4d5;font-size:10px;font-weight:800;border-radius:3px;z-index:5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gp-kino-text{position:absolute;bottom:0;left:0;width:100%;padding:5px 8px;background:#233e4de8;color:#fff4d5;font-size:9px;line-height:14px;text-align:center;z-index:7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gp-held{position:absolute;left:58%;top:8px;text-align:center;transform:translateX(-50%);z-index:4}.gp-held-name{display:block;font-size:9px;font-weight:800;line-height:14px;background:#fff3d9db;color:#294453;border-radius:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gp-grosse-fahne{position:absolute;right:11%;bottom:26px;font-size:62px;line-height:1;color:#e0b34f;text-shadow:2px 1px #304653;z-index:3;transform-origin:50% 100%}
+@media(prefers-reduced-motion:reduce){.ms-gipfel *{animation:none!important;transition:none!important}}
+@media(max-width:350px){.gp-kopf strong{font-size:14px}.gp-kopf span{font-size:8px}.gp-grosse-fahne{font-size:45px}.gp-auftritt strong{font-size:21px}}
+.ms-gipfel[data-feld="gross"] .gp-laeufer .ms-avatar-ersatz{font-size:7px}.ms-gipfel .gp-person>.ms-avatar-ersatz{font-size:14px;background:radial-gradient(circle closest-side at 50% 65%,var(--ms-avatar-farbe,#42658c) 0 95%,transparent 100%)}
+
+.gp-grosse-fahne{width:64px;height:92px;font-size:initial;text-shadow:none}.gp-grosse-fahne svg{width:100%;height:100%}.gp-flaggenrang{position:absolute;left:19px;top:15px;width:27px;text-align:center;font:900 17px/24px Georgia,serif;color:#624d24}

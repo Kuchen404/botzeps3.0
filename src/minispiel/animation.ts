@@ -17,7 +17,7 @@ export function animationsStand(d: MinispielDaten, spieler: readonly Spieler[], 
       return { patientNull: d.patientNull, zombies: [...z].map(([id, tag]) => ({ id, tag })), menschen: d.spieler.filter((id) => !z.has(id)) };
     }
     case "kopfgeld": return { gejagter: d.gejagter, ...kopfgeld(d, l), lasten: last };
-    case "gipfel": return { kletterer: gipfel(d, spieler, w) };
+    case "gipfel": return { ziel: Math.max(1, w.ziel), kletterer: gipfel(d, spieler, w) };
     case "tauziehen": return { teams: d.teams, ...seil(d, l), lasten: last };
     case "tresor": {
       const t = tresor(d, l);

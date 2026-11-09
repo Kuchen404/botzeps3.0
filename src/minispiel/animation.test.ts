@@ -61,6 +61,7 @@ describe("Minispiel-Szenen und chronologische Spielstände", () => {
       t.training(a,"2026-11-02","2026-11-04T10:00:00Z","2026-11-05T11:00:00Z");
       t.training(a,"2026-11-07","2026-11-07T13:00:00Z");
       const anim = animationFuerApp(t.db,t.s,"2026-11-06",a)!;
+      expect(anim.aktuell).toMatchObject({ziel:450});
       // Zukünftige Eintragszeiten dürfen in der Vergangenheit noch nicht erscheinen.
       expect(anim.verlauf.map((v)=>v.zeitpunkt)).not.toContain("2026-11-07T13:00:00Z");
       expect(anim.verlauf.some((v)=>v.art==="training" && v.zeitpunkt==="2026-11-04T10:00:00Z")).toBe(true);
