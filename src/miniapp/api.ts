@@ -26,8 +26,9 @@ import { laternen } from "../db/laterne-repo.js";
 import { animationFuerApp } from "../minispiel/animation.js";
 import { aktuelleMarken, minispielFuerApp } from "../minispiel/ablauf.js";
 import type { MiniAppNutzer } from "./auth.js";
+import { BERG_BILDER } from "../figuren/berg-atlanten.js";
 import { JAGD_KULISSE } from "../figuren/lauf-atlanten.js";
-import { FIGUREN, type Pose, figurLaufSvg, figurSvg } from "../figuren/figuren.js";
+import { FIGUREN, type Pose, figurKletterSvg, figurLaufSvg, figurSvg } from "../figuren/figuren.js";
 import { ANZAHL_FIGUREN, darfFigurWaehlen, figurFreigabe, figurIn, figurenDerSeason, vergebeneFiguren, waehleFigur } from "../figuren/zuteilung.js";
 
 /**
@@ -126,15 +127,16 @@ function minispielJson(db: Db, s: Parameters<typeof minispielFuerApp>[1], tag: s
     const a = animationFuerApp(db, s, tag, ich);
     if (!a) return m;
     const vergeben = figurenDerSeason(db, s.id);
-    const figuren: Record<number, Partial<Record<Pose | "laufen", string>>> = {};
+    const figuren: Record<number, Partial<Record<Pose | "laufen" | "steigen", string>>> = {};
     const spieler = a.spieler.map((sp) => {
       const figur = vergeben.get(Number(sp.id)) ?? null;
       if (figur !== null) figuren[figur] ??= Object.fromEntries((["bereit", "schlag", "jubel", "ko", "ziehen", "klettern"] as const).map((pose) =>
         [pose, figurSvg(FIGUREN[figur]!, pose, { id: `ms${a.art}${figur}${pose}` })]));
-      if (figur !== null && a.art === "kopfgeld") figuren[figur]!.laufen ??= figurLaufSvg(figur, `mslauf${figur}`)!;
+      if (figur !== null && (a.art === "kopfgeld" || a.art === "gipfel")) figuren[figur]!.laufen ??= figurLaufSvg(figur, `mslauf${figur}`)!;
+      if (figur !== null && a.art === "gipfel") figuren[figur]!.steigen ??= figurKletterSvg(figur, `msberg${figur}`)!;
       return { ...sp, figur };
     });
-    return { ...m, animation: { ...a, spieler, figuren, ...(a.art === "kopfgeld" ? { kulisse: "/api/figurbild/" + JAGD_KULISSE } : {}) } };
+    return { ...m, animation: { ...a, spieler, figuren, ...(a.art === "gipfel" ? { bergBilder: Object.fromEntries(Object.entries(BERG_BILDER).map(([art,datei]) => [art,"/api/figurbild/"+datei])) } : {}), ...(a.art === "kopfgeld" ? { kulisse: "/api/figurbild/" + JAGD_KULISSE } : {}) } };
   }
   const vergeben = figurenDerSeason(db, s.id);
   const figuren: Record<number, Partial<Record<Pose, string>>> = {};

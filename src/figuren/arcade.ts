@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { ATLAS_DATEIEN } from "./atlanten.js";
 import { LAUF_ATLANTEN, JAGD_KULISSE } from "./lauf-atlanten.js";
+import { BERG_ATLANTEN, BERG_BILDER } from "./berg-atlanten.js";
 import type { Pose } from "./figuren.js";
 
 // Unter /api/, weil der Reverse-Proxy auf dem Server nur /app selbst und /api/ an die App weiterreicht
@@ -10,7 +11,7 @@ const cache = new Map<string, Buffer>();
 
 /** Ausschließlich bekannte, mit Inhalts-Hash versionierte Dateien ausliefern. */
 export function figurMedium(datei: string): Buffer | null {
-  if (!ATLAS_DATEIEN.includes(datei) && !LAUF_ATLANTEN.includes(datei) && datei !== JAGD_KULISSE) return null;
+  if (!ATLAS_DATEIEN.includes(datei) && !LAUF_ATLANTEN.includes(datei) && datei !== JAGD_KULISSE && !BERG_ATLANTEN.includes(datei) && !(Object.values(BERG_BILDER) as readonly string[]).includes(datei)) return null;
   let bild = cache.get(datei);
   if (!bild) {
     bild = readFileSync(new URL(`./medien/${datei}`, import.meta.url));

@@ -3,6 +3,7 @@
  * illustrierte Posen aus einem gecachten Atlas; eigene Baukastenfiguren bleiben möglich.
  */
 
+import { BERG_ATLANTEN } from "./berg-atlanten.js";
 import { LAUF_ATLANTEN } from "./lauf-atlanten.js";
 import { arcadeSpieler } from "./arcade.js";
 
@@ -348,6 +349,13 @@ export function figurLaufSvg(nr: number, id: string): string | null {
   const f = FIGUREN[nr], datei = LAUF_ATLANTEN[nr];
   if (!f || !datei) return null;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300" class="bz-lauf-figur" role="img" aria-label="${f.name}" overflow="hidden"><defs><clipPath id="${id}lauf"><rect width="200" height="300"/></clipPath></defs><g class="bz-lauf-rumpf" clip-path="url(#${id}lauf)"><g class="bz-lauf-spiegel"><image class="bz-lauf-atlas" href="/api/figurbild/${datei}" width="400" height="600"/></g></g></svg>`;
+}
+
+/** Vollständig illustrierte Griffe und Tritte im selben Avatar-Zeichenstil. */
+export function figurKletterSvg(nr: number, id: string): string | null {
+  const f = FIGUREN[nr], datei = BERG_ATLANTEN[nr];
+  if (!f || !datei) return null;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300" class="bz-berg-figur" role="img" aria-label="${f.name}" overflow="hidden"><defs><clipPath id="${id}berg"><rect width="200" height="300"/></clipPath></defs><g clip-path="url(#${id}berg)"><g class="bz-berg-spiegel"><image class="bz-berg-atlas" href="/api/figurbild/${datei}" width="400" height="600"/></g></g></svg>`;
 }
 
 // Die 12 Startfiguren – frei zuteilbar, jede aus Baukasten-Teilen

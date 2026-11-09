@@ -823,6 +823,8 @@ function zeichne() {
   if (bombenAbbrechen) bombenAbbrechen();
   if (bossKampfAbbrechen) bossKampfAbbrechen();
   if (kopfgeldAbbrechen) kopfgeldAbbrechen();
+  if (gipfelAbbrechen) gipfelAbbrechen();
+  gipfelDarstellung = null;
   var s = daten.seasons[seasonIndex];
   var kinder = tab === "stand" ? standTab(s) : tab === "ruhm" ? ruhmTab() : tab === "halle" ? halleTab() : tab === "waage" ? waageTab() : tab === "eintraege" ? eintraegeTab() : einstellungenTab();
   inhalt.replaceChildren.apply(inhalt, kinder.filter(Boolean));

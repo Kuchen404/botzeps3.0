@@ -1,139 +1,67 @@
-import { readFileSync } from "node:fs";
-import { runInNewContext } from "node:vm";
-import { describe, expect, it, vi } from "vitest";
-import { gipfel, type Spieler } from "./spiele.js";
-
-class Element {
-  className = "";
-  textContent = "";
-  innerHTML = "";
-  hidden = false;
-  title = "";
-  style: Record<string, string> = {};
-  dataset: Record<string, string> = {};
-  attributes: Record<string, string> = {};
-  children: Element[] = [];
-  classList = {
-    toggle: (name: string, active: boolean) => {
-      const klassen = new Set(this.className.split(" "));
-      if (active) klassen.add(name); else klassen.delete(name);
-      this.className = [...klassen].join(" ");
-    },
-    remove: (name: string) => { this.classList.toggle(name, false); },
-  };
-  appendChild(e: Element) { this.children.push(e); return e; }
-  setAttribute(name: string, value: string) { this.attributes[name] = value; }
-  all(klasse: string): Element[] {
-    return [...(this.className.split(" ").includes(klasse) ? [this] : []), ...this.children.flatMap((e) => e.all(klasse))];
+import {readFileSync} from "node:fs";
+import {runInNewContext} from "node:vm";
+import {describe,expect,it} from "vitest";
+import {gipfel,type Spieler} from "./spiele.js";
+const api=runInNewContext(readFileSync(new URL('../miniapp/spiele/gipfel.js',import.meta.url),'utf8')+'\n({gipfelOben,gipfelAnteil,gipfelAnkuenfte,gipfelWechsel,gipfelWeg,gipfelPositionen,gipfelSchritte,gipfelZyklus,gipfelSignaturen,gipfelFortsetzung})',{window:{innerWidth:390,addEventListener(){}},document:{addEventListener(){}}});
+const k=(id:string,anteil:number,oben:string|null=null)=>({id,last:anteil*100,anteil,hoehe:Math.round(anteil*884.8)*10,oben});
+const stand=(...kletterer:ReturnType<typeof k>[])=>({ziel:100,kletterer});
+describe('Gipfelsturm: gemeinsamer Aufstieg und echte Ankünfte',()=>{
+ it('zeigt weder gerundete Höhe noch 100 Prozent ohne bestätigte Ankunft als Gipfel',()=>{
+  for(const eintrag of [k('a',.99999),k('a',1),k('a',1,'unbekannt')]){expect(api.gipfelOben(eintrag)).toBe(false);expect(api.gipfelAnteil(eintrag)).toBeLessThan(1);}
+  expect(api.gipfelOben(k('a',1,'2026-11-03T10:00:00Z'))).toBe(true);
+ });
+ it('übernimmt die echten Zielankünfte und ihre Reihenfolge aus den Trainings',()=>{
+  const t=(id:number,last:number,erstellt:string)=>({id,minuten:last,faktor:1 as const,datum:'2026-11-03',erstellt});
+  const spieler:Spieler[]=[{id:'a',name:'Alex',trainings:[t(1,99,'2026-11-03T08:00:00Z')]},{id:'b',name:'Alex',trainings:[t(2,100,'2026-11-03T10:00:00Z')]},{id:'c',name:'C',trainings:[t(3,120,'2026-11-03T09:00:00Z')]}];
+  const s={kletterer:gipfel({art:'gipfel',spieler:spieler.map(s=>s.id)},spieler,{start:'2026-11-02',ziel:100})};
+  expect(api.gipfelAnkuenfte(s)).toEqual(['c','b']);expect(api.gipfelAnteil(s.kletterer.find(k=>k.id==='a'))).toBe(.985);
+ });
+ it('bestätigt die erste Gipfelankunft beim Training schon während der Woche',()=>{
+  const alt=stand(k('a',.7)),neu=stand(k('a',1,'2026-11-03T10:00:00Z'));
+  expect(api.gipfelWechsel(alt,{art:'training',stand:neu})).toMatchObject({korrektur:false,training:true,steigt:['a'],ankunft:['a']});
+ });
+ it('erfindet beim weiteren Training am Gipfel keinen zweiten Zieleinlauf',()=>{
+  const a=k('a',1,'2026-11-03T10:00:00Z'),b={...a,last:160};
+  expect(api.gipfelWechsel(stand(a),{art:'training',stand:stand(b)})).toMatchObject({training:true,steigt:[],ankunft:[]});
+ });
+ it('entfernt nach einer Löschung die Fahne ruhig ohne Fall oder neuen Jubel',()=>{
+  expect(api.gipfelWechsel(stand(k('a',1,'2026-11-03T10:00:00Z')),{art:'korrektur',stand:stand(k('a',.2))})).toMatchObject({korrektur:true,training:false,ankunft:[],steigt:[]});
+  expect(api.gipfelWechsel(stand(k('a',.8)),{art:'training',stand:stand(k('a',.3))}).korrektur).toBe(true);
+ });
+ it('behandelt veränderte Zielwerte und korrigierte Ankunftszeiten als Korrektur',()=>{
+  const a=stand(k('a',.5));expect(api.gipfelWechsel(a,{art:'training',stand:{...a,ziel:50}}).korrektur).toBe(true);
+  expect(api.gipfelWechsel(stand(k('a',1,'2026-11-03T10:00:00Z')),{art:'tag',stand:stand(k('a',1,'2026-11-03T11:00:00Z'))}).korrektur).toBe(true);
+ });
+ it('stellt den Anteil auf demselben monoton steigenden Bergpfad dar',()=>{
+  const anfang=api.gipfelWeg(0),ende=api.gipfelWeg(1);expect(anfang.y).toBe(92.5);expect(ende.y).toBeCloseTo(12.4);
+  let y=100;for(let i=0;i<=100;i++){const p=api.gipfelWeg(i/100);expect(p.y).toBeLessThanOrEqual(y);expect(p.x).toBeGreaterThan(0);expect(p.x).toBeLessThan(100);y=p.y;}
+ });
+ it('behält bei gleichem Fortschritt jeden der 80 Spieler sichtbar und ohne überlappende Körper',()=>{
+  for(const fortschritt of [0,.5,1])for(const breite of [270,330,448]){
+   const spieler=Array.from({length:80},(_,i)=>({id:String(i),name:'Alex',ich:i===79})),s=stand(...spieler.map(sp=>k(sp.id,fortschritt,fortschritt===1?'2026-11-03T10:00:00Z':null))),hoehe=breite*1.25;
+   const plan=api.gipfelPositionen(s,spieler,breite,hoehe);expect(plan.size).toBe(80);const boxen=[];
+   for(const p of plan.values()){const x=p.x/100*breite,y=p.y/100*hoehe,box={l:x-p.w/2,r:x+p.w/2,t:y-p.w*1.5,b:y};expect(box.l).toBeGreaterThanOrEqual(0);expect(box.r).toBeLessThanOrEqual(breite);expect(box.t).toBeGreaterThanOrEqual(0);expect(box.b).toBeLessThanOrEqual(hoehe);for(const b of boxen)expect(box.l<b.r&&box.r>b.l&&box.t<b.b&&box.b>b.t).toBe(false);boxen.push(box);}
   }
-}
-
-type Stand = { kletterer: ReturnType<typeof gipfel> };
-type Szene = { inhalt: Element; zeichne: (stand: Stand, meta: { vorher: Stand | null; bewegt: boolean }) => void; beschreibe: (stand: Stand) => string };
-function szene(spieler: { id: string; name: string; figur?: number; ich?: boolean }[]) {
-  let config: Szene;
-  const window = { MINISPIEL_SZENEN: {} as Record<string, (a: unknown) => unknown> };
-  runInNewContext(readFileSync(new URL("../miniapp/spiele/gipfel.js", import.meta.url), "utf8"), {
-    window,
-    document: { createElement: () => new Element(), createElementNS: () => new Element() },
-    minispielAvatar: (_a: unknown, id: string, pose: string) => {
-      const e = new Element(); e.className = "ms-avatar"; e.dataset = { id, pose }; return e;
-    },
-    minispielSetzePose: (e: Element, _a: unknown, _id: string, pose: string) => { e.dataset.pose = pose; },
-    minispielAnimationSzene: (_a: unknown, c: Szene) => { config = c; return c.inhalt; },
-    setTimeout,
-    clearTimeout,
-  });
-  window.MINISPIEL_SZENEN.gipfel!({ spieler });
-  return config!;
-}
-
-const woche = { start: "2026-11-02", ziel: 100 };
-function training(id: number, minuten: number, erstellt: string) {
-  return { id, minuten, erstellt, datum: "2026-11-03", faktor: 1 as const };
-}
-
-describe("Gipfel-Expedition", () => {
-  it("zeigt erst am echten Wochenziel die Fahne und wahrt die Ankunftsreihenfolge", () => {
-    const spieler: Spieler[] = [
-      { id: "anna", name: "Anna", trainings: [training(1, 99, "2026-11-03T10:00:00Z")] },
-      { id: "ben", name: "Ben", trainings: [training(2, 100, "2026-11-03T09:00:00Z")] },
-      { id: "cem", name: "Cem", trainings: [training(3, 120, "2026-11-03T08:00:00Z")] },
-    ];
-    const s = szene(spieler);
-    const stand = { kletterer: gipfel({ art: "gipfel", spieler: spieler.map((sp) => sp.id) }, spieler, woche) };
-    s.zeichne(stand, { vorher: null, bewegt: false });
-    const fahnen = s.inhalt.all("gipfel-fahne");
-    expect(fahnen.map((f) => [f.hidden, f.textContent])).toEqual([[true, "⚑ 0"], [false, "⚑ 2"], [false, "⚑ 1"]]);
-    expect(s.beschreibe(stand)).toBe("2 von 3 am Gipfel. Zuerst oben: Cem.");
-    expect(s.inhalt.all("ms-avatar").map((f) => f.dataset.pose)).toEqual(["klettern", "jubel", "jubel"]);
-  });
-
-  it("entfernt Fahne und Jubel nach einer Trainingskorrektur", () => {
-    const s = szene([{ id: "a", name: "Alex" }]);
-    const oben = { kletterer: [{ id: "a", last: 100, anteil: 1, hoehe: 8850, oben: "2026-11-03T10:00:00Z" }] };
-    const korrigiert = { kletterer: [{ id: "a", last: 20, anteil: .2, hoehe: 1770, oben: null }] };
-    s.zeichne(oben, { vorher: null, bewegt: false });
-    s.zeichne(korrigiert, { vorher: oben, bewegt: false });
-    expect(s.inhalt.all("gipfel-fahne")[0]!.hidden).toBe(true);
-    expect(s.inhalt.all("ms-avatar")[0]!.dataset.pose).toBe("klettern");
-    expect(s.inhalt.all("gipfel-kletterer")[0]!.style.transform).toBe("translateY(-38px)");
-    expect(s.inhalt.all("gipfel-stand")[0]!.children[0]!.attributes["aria-label"]).toContain("Basislager");
-    expect(s.beschreibe(korrigiert)).toContain("Noch niemand");
-  });
-
-  it("partitioniert alle Personen in kleine, überlappungsfreie Seilschaften", () => {
-    const spieler = Array.from({ length: 23 }, (_, i) => ({ id: String(i), name: `Person ${i}` }));
-    const s = szene(spieler);
-    expect(s.inhalt.all("gipfel-seilschaft")).toHaveLength(6);
-    expect(s.inhalt.all("gipfel-kletterer")).toHaveLength(23);
-    expect(s.inhalt.all("ms-avatar").map((e) => e.dataset.id)).toEqual(spieler.map((sp) => sp.id));
-    for (const gruppe of s.inhalt.all("gipfel-landschaft")) {
-      const positionen = gruppe.all("gipfel-kletterer").map((e) => e.style.left);
-      expect(positionen.length).toBeLessThanOrEqual(4);
-      expect(new Set(positionen).size).toBe(positionen.length);
-    }
-  });
-
-  it("verwendet keine Gipfelfahne nur aufgrund gerundeter Höhe oder Anteil", () => {
-    const s = szene([{ id: "a", name: "Alex" }]);
-    s.zeichne({ kletterer: [{ id: "a", last: 99.99, anteil: 1, hoehe: 8850, oben: null }] }, { vorher: null, bewegt: false });
-    expect(s.inhalt.all("gipfel-fahne")[0]!.hidden).toBe(true);
-    expect(s.inhalt.all("ms-avatar")[0]!.dataset.pose).toBe("klettern");
-  });
-
-  it("klettert bei einer echten Ankunft und zeigt die Fahne erst nach dem Schritt", () => {
-    vi.useFakeTimers();
-    try {
-      const s = szene([{ id: "a", name: "Alex" }]);
-      const vorher = { kletterer: [{ id: "a", last: 60, anteil: .6, hoehe: 5310, oben: null }] };
-      const oben = { kletterer: [{ id: "a", last: 100, anteil: 1, hoehe: 8850, oben: "2026-11-03T10:00:00Z" }] };
-      s.zeichne(vorher, { vorher: null, bewegt: false });
-      s.zeichne(oben, { vorher, bewegt: true });
-      expect(s.inhalt.all("steigt")).toHaveLength(1);
-      expect(s.inhalt.all("ms-avatar")[0]!.dataset.pose).toBe("klettern");
-      expect(s.inhalt.all("gipfel-fahne")[0]!.hidden).toBe(true);
-      vi.advanceTimersByTime(1000);
-      expect(s.inhalt.all("steigt")).toHaveLength(0);
-      expect(s.inhalt.all("ms-avatar")[0]!.dataset.pose).toBe("jubel");
-      expect(s.inhalt.all("gipfel-fahne")[0]!.hidden).toBe(false);
-    } finally { vi.useRealTimers(); }
-  });
-
-  it("überspringt Bewegungen sofort und verwirft ausstehende Gipfel-Jubel", () => {
-    vi.useFakeTimers();
-    try {
-      const s = szene([{ id: "a", name: "Alex" }]);
-      const unten = { kletterer: [{ id: "a", last: 0, anteil: 0, hoehe: 0, oben: null }] };
-      const oben = { kletterer: [{ id: "a", last: 100, anteil: 1, hoehe: 8850, oben: "2026-11-03T10:00:00Z" }] };
-      s.zeichne(oben, { vorher: unten, bewegt: true });
-      s.zeichne(unten, { vorher: oben, bewegt: false });
-      vi.runAllTimers();
-      expect(s.inhalt.all("ms-avatar")[0]!.dataset.pose).toBe("bereit");
-      expect(s.inhalt.all("gipfel-fahne")[0]!.hidden).toBe(true);
-      expect(s.inhalt.all("gipfel-kletterer")[0]!.style.transition).toBe("none");
-      expect(s.inhalt.all("steigt")).toHaveLength(0);
-    } finally { vi.useRealTimers(); }
-  });
-
+ });
+ it('stellt eine einzelne bestätigte Ankunft auf die Gipfelplattform statt eine Reihe darunter',()=>{
+  const plan=api.gipfelPositionen(stand(k('a',1,'2026-11-03T10:00:00Z')),[{id:'a'}],330,412.5);
+  expect(plan.get('a').y).toBeLessThan(15);expect(plan.get('a').x).toBeGreaterThan(48);
+ });
+ it('setzt den eigenen Spieler auch in einer großen Gruppe auf einen sichtbaren Platz',()=>{
+  const spieler=Array.from({length:30},(_,i)=>({id:String(i),ich:i===29})),s=stand(...spieler.map(sp=>k(sp.id,.5)));
+  const plan=api.gipfelPositionen(s,spieler,270,337.5);expect(plan.has('29')).toBe(true);expect(new Set([...plan.values()].map((p:{x:number;y:number})=>p.x+':'+p.y)).size).toBe(30);
+ });
+ it('animiert auch große Aufstiege entlang der Serpentinen und hält die Endpunkte',()=>{
+  const vor={...api.gipfelWeg(0),p:0},nach={...api.gipfelWeg(1),p:1},frames=api.gipfelSchritte(vor,nach);
+  expect(frames.length).toBeGreaterThan(100);expect(parseFloat(frames[0].top)).toBeCloseTo(vor.y);expect(parseFloat(frames.at(-1).top)).toBeCloseTo(nach.y);
+  for(let i=1;i<frames.length;i++)expect(Math.abs(parseFloat(frames[i].left)-parseFloat(frames[i-1].left))).toBeLessThan(10);
+ });
+ it('wechselt die vier gezeichneten Phasen als geschlossene Schleife',()=>{
+  const frames=api.gipfelZyklus();expect(frames).toHaveLength(5);expect(new Set(frames.map((f:{transform:string})=>f.transform)).size).toBe(4);expect(frames[0].transform).toBe(frames.at(-1).transform);expect(frames.every((f:{easing:string})=>f.easing==='steps(1,end)')).toBe(true);
+ });
+ it('setzt nur neue Stationen fort und erkennt eine geänderte Chronologie',()=>{
+  expect(api.gipfelFortsetzung(['a','b'],['a','b','c'])).toBe(1);expect(api.gipfelFortsetzung(['a','b'],['a','c'])).toBe(0);expect(api.gipfelFortsetzung(['a','b'],['a','b'])).toBeNull();
+  const a={art:'training',zeitpunkt:'a',stand:stand(k('a',.4))};expect(api.gipfelSignaturen([a])).toEqual(api.gipfelSignaturen([{...a,zeitpunkt:'b'}]));
+ });
+ it('rendert bei einer leeren Expedition keine erfundenen Teilnehmer',()=>{expect(api.gipfelPositionen(stand(),[],270,337.5).size).toBe(0);expect(api.gipfelAnkuenfte(stand())).toEqual([]);});
 });
