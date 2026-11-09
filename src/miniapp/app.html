@@ -818,6 +818,7 @@ function zeigeFehler(f) {
 }
 
 function zeichne() {
+  if (tauziehenAbbrechen) tauziehenAbbrechen();
   if (zombieAbbrechen) zombieAbbrechen();
   if (bombenAbbrechen) bombenAbbrechen();
   if (bossKampfAbbrechen) bossKampfAbbrechen();
