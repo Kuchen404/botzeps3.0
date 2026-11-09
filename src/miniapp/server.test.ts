@@ -381,7 +381,9 @@ describe("Mini App", () => {
       expect(db.prepare("SELECT minuten, faktor FROM training WHERE id = ?").get(flottId)).toEqual({ minuten: 90, faktor: 0.5 });
       // Schritte bei anderen Sportarten werden ignoriert
       const mitYoga = await holen("/api/training", KEVIN, { chat: GRUPPE.id, sportart: yoga.id, minuten: 60, tage: 0, schritte: 7800 });
-      expect(mitYoga.json.text).toContain("60 Lastpunkte");
+      // Der Tagesdeckel (240 min) kürzt hier die Punkte, deshalb direkt Faktor und Schritte prüfen
+      expect(mitYoga.status).toBe(200);
+      expect(db.prepare("SELECT minuten, faktor, schritte FROM training ORDER BY id DESC LIMIT 1").get()).toEqual({ minuten: 60, faktor: 1, schritte: null });
 
       // Wer nicht in der Gruppe ist, darf dort nichts eintragen
       const fremd = { id: 99, first_name: "Fremd" };
