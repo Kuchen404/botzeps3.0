@@ -3,6 +3,7 @@
  * illustrierte Posen aus einem gecachten Atlas; eigene Baukastenfiguren bleiben möglich.
  */
 
+import { LAUF_ATLANTEN } from "./lauf-atlanten.js";
 import { arcadeSpieler } from "./arcade.js";
 
 export type Pose = "bereit" | "schlag" | "jubel" | "ko" | "ziehen" | "klettern";
@@ -340,6 +341,13 @@ export function figurSvg(f: Figur, pose: Pose = "bereit", opt: FigurOptionen = {
   const filter = opt.zombie ? ` filter="url(#${id}z)"` : "";
   const defs = kopfClip(id) + (opt.zombie ? `<filter id="${id}z"><feColorMatrix type="matrix" values=".45 .45 .1 0 0  .55 .75 .15 0 .05  .2 .35 .2 0 0  0 0 0 1 0"/></filter>` : "");
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${view}"${w}${h} overflow="visible"><defs>${defs}</defs><g class="bz-spieler"${filter} transform="translate(0 ${p.huepf})${neig}">${inner}</g></svg>`;
+}
+
+/** Vier vollständig illustrierte Laufphasen; derselbe Atlas bleibt im Browsercache. */
+export function figurLaufSvg(nr: number, id: string): string | null {
+  const f = FIGUREN[nr], datei = LAUF_ATLANTEN[nr];
+  if (!f || !datei) return null;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300" class="bz-lauf-figur" role="img" aria-label="${f.name}" overflow="hidden"><defs><clipPath id="${id}lauf"><rect width="200" height="300"/></clipPath></defs><g class="bz-lauf-rumpf" clip-path="url(#${id}lauf)"><g class="bz-lauf-spiegel"><image class="bz-lauf-atlas" href="/api/figurbild/${datei}" width="400" height="600"/></g></g></svg>`;
 }
 
 // Die 12 Startfiguren – frei zuteilbar, jede aus Baukasten-Teilen
