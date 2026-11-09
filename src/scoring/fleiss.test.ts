@@ -20,7 +20,11 @@ describe("Fleiß", () => {
     expect(schrittFaktor(60, 7800)).toBe(3); // 130
     expect(schrittFaktor(30, 5000)).toBe(3); // 167, gedeckelt
     expect(pruefeSchritte(60, 7200)).toBeNull();
-    expect(pruefeSchritte(60, 100_000)).toContain("passt nicht");
+    expect(pruefeSchritte(60, 8400)).toBeNull(); // 140, gerade noch Gehen
+    // Schritte vom ganzen Tag auf einen kurzen Spaziergang gerechnet
+    expect(pruefeSchritte(45, 8715)).toBe(
+      "8.715 Schritte in 45 min wären 194 pro Minute, das ist kein Spazieren mehr (höchstens 140). Nur die Schritte vom Spaziergang selbst zählen, nicht die vom ganzen Tag.",
+    );
     expect(pruefeSchritte(60, 1000)).toContain("passt nicht");
   });
 

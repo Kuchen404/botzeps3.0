@@ -45,7 +45,7 @@ export function schritteText(minuten: number, schritte: number, faktor: number):
 }
 
 /** Hinweis nach einem Spaziergang ohne Schritte. */
-export const SCHRITTE_TIPP = "Tipp: Mit Schritten zählt das Tempo, flott gehen bringt bis ×3. Beispiel: /sport 60 Spazierengehen 7200";
+export const SCHRITTE_TIPP = "Tipp: Mit den Schritten vom Spaziergang (nicht vom ganzen Tag) zählt das Tempo, flott gehen bringt bis ×3. Beispiel: /sport 60 Spazierengehen 7200";
 
 /**
  * Speichert ein Training und baut den Gruppenpost samt Meldungen (Ziel, Boss, Erfolge).
@@ -159,6 +159,10 @@ export function sportModul(db: Db): Composer<Context> {
       return { text: `${sportart.name}${TAG_TEXT[a.tage]}: wie lange?`, tastatur: dauerKnoepfe(sportart, a) };
     }
 
+    if (sportart.nach_schritten && a.schritte) {
+      const falsch = pruefeSchritte(a.minuten, a.schritte);
+      if (falsch) return { text: `${falsch} Beispiel: /sport 60 Spazierengehen 7200` };
+    }
     const { trainingId, post, last, hinweis } = trageTrainingEin(db, nutzer, sportart, a.minuten, a.tage, a.schritte);
 
     if (ctx.chat?.id === gruppe.telegram_chat_id) {
@@ -235,7 +239,7 @@ export function sportModul(db: Db): Composer<Context> {
     if (
       Number(tage) > GRENZEN.maxTageZurueck ||
       (min !== 0 && (min < GRENZEN.minuten.min || min > GRENZEN.minuten.max)) ||
-      (schritte && (!min || pruefeSchritte(min, Number(schritte))))
+      (schritte && !min)
     ) {
       await ctx.answerCallbackQuery({ text: "Ungültig, bitte /sport neu starten." });
       return;

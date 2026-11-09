@@ -128,7 +128,7 @@ Gesamt = Fleiß × (Gewicht Fleiß / 50) + Fortschritt × (Gewicht Fortschritt /
 Fleiß pro Woche = 10 × min(Last / 450, 1,5) + Serienbonus
   Last = Σ min(Minuten, 120) × Faktor, pro Tag die 2 stärksten Einheiten
   Faktor = MET − 3 aus dem 2024 Adult Compendium (pacompendium.com), auf 0,5 gerundet, ×1 bis ×6
-           (Alltag wie Spazieren oder Garten ab ×0,5). Spazieren mit Schritten: (Schritte/min − 100) / 10, ×0,5 bis ×3
+           (Alltag wie Spazieren oder Garten ab ×0,5). Spazieren mit Schritten: (Schritte/min − 100) / 10, ×0,5 bis ×3; über 140 Schritte/min wird abgelehnt
   Serienbonus: 3. Woche in Folge mit Ziel +1, 4. Woche +2, ab 5. Woche +3
 
 Fortschritt = 10 × Fettabbau % + 30 × Muskelaufbau %   (mindestens −50)

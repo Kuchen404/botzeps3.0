@@ -369,6 +369,16 @@ describe("Mini App", () => {
       expect(flott.json.text).toBe("Eingetragen: 60 min Spazierengehen, 180 Lastpunkte. In „Pumper“ gepostet.");
       expect(posts.at(-1)?.text).toContain("(7.800 Schritte, 130 pro Minute: ×3)");
       expect((await holen("/api/training", KEVIN, { chat: GRUPPE.id, sportart: spazieren.id, minuten: 60, tage: 0, schritte: 99_999 })).status).toBe(400);
+      // Schritte vom ganzen Tag auf 45 Minuten gerechnet: abgelehnt, auch nachträglich über die Dauer
+      const tagesSchritte = await holen("/api/training", KEVIN, { chat: GRUPPE.id, sportart: spazieren.id, minuten: 45, tage: 0, schritte: 8715 });
+      expect(tagesSchritte.status).toBe(400);
+      expect(tagesSchritte.json.fehler).toContain("nicht die vom ganzen Tag");
+      const { id: flottId } = db.prepare("SELECT id FROM training WHERE schritte = 7800").get() as { id: number };
+      const kuerzer = await holen("/api/eintrag/dauer", KEVIN, { id: flottId, minuten: 45 });
+      expect(kuerzer.status).toBe(400);
+      expect(kuerzer.json.fehler).toContain("173 pro Minute");
+      expect((await holen("/api/eintrag/dauer", KEVIN, { id: flottId, minuten: 90 })).status).toBe(200);
+      expect(db.prepare("SELECT minuten, faktor FROM training WHERE id = ?").get(flottId)).toEqual({ minuten: 90, faktor: 0.5 });
       // Schritte bei anderen Sportarten werden ignoriert
       const mitYoga = await holen("/api/training", KEVIN, { chat: GRUPPE.id, sportart: yoga.id, minuten: 60, tage: 0, schritte: 7800 });
       expect(mitYoga.json.text).toContain("60 Lastpunkte");

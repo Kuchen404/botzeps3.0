@@ -126,7 +126,7 @@ export function sportartenText(liste: readonly Sportart[]): string {
     zeilen.push(`${faktorText(f)}: ${namen.join(", ")}`);
   }
   if (liste.some((s) => s.nachSchritten)) {
-    zeilen.push("", "🚶 Spazieren mit Schritten zählt nach Tempo: 110 pro Minute ×1, 120 ×2, 130 ×3. Beispiel: /sport 60 Spazierengehen 7200");
+    zeilen.push("", "🚶 Spazieren mit Schritten zählt nach Tempo: 110 pro Minute ×1, 120 ×2, 130 ×3. Nur die Schritte vom Spaziergang selbst, nicht vom ganzen Tag. Beispiel: /sport 60 Spazierengehen 7200");
   }
   return zeilen.join("\n");
 }

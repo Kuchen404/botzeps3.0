@@ -115,13 +115,15 @@ describe("/sport", () => {
     expect(trainings(db)).toMatchObject([{ faktor: 0.5, sportart: "Spazierengehen" }]);
     const bestaetigung = String(gesendet().at(-1)?.payload.text);
     expect(bestaetigung).toContain("30 Lastpunkte");
-    expect(bestaetigung).toContain("Mit Schritten zählt das Tempo");
+    expect(bestaetigung).toContain("Mit den Schritten vom Spaziergang (nicht vom ganzen Tag) zählt das Tempo");
   });
 
   it("Schritte bei anderen Sportarten zählen nicht, unplausible werden abgelehnt", async () => {
     const { db, bot, letzterText } = testBot();
-    await bot.handleUpdate(befehl("/sport 60 Spazierengehen 100000"));
-    expect(letzterText()).toContain("das passt nicht");
+    await bot.handleUpdate(befehl("/sport 45 Spazierengehen 8715"));
+    expect(letzterText()).toBe(
+      "8.715 Schritte in 45 min wären 194 pro Minute, das ist kein Spazieren mehr (höchstens 140). Nur die Schritte vom Spaziergang selbst zählen, nicht die vom ganzen Tag. Beispiel: /sport 60 Spazierengehen 7200",
+    );
     await bot.handleUpdate(befehl("/sport 45 Joggen 7000"));
     expect(trainings(db)).toMatchObject([{ faktor: 4.5, sportart: "Joggen" }]);
     expect(db.prepare("SELECT schritte FROM training").get()).toEqual({ schritte: null });
