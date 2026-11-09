@@ -32,3 +32,23 @@
 @media(prefers-reduced-motion:reduce){.ms-kopfgeld *{animation:none!important;transition:none!important}}
 
 .ms-kopfgeld .kg-person>.ms-avatar-ersatz{font-size:14px;background:radial-gradient(circle closest-side at 50% 60%,var(--ms-avatar-farbe,#42658c) 0 95%,transparent 100%)}
+/* Übersicht der ganzen Strecke: alle Läufer bleiben auf demselben Wüstenpfad. */
+.ms-kopfgeld .kg-arena{height:420px;background:linear-gradient(#efba78,#e7b77a 55%,#dda96a)}
+.kg-start,.kg-versteck{position:absolute;font:900 9px/1 Georgia,serif;color:#694528;letter-spacing:.06em;background:#f7dba1;border:1px solid #9b6c3e;padding:4px 5px;transform:rotate(-3deg)}
+.kg-start{left:2%;top:23%}.kg-versteck{left:30%;bottom:1.5%}
+.ms-kopfgeld .kg-route{width:38px;transform:translate(-50%,calc(-100% + 16px));z-index:2}
+.ms-kopfgeld .kg-route .kg-koerper{height:57px}
+.ms-kopfgeld .kg-route::before{top:auto;bottom:16px;height:6px;left:16%;width:68%}
+.ms-kopfgeld .kg-route .kg-name{font-size:9px;line-height:16px;background:#fff0c9e8;border:1px solid #bc905b;border-radius:4px;padding:0 2px;text-shadow:none}
+.ms-kopfgeld .kg-route .kg-rolle{display:none}
+.ms-kopfgeld .kg-route.kg-gejagter{z-index:3}.ms-kopfgeld .kg-route.kg-gejagter .kg-name{background:#75422b;border-color:#543020;color:#fff1cc}
+.kg-gesucht{position:absolute;top:-11px;left:50%;transform:translateX(-50%);font-size:7px;line-height:12px;font-weight:900;letter-spacing:.04em;background:#ffdc81;color:#623819;padding:0 4px;border:1px solid #89562f;border-radius:3px}
+.ms-kopfgeld .kg-route[data-ich="true"] .kg-name{box-shadow:0 0 0 2px #f4c553;text-decoration:none}
+.ms-kopfgeld[data-feld="mittel"] .kg-route{width:32px}.ms-kopfgeld[data-feld="mittel"] .kg-route .kg-koerper{height:48px}.ms-kopfgeld[data-feld="mittel"] .kg-route .kg-name{font-size:8px;line-height:13px}
+.ms-kopfgeld[data-feld="gross"] .kg-route{width:19px;transform:translate(-50%,-100%)}.ms-kopfgeld[data-feld="gross"] .kg-route .kg-koerper{height:28px}.ms-kopfgeld[data-feld="gross"] .kg-route::before{bottom:0;height:4px}.ms-kopfgeld[data-feld="gross"] .kg-route .kg-name{display:none}.ms-kopfgeld[data-feld="gross"] .kg-route[data-ich="true"] .kg-name,.ms-kopfgeld[data-feld="gross"] .kg-gejagter .kg-name{display:block;position:absolute;left:50%;transform:translateX(-50%);width:48px;font-size:8px;line-height:12px}
+.ms-kopfgeld .kg-route>.kg-koerper>.ms-avatar-ersatz{font-size:13px;background:radial-gradient(circle closest-side at 50% 60%,var(--ms-avatar-farbe,#42658c) 0 95%,transparent 100%)}
+.ms-kopfgeld[data-feld="gross"] .kg-route>.kg-koerper>.ms-avatar-ersatz{font-size:8px}
+.ms-kopfgeld .kg-lasso,.ms-kopfgeld .kg-halteseil{width:28px;height:36px}.ms-kopfgeld .kg-halteseil{transform:translate(-50%,-40px) rotate(-12deg)}.ms-kopfgeld .kg-lasso::after,.ms-kopfgeld .kg-halteseil::after{top:27px;left:19px;width:22px;height:2px}
+.ms-kopfgeld .kg-poster{top:8px;left:calc(50% - 120px);width:240px;display:grid;grid-template-columns:40px minmax(0,1fr);column-gap:8px;padding:5px 10px}
+.ms-kopfgeld .kg-poster>.ms-avatar,.ms-kopfgeld .kg-poster>.ms-avatar svg{width:36px;height:54px;grid-column:1;grid-row:1 / 5;margin:0}
+.ms-kopfgeld .kg-wanted{grid-column:2;font-size:18px}.ms-kopfgeld .kg-poster-name{grid-column:2;font-size:12px}.ms-kopfgeld .kg-poster-last{grid-column:2;font-size:9px;margin:0}.ms-kopfgeld .kg-poster-klein{grid-column:2;font-size:6px;margin:0}

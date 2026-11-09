@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
 import { describe, expect, it } from "vitest";
-const api = runInNewContext(readFileSync(new URL("../miniapp/spiele/kopfgeld.js", import.meta.url), "utf8") + `\n({kopfgeldVorn,kopfgeldWechsel,kopfgeldFokus,kopfgeldPosition,kopfgeldFortsetzung,kopfgeldSignaturen,kopfgeldLast})`, {
+const api = runInNewContext(readFileSync(new URL("../miniapp/spiele/kopfgeld.js", import.meta.url), "utf8") + `\n({kopfgeldVorn,kopfgeldWechsel,kopfgeldFokus,kopfgeldWeg,kopfgeldLaufplan,kopfgeldLaufFrames,kopfgeldFortsetzung,kopfgeldSignaturen,kopfgeldLast})`, {
   window: { addEventListener() {}, innerWidth: 390 }, document: { addEventListener() {} },
 });
 const stand = (ziel: number, hunter: number, extra = 0) => ({ gejagter: "ziel", gejagterLast: ziel, jaeger: ["hunter", "extra"].filter(id => ({hunter, extra})[id as "hunter" | "extra"] > ziel), lasten: { ziel, hunter, extra } });
@@ -34,10 +34,29 @@ describe("Kopfgeldjagd: echte Wochenlast und Wiedergabe", () => {
     expect(api.kopfgeldFokus(s,p,["hunter","extra"])).toEqual(["hunter","extra"]);
     expect(api.kopfgeldFokus(s,p,["extra"])).toEqual(["extra"]);
   });
-  it("hält Darsteller im Bild und tauscht ihre Reihenfolge erst beim Überholen", () => {
-    const vor=api.kopfgeldPosition(stand(100,100),"hunter"), nach=api.kopfgeldPosition(stand(100,101),"hunter");
-    expect(vor.jaeger).toBeLessThan(vor.ziel);expect(nach.jaeger).toBeGreaterThan(nach.ziel);
-    for(const s of [stand(0,0),stand(0,1000),stand(1000,0)]) for(const n of Object.values(api.kopfgeldPosition(s,"hunter")) as number[]) {expect(n).toBeGreaterThanOrEqual(20);expect(n).toBeLessThanOrEqual(80);}
+  it("zeigt jeden Spieler auf der vollständigen Route und hält bei Gleichstand den Gejagten davor", () => {
+    const spieler=[{id:"ziel"},{id:"hunter"},{id:"extra"}];
+    const gleich=api.kopfgeldLaufplan(stand(100,100,0),spieler,200);
+    expect([...gleich.keys()].sort()).toEqual(["extra","hunter","ziel"]);
+    expect(gleich.get("ziel").fortschritt).toBeGreaterThan(gleich.get("hunter").fortschritt);
+    const vor=api.kopfgeldLaufplan(stand(100,101,0),spieler,200);
+    expect(vor.get("hunter").fortschritt).toBeGreaterThan(vor.get("ziel").fortschritt);
+  });
+  it("behält auch 80 Jäger im Bild, ohne Spieler auszusortieren", () => {
+    const spieler=Array.from({length:81},(_,i)=>({id:String(i)}));
+    const s={gejagter:"0",gejagterLast:0,lasten:{},jaeger:[]};
+    const plan=api.kopfgeldLaufplan(s,spieler,1);
+    expect(plan.size).toBe(81);
+    for(const p of plan.values()) {expect(p.x).toBeGreaterThanOrEqual(12);expect(p.x).toBeLessThanOrEqual(86);expect(p.y).toBeGreaterThan(10);expect(p.y).toBeLessThan(96);}
+    expect(new Set([...plan.values()].map((p: {x:number;y:number})=>p.x+":"+p.y)).size).toBe(81);
+  });
+  it("folgt in beiden Richtungen allen Kurven statt quer über die Karte zu springen", () => {
+    expect(api.kopfgeldWeg(0)).toEqual({x:12,y:32});expect(api.kopfgeldWeg(1)).toEqual({x:15,y:92});
+    for(const [von,nach] of [[.04,.93],[.93,.04]]) {
+      const frames=api.kopfgeldLaufFrames({fortschritt:von,spur:0},{fortschritt:nach,spur:0});
+      expect(frames.length).toBeGreaterThan(50);expect(frames[0].offset).toBe(0);expect(frames.at(-1).offset).toBe(1);
+      for(let i=1;i<frames.length;i++) {expect(Math.abs(parseFloat(frames[i].left)-parseFloat(frames[i-1].left))).toBeLessThan(5);expect(Math.abs(parseFloat(frames[i].top)-parseFloat(frames[i-1].top))).toBeLessThan(5);}
+    }
   });
   it("setzt nur neue Stationen fort und startet bei geänderter Historie neu", () => {
     expect(api.kopfgeldFortsetzung(["a","b"],["a","b","c"])).toBe(1);

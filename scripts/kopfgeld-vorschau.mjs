@@ -20,7 +20,7 @@ var beispiel=0;
 function aktualisiereBombe(){render();}
 function render(){
  const modus=document.getElementById('szenario').value;
- let spieler=[{id:'p',name:'Peter',figur:3},{id:'k',name:'Kevin',figur:0,ich:true},{id:'m',name:'Mira',figur:7},{id:'l',name:'Lea',figur:9}];
+ let spieler=[{id:'p',name:'Peter',figur:3},{id:'k',name:'Kevin',figur:0,ich:true},{id:'m',name:'Mira',figur:7},{id:'l',name:'Lea',figur:9},{id:'n',name:'Nora',figur:10}];
  if(modus==='gross')spieler=Array.from({length:71},(_,i)=>({id:i?'j'+i:'p',name:'Spieler '+(i+1),figur:i%7===0?null:[0,3,7,9,10][i%5],ich:i===70}));
  if(modus==='leer')spieler=[];
  function stand(lasten){return{gejagter:spieler[0]?.id??null,gejagterLast:lasten.p||0,jaeger:spieler.filter(s=>s.id!=='p'&&(lasten[s.id]||0)>(lasten.p||0)).map(s=>s.id),lasten};}
