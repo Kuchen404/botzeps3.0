@@ -75,3 +75,21 @@ describe("Minispiel-Szenen und chronologische Spielstände", () => {
     expect(animationsStand({art:"tresor",spieler:["a","b"],code:[1,2,3,4],ziel:400},sp,w,2)).toMatchObject({code:"_ _ _ _",ziffern:0,offen:false});
   });
 });
+
+it("rekonstruiert Zombie-Fristen ohne spätere Trainingseinträge und ohne neue Abrufzeit in Standdaten", async () => {
+  const t=await aufbau();try {
+    const [patient,mensch]=t.ids as [string,string];t.spiel({art:"zombie",spieler:t.ids,patientNull:patient,gemeldet:[]});
+    t.training(mensch,"2026-11-02","2026-11-03T12:00:00Z");
+    const a=animationFuerApp(t.db,t.s,"2026-11-06",mensch)!;
+    const erster=a.verlauf[0]!.stand as {gefahr:Record<string,{warnAb:string;frist:string}>};
+    expect(erster.gefahr[mensch]).toEqual({warnAb:"2026-11-02T23:00:00.000Z",frist:"2026-11-03T23:00:00.000Z"});
+    const nachtrag=a.verlauf.find(v=>v.zeitpunkt==="2026-11-03T12:00:00Z")!.stand as typeof erster;
+    expect(nachtrag.gefahr[mensch]?.frist).toBe("2026-11-04T23:00:00.000Z");
+    expect(a.serverZeit).toBe("2026-11-06T12:00:00.000Z");
+    uhr.jetzt=()=>new Date("2026-11-06T12:01:00Z");
+    const b=animationFuerApp(t.db,t.s,"2026-11-06",mensch)!;
+    expect(b.verlauf.map(v=>[v.art,v.stand])).toEqual(a.verlauf.map(v=>[v.art,v.stand]));
+    expect(b.aktuell).toEqual(a.aktuell);expect(b.serverZeit).not.toBe(a.serverZeit);
+    expect(JSON.stringify(a)).not.toMatch(/minuten|erstellt|trainings/);
+  }finally{t.db.close();}
+});

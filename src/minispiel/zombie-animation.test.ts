@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { figurMedium } from "../figuren/arcade.js";
+import { ZOMBIE_ANGRIFFE } from "../figuren/zombie-angriffe.js";
 import { ZOMBIE_BILDER } from "../figuren/zombie-medien.js";
 import { Resvg } from "@resvg/resvg-js";
 import { readFileSync } from "node:fs";
@@ -102,4 +103,52 @@ it('spielt den ersten neuen Biss nach einem gesehenen Start ab statt ihn als Kor
   expect(extra.zombieVerlaufGeaendert(['start', 'biss-a'], ['start', 'biss-b'])).toBe(true);
   expect(extra.zombieVerlaufGeaendert(['start', 'biss-a'], ['start'])).toBe(true);
   expect(extra.zombieVerlaufGeaendert(undefined, ['start'])).toBe(false);
+});
+
+const warnung = runInNewContext(readFileSync(new URL('../miniapp/spiele/zombie.js', import.meta.url), 'utf8') + ';zombieWarnung', { window: { addEventListener() {} }, document: { addEventListener() {} } }) as (s: object, id: string, jetzt: number, abgeschlossen?: boolean) => {stufe:string;text:string}|null;
+describe('Kalenderfristen im aktuellen Stand und Rückblick', () => {
+  const gefahr = { a: { warnAb: '2026-10-19T22:00:00Z', frist: '2026-10-20T22:00:00Z' } }, s = {...start,gefahr};
+  it('zeigt vor dem ersten vollständig ausgelassenen Tag keine Warnung', () => {
+    expect(warnung(s,'a',Date.parse('2026-10-19T21:59:59Z'))).toBeNull();
+    expect(warnung(s,'a',Date.parse('2026-10-19T22:00:00Z'))).toMatchObject({stufe:'warnung',text:'Trainieren: 24:00 h'});
+  });
+  it('wechselt genau sechs Stunden vor Ablauf auf rot und bleibt unter einer Minute verständlich', () => {
+    expect(warnung(s,'a',Date.parse('2026-10-20T15:59:59Z'))?.stufe).toBe('warnung');
+    expect(warnung(s,'a',Date.parse('2026-10-20T16:00:00Z'))).toMatchObject({stufe:'kritisch',text:'⚠ Noch 06:00 h'});
+    expect(warnung(s,'a',Date.parse('2026-10-20T21:59:01Z'))?.text).toBe('⚠ Noch <1 Min.');
+    expect(warnung(s,'a',Date.parse('2026-10-20T22:00:00Z'))).toMatchObject({stufe:'abgelaufen',text:'Frist abgelaufen · wird geprüft'});
+    expect(s.zombies).toEqual(start.zombies);
+  });
+  it('hält Infizierte, fehlende oder ungültige Angaben und den Abschluss frei von Countdowns', () => {
+    const jetzt=Date.parse('2026-10-20T18:00:00Z');
+    expect(warnung({...biss,gefahr},'a',jetzt)).toBeNull();expect(warnung(start,'a',jetzt)).toBeNull();expect(warnung(s,'a',jetzt,true)).toBeNull();
+    expect(warnung({...start,gefahr:{a:{warnAb:'kaputt',frist:'kaputt'}}},'a',jetzt)).toBeNull();
+  });
+  it('kann dieselben Fristen am historischen Stationszeitpunkt ohne heutiges Wissen anzeigen', () => {
+    expect(warnung(s,'a',Date.parse('2026-10-19T07:00:00Z'))).toBeNull();
+    expect(warnung(s,'a',Date.parse('2026-10-20T07:00:00Z'))?.text).toBe('Trainieren: 15:00 h');
+  });
+});
+
+it('liefert alle 13 Angriffsatlanten unter 100 KB mit vier unterschiedlichen, transparent begrenzten Phasen', () => {
+  expect(Object.keys(ZOMBIE_ANGRIFFE)).toHaveLength(13);
+  for (const [key,datei] of Object.entries(ZOMBIE_ANGRIFFE)) {
+    const png=figurMedium(datei)!;expect(png.length).toBeLessThanOrEqual(102400);expect(datei).toBe('zombie-angriff-'+key+'-'+createHash('sha256').update(png).digest('hex').slice(0,12)+'.png');
+    expect([png.readUInt32BE(16),png.readUInt32BE(20)]).toEqual([400,600]);
+    const pixels=new Resvg(`<svg xmlns="http://www.w3.org/2000/svg" width="400" height="600"><image href="data:image/png;base64,${png.toString('base64')}" width="400" height="600"/></svg>`).render().pixels, hashes=[];
+    for(let i=0;i<4;i++){
+      const x=i%2*200,y=Math.floor(i/2)*300, cell=Buffer.concat(Array.from({length:300},(_,j)=>pixels.subarray(((y+j)*400+x)*4,((y+j)*400+x+200)*4)));
+      hashes.push(createHash('sha256').update(cell).digest('hex'));
+      let fuss=0,rand=false;for(let cy=0;cy<300;cy++)for(let cx=0;cx<200;cx++)if(cell[(cy*200+cx)*4+3]!>20){fuss=Math.max(fuss,cy);if(cx===0||cx===199)rand=true;}
+      expect(rand).toBe(false);expect(fuss).toBeGreaterThanOrEqual(280);expect(fuss).toBeLessThanOrEqual(284);
+    }expect(new Set(hashes).size).toBe(4);
+  }
+});
+
+it('lädt Gast-Grundposen und Gast-Angriff getrennt trotz gleichem Figurenschlüssel', async () => {
+  const geladen:string[]=[];
+  class Bild { onload?:()=>void; set src(url:string){geladen.push(url);this.onload?.();} }
+  const laden=runInNewContext(readFileSync(new URL('../miniapp/spiele/zombie.js',import.meta.url),'utf8')+';zombieBilder', {window:{addEventListener(){}},document:{addEventListener(){}},Image:Bild}) as (a:object)=>Promise<unknown>;
+  await laden({zombieBilder:{gym:'kulisse',gast:'grundposen'},zombieAngriffe:{gast:'angriff',0:'avatar0'}});
+  expect(geladen.sort()).toEqual(['angriff','avatar0','grundposen','kulisse']);
 });

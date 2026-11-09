@@ -1,5 +1,6 @@
 /* Ein gemeinsames Gym: alle Namen im Bild, dekorative Abwehr ohne Zustandsänderung. */
 var zombieStaende = {}, zombieAbbrechen = null, zombieDarstellung = null, zombieSvgNummer = 0;
+var zombieFristAbrufe = new Map();
 var zombieFensterbreite = window.innerWidth;
 var zombieBewegungsWahl = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
 document.addEventListener('visibilitychange', function () {
@@ -50,10 +51,25 @@ function zombiePositionen(s, spieler, breite) {
   gruppe(menschen, oben, false); gruppe(zombies, menschen.length ? barriere + 54 : oben, true);
   return { plan: plan, hoehe: Math.max(hoehe, oben + mRows * zelle + (zRows ? 60 + zRows * zelle : 0) + 8), barriere: barriere, cols: cols, menschen: menschen.length, zombies: zombies.length };
 }
-var zombieBildCache = new Map(), zombieBildFehler = new Set();
+// Absolutfristen kommen ausschließlich vom Server; hier wird nur die Anzeige berechnet.
+function zombieWarnung(s, id, jetzt, abgeschlossen) {
+  var g = s.gefahr && s.gefahr[id], ab = g && Date.parse(g.warnAb), frist = g && Date.parse(g.frist);
+  if (abgeschlossen || zombieInfizierte(s).has(id) || !Number.isFinite(ab) || !Number.isFinite(frist) || frist <= ab || !Number.isFinite(jetzt) || jetzt < ab) return null;
+  var rest = frist - jetzt, kritisch = rest <= 6 * 3600000, minuten = Math.ceil(rest / 60000);
+  var text = rest <= 0 ? 'Frist abgelaufen · wird geprüft' : rest < 60000 ? '<1 Min.' : String(Math.floor(minuten / 60)).padStart(2, '0') + ':' + String(minuten % 60).padStart(2, '0') + ' h';
+  return { stufe: rest <= 0 ? 'abgelaufen' : kritisch ? 'kritisch' : 'warnung', text: rest <= 0 ? text : (kritisch ? '⚠ Noch ' : 'Trainieren: ') + text, frist: frist, rest: rest };
+}
+// Richtung der vorhandenen gezeichneten Posen. Neue Angriffsphasen sind immer rechts.
+function zombiePoseBlick(figur, pose) {
+  if (/^angriff[0-3]$/.test(pose)) return 1;
+  if (figur == null) return 1;
+  if (pose === 'ziehen') return -1;
+  return Number(figur) === 0 ? 1 : -1;
+}
+var zombieBildCache = new Map(), zombieBildFehler = new Set(), zombieBildBereit = new Set();
 function zombieBilder(a) {
-  return Promise.all(Object.values(a.zombieBilder || {}).map(function (url) {
-    if (!zombieBildCache.has(url)) zombieBildCache.set(url, new Promise(function (ok) { var b = new Image(); b.onload = function () { zombieBildFehler.delete(url); ok(true); }; b.onerror = function () { zombieBildFehler.add(url); zombieBildCache.delete(url); ok(false); }; b.src = url; })); return zombieBildCache.get(url);
+  return Promise.all(Object.values(a.zombieBilder || {}).concat(Object.values(a.zombieAngriffe || {})).map(function (url) {
+    if (!zombieBildCache.has(url)) zombieBildCache.set(url, new Promise(function (ok) { var b = new Image(); b.onload = function () { zombieBildFehler.delete(url); zombieBildBereit.add(url); ok(true); }; b.onerror = function () { zombieBildFehler.add(url); zombieBildCache.delete(url); ok(false); }; b.src = url; })); return zombieBildCache.get(url);
   }));
 }
 window.MINISPIEL_SZENEN = window.MINISPIEL_SZENEN || {};
@@ -64,6 +80,8 @@ window.MINISPIEL_SZENEN.zombie = function (a) {
   var signaturen = zombieSignaturen(stationen), gesehen = zombieStaende[a.id], ab = zombieFortsetzung(gesehen && gesehen.signaturen, signaturen);
   var geaendert = zombieVerlaufGeaendert(gesehen && gesehen.signaturen, signaturen);
   var spieler = new Map(a.spieler.map(function (sp) { return [sp.id, sp]; })), figuren = new Map(), lauf = 0, lebenMarke = 0, lebenAktiv = false, versuche = 0, animationen = new Set(), wartende = new Map();
+  var serverStart = Date.parse(a.serverZeit), uhrStart = performance.now(), uhrTimer = null, uhrGeneration = 0, fristAngefragt = false, anzeigeStand = aktuell, anzeigeFertig = true, replayZeit = NaN;
+  if (!Number.isFinite(serverStart)) serverStart = Date.now();
   var status = el('div', { class: 'ms-status', role: 'status', 'aria-live': 'polite' }), titel = el('strong', { text: 'BOTZEPS · ZOMBIE GYM' });
   var hintergrund = el('div', { class: 'zh-hintergrund', 'aria-hidden': 'true' }), nebel = el('div', { class: 'zh-hordenlicht', 'aria-hidden': 'true' });
   var menschenSchild = el('span', { class: 'zh-zonenname zh-menschen', 'aria-hidden': 'true' }), zombieSchild = el('span', { class: 'zh-zonenname zh-zombies', 'aria-hidden': 'true' });
@@ -87,21 +105,55 @@ window.MINISPIEL_SZENEN.zombie = function (a) {
     return an.finished.then(function () { if (!gueltig(nr)) return false; var f = frames[frames.length - 1]; ['transform', 'opacity', 'left', 'top', 'filter'].forEach(function (p) { if (f[p] != null) e.style[p] = f[p]; }); return true; }, function () { return false; }).finally(function () { animationen.delete(an); an.cancel(); });
   }
   function reinigen() {
-    lebenMarke++; lebenAktiv = false; animationen.forEach(function (an) { an.cancel(); }); animationen.clear(); wartende.forEach(function (ok, t) { clearTimeout(t); ok(false); }); wartende.clear();
+    stoppeUhr(); lebenMarke++; lebenAktiv = false; animationen.forEach(function (an) { an.cancel(); }); animationen.clear(); wartende.forEach(function (ok, t) { clearTimeout(t); ok(false); }); wartende.clear();
     effekte.replaceChildren(); root.removeAttribute('data-angreifer'); root.removeAttribute('data-ziel'); arena.style.filter = '';
   }
   function medien() { hintergrund.replaceChildren(); var url = a.zombieBilder && a.zombieBilder.gym; if (url && !zombieBildFehler.has(url)) { var b = el('img', { src: url, alt: '' }); b.onerror = function () { b.remove(); }; hintergrund.appendChild(b); } }
   function avatar(id, pose) {
-    var sp = spieler.get(id), bilder = sp && sp.figur != null && a.figuren && a.figuren[sp.figur];
-    if (bilder && bilder.bereit) return minispielAvatar(a, id, pose);
-    var e = el('div', { class: 'ms-avatar zh-gast', 'data-id': id, 'data-pose': pose, 'aria-label': name(id) + ', neutrale Trainingsfigur, noch kein Avatar gewählt' }), url = a.zombieBilder && a.zombieBilder.gast;
+    var sp = spieler.get(id), bilder = sp && sp.figur != null && a.figuren && a.figuren[sp.figur], key = bilder && bilder.bereit ? String(sp.figur) : 'gast';
+    var angriff = /^angriff([0-3])$/.exec(pose), url = angriff && a.zombieAngriffe && a.zombieAngriffe[key];
+    if (angriff && (!url || !zombieBildBereit.has(url) || zombieBildFehler.has(url))) { pose = 'ziehen'; angriff = null; }
+    if (!angriff && bilder && bilder.bereit) return minispielAvatar(a, id, pose);
+    var e = el('div', { class: 'ms-avatar ' + (angriff ? 'zh-angriff' : 'zh-gast'), 'data-id': id, 'data-pose': pose, 'aria-label': name(id) });
+    if (!angriff) url = a.zombieBilder && a.zombieBilder.gast;
     if (url && !zombieBildFehler.has(url) && /^(?:\/api\/figurbild\/[a-z0-9-]+\.png|data:image\/png;base64,[A-Za-z0-9+/=]+)$/.test(url)) {
-      var index = pose === 'ziehen' ? 3 : pose === 'jubel' ? 2 : pose === 'schlag' || pose === 'ko' ? 1 : 0, x = index % 2 * 200, y = Math.floor(index / 2) * 300, svgId = 'zggast' + (++zombieSvgNummer);
+      var index = angriff ? Number(angriff[1]) : pose === 'ziehen' ? 3 : pose === 'jubel' ? 2 : pose === 'schlag' || pose === 'ko' ? 1 : 0, x = index % 2 * 200, y = Math.floor(index / 2) * 300, svgId = 'zgatlas' + (++zombieSvgNummer);
       e.innerHTML = '<svg viewBox="' + x + ' ' + y + ' 200 300"><defs><clipPath id="' + svgId + '"><rect x="' + x + '" y="' + y + '" width="200" height="300"/></clipPath></defs><image clip-path="url(#' + svgId + ')" href="' + url + '" width="400" height="600"/></svg>';
     } else { e.classList.add('ms-avatar-ersatz'); e.textContent = initialen(name(id)); }
     return e;
   }
-  function pose(e, p) { var alt = e.querySelector('.ms-avatar'); alt.replaceWith(avatar(e.getAttribute('data-id'), p)); }
+  function richte(e, blick) {
+    if (blick) e.setAttribute('data-blick', blick < 0 ? 'links' : 'rechts');
+    var av = e.querySelector('.ms-avatar'), sp = spieler.get(e.getAttribute('data-id')), nativ = zombiePoseBlick(av.classList.contains('zh-gast') ? null : sp && sp.figur, av.getAttribute('data-pose'));
+    e.querySelector('.zh-spiegel').style.transform = av.classList.contains('ms-avatar-ersatz') ? 'none' : 'scaleX(' + ((e.getAttribute('data-blick') === 'links' ? -1 : 1) * nativ) + ')';
+  }
+  function pose(e, p, blick) { e.querySelector('.ms-avatar').replaceWith(avatar(e.getAttribute('data-id'), p)); richte(e, blick); }
+  function serverJetzt() { return serverStart + performance.now() - uhrStart; }
+  function stoppeUhr() { uhrGeneration++; clearTimeout(uhrTimer); uhrTimer = null; }
+  function warnungen() {
+    var rueckblick = root.getAttribute('data-rueckblick') === 'true', jetzt = rueckblick ? replayZeit : serverJetzt(), abgelaufen = false;
+    a.spieler.forEach(function (sp) {
+      var e = figuren.get(sp.id); if (!e) return;
+      var g = zombieWarnung(anzeigeStand, sp.id, jetzt, anzeigeFertig && a.abgeschlossen), grund = badge(anzeigeStand, sp.id, anzeigeFertig), text = g ? g.text : grund;
+      e.setAttribute('data-gefahr', g ? g.stufe : 'keine'); e.querySelector('.zh-schild small').textContent = text;
+      var detail = grund + (g ? ' · ' + g.text + ' · Training spätestens ' + new Date(g.frist).toLocaleString('de-DE', { timeZone: a.zeitzone || 'Europe/Berlin', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' }) : '');
+      e.title = sp.name + ' · ' + detail; e.setAttribute('aria-label', sp.name + ': ' + detail);
+      var row = Array.from(roster.children).find(function (r) { return r.getAttribute('data-id') === sp.id; }); if (row) row.lastChild.textContent = detail + (sp.figur == null ? ' · noch kein Avatar gewählt' : '');
+      if (g && g.rest <= 0) abgelaufen = true;
+    });
+    return !rueckblick && !a.abgeschlossen && abgelaufen;
+  }
+  function starteUhr() {
+    stoppeUhr(); if (!root.isConnected || document.hidden || a.abgeschlossen || root.getAttribute('data-rueckblick') === 'true') return;
+    zombieAbbrechen = abbrechen; var marke = uhrGeneration;
+    function tick() {
+      if (marke !== uhrGeneration || !root.isConnected || document.hidden) return;
+      if (warnungen() && !fristAngefragt && performance.now() - (zombieFristAbrufe.get(a.id) ?? -Infinity) >= 60000) { fristAngefragt = true; zombieFristAbrufe.set(a.id, performance.now()); aktualisiereBombe(laden); }
+      var pause = 60000, jetzt = serverJetzt();
+      Object.values(aktuell.gefahr || {}).forEach(function (g) { [Date.parse(g.warnAb), Date.parse(g.frist), Date.parse(g.frist) - 6 * 3600000].forEach(function (t) { var rest = t - jetzt; if (rest > 0) pause = Math.min(pause, rest + 20); }); });
+      if (marke === uhrGeneration) uhrTimer = setTimeout(tick, pause);
+    } tick();
+  }
   function plan(s) { return zombiePositionen(s, a.spieler, arena.clientWidth || Math.min(448, Math.max(240, window.innerWidth - 64))); }
   function badge(s, id, fertig) { var ids = zombieInfizierte(s), biss = (s.zombies || []).find(function (z) { return z.id === id; }); return id === s.patientNull ? 'Patient Null' : ids.has(id) ? 'Zombie' + (biss && Number.isFinite(biss.tag) ? ' · Tag ' + (biss.tag + 1) : '') : fertig && a.abgeschlossen ? 'Überlebt' : 'Mensch'; }
   function zaehle(s, fertig) {
@@ -110,26 +162,27 @@ window.MINISPIEL_SZENEN.zombie = function (a) {
     a.spieler.forEach(function (sp) { roster.appendChild(el('div', { class: 'zh-person', 'data-id': sp.id, 'data-status': ids.has(sp.id) ? 'zombie' : 'mensch' }, [el('strong', { text: sp.name + (sp.ich ? ' · Du' : '') }), el('span', { text: badge(s, sp.id, fertig) + (sp.figur == null ? ' · noch kein Avatar gewählt' : '') })])); });
   }
   function zeichne(s, fertig) {
+    anzeigeStand = s; anzeigeFertig = fertig;
     var p = plan(s), ids = zombieInfizierte(s); arena.style.height = p.hoehe + 'px'; feld.replaceChildren(); figuren.clear();
     barriere.style.top = p.barriere + 'px'; barriere.hidden = !p.menschen || !p.zombies; nebel.style.top = (p.menschen ? p.barriere : 70) + 'px';
     menschenSchild.textContent = p.menschen ? 'IM GYM · ' + p.menschen : a.spieler.length ? 'DAS GYM IST ÜBERNOMMEN' : 'DAS GYM WARTET';
     zombieSchild.textContent = p.zombies ? 'DIE HORDE · ' + p.zombies : ''; zombieSchild.style.top = (p.menschen ? p.barriere + 28 : 60) + 'px';
     a.spieler.forEach(function (sp) {
       var punkt = p.plan.get(sp.id), zombie = ids.has(sp.id), e = el('div', { class: 'zh-akteur' + (zombie ? ' is-zombie' : ''), role: 'listitem', 'data-id': sp.id, 'data-ich': String(!!sp.ich), 'data-status': zombie ? 'zombie' : 'mensch', 'aria-label': sp.name + ': ' + badge(s, sp.id, fertig), title: sp.name + ' · ' + badge(s, sp.id, fertig) }, [
-        el('div', { class: 'zh-koerper', 'aria-hidden': 'true' }, [avatar(sp.id, zombie ? 'ziehen' : fertig && a.abgeschlossen ? 'jubel' : 'bereit')]),
+        el('div', { class: 'zh-koerper', 'aria-hidden': 'true' }, [el('div', { class: 'zh-haltung' }, [el('div', { class: 'zh-spiegel' }, [avatar(sp.id, zombie ? 'ziehen' : fertig && a.abgeschlossen ? 'jubel' : 'bereit')])])]),
         el('div', { class: 'zh-schild' }, [el('span', { class: 'zh-name', text: sp.name + (sp.ich ? ' · Du' : '') }), el('small', { text: badge(s, sp.id, fertig) })])
-      ]); e.style.left = punkt.x + 'px'; e.style.top = punkt.y + 'px'; e.style.width = punkt.w + 'px'; feld.appendChild(e); figuren.set(sp.id, e);
-    }); zaehle(s, fertig);
+      ]); e.style.left = punkt.x + 'px'; e.style.top = punkt.y + 'px'; e.style.width = punkt.w + 'px'; feld.appendChild(e); figuren.set(sp.id, e); richte(e, punkt.x > (arena.clientWidth || 326) / 2 ? -1 : 1);
+    }); zaehle(s, fertig); warnungen();
   }
   function beschreibe(s) { var ids = zombieInfizierte(s), m = a.spieler.filter(function (sp) { return !ids.has(sp.id); }).length; return !a.spieler.length ? 'Noch keine Spieler im Gym.' : a.abgeschlossen ? m ? m + (m === 1 ? ' hat die Zombie-Woche überlebt.' : ' haben die Zombie-Woche überlebt.') : 'Die ganze Gruppe ist infiziert.' : m ? m + (m === 1 ? ' hält im Gym durch · die Horde lauert an der Barrikade' : ' halten im Gym durch · die Horde lauert an der Barrikade') : 'Das ganze Gym schlurft · alle sind infiziert'; }
   function endstand(merken, beleben) {
     phase('ende'); root.setAttribute('data-rueckblick', 'false'); zeichne(aktuell, true); medien(); status.textContent = beschreibe(aktuell); zeit.textContent = a.abgeschlossen ? 'Wochenabschluss' : 'Aktueller Stand'; skip.hidden = true; replay.hidden = !a.spieler.length; replay.disabled = !bewegung();
     if (merken && root.isConnected) zombieStaende[a.id] = { signaturen: signaturen, abgeschlossen: !!a.abgeschlossen };
     if (zombieAbbrechen === abbrechen) zombieAbbrechen = null;
-    if (beleben) starteLeben();
+    if (beleben) { starteUhr(); starteLeben(); }
   }
   function abbrechen() { lauf++; reinigen(); endstand(true, false); if (zombieAbbrechen === abbrechen) zombieAbbrechen = null; }
-  function station(i) { var s = stationen[i], d = s.zeitpunkt && new Date(s.zeitpunkt); zeit.textContent = (i + 1) + ' / ' + stationen.length + (d && Number.isFinite(d.getTime()) ? ' · ' + d.toLocaleString('de-DE', { timeZone: a.zeitzone || 'Europe/Berlin', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '') + (s.art === 'korrektur' ? ' · Korrektur' : ''); }
+  function station(i) { var s = stationen[i], d = s.zeitpunkt && new Date(s.zeitpunkt); replayZeit = d ? d.getTime() : NaN; zeit.textContent = (i + 1) + ' / ' + stationen.length + (d && Number.isFinite(d.getTime()) ? ' · ' + d.toLocaleString('de-DE', { timeZone: a.zeitzone || 'Europe/Berlin', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '') + (s.art === 'korrektur' ? ' · Korrektur' : ''); }
   function sporen(nr, x, y) { for (var i = 0; i < 8; i++) { var e = el('i', { class: 'zh-spore' }); e.style.left = x + 'px'; e.style.top = y + 'px'; effekte.appendChild(e); bewegen(e, [{ opacity: 0, transform: 'translate(0,0) scale(.3)' }, { opacity: .8, offset: .3 }, { opacity: 0, transform: 'translate(' + ((i % 2 ? 1 : -1) * (15 + i * 5)) + 'px,-70px) scale(1.3)' }], { duration: 850 }, nr).then(function (e) { e.remove(); }.bind(null, e)); } }
   async function versuch(nr, auswahl) {
     var angreifer = figuren.get(auswahl.angreifer), ziel = figuren.get(auswahl.ziel); if (!angreifer || !ziel) return true;
@@ -137,19 +190,26 @@ window.MINISPIEL_SZENEN.zombie = function (a) {
     var schritt = (w - 20) / p.cols, zielX = w / 2 + (p.cols - 2 - (p.cols - 1) / 2) * schritt, angriffX = zielX + schritt;
     var platzId = Array.from(p.plan.keys()).find(function (id) { var punkt = p.plan.get(id); return id !== auswahl.ziel && !punkt.zombie && Math.abs(punkt.x - zielX) < 1 && Math.abs(punkt.y - zielY) < 2; }), platz = figuren.get(platzId);
     phase('versuch'); root.setAttribute('data-angreifer', auswahl.angreifer); root.setAttribute('data-ziel', auswahl.ziel); angreifer.style.zIndex = '8'; ziel.style.zIndex = '8';
+    richte(angreifer, zielX - angriffX); richte(ziel, angriffX - zielX);
     var antritt = [
       bewegen(angreifer, [{ left: v.x + 'px', top: v.y + 'px' }, { left: angriffX + 'px', top: angriffY + 'px' }], { duration: 650, easing: 'ease-in-out' }, nr),
       bewegen(ziel, [{ left: h.x + 'px', top: h.y + 'px' }, { left: zielX + 'px', top: zielY + 'px' }], { duration: 650, easing: 'ease-in-out' }, nr)
     ];
     if (platz) { platz.style.zIndex = '7'; antritt.push(bewegen(platz, [{ left: platz.style.left, top: platz.style.top }, { left: h.x + 'px', top: h.y + 'px' }], { duration: 650, easing: 'ease-in-out' }, nr)); }
     if (!(await Promise.all(antritt)).every(Boolean)) return false;
-    pose(ziel, 'schlag'); phase('abwehr');
+    var richtung = Math.sign(zielX - angriffX) || -1, reichweite = Math.max(22, schritt - v.w * .75), zKoerper = angreifer.querySelector('.zh-koerper'), mKoerper = ziel.querySelector('.zh-koerper');
+    function angriffPhase(index, dauer, von, nach) { phase(['ausholen', 'vorstoss', 'schnappen', 'abwehr'][index]); pose(angreifer, 'angriff' + index, richtung); return bewegen(zKoerper, [{ transform: von }, { transform: nach }], { duration: dauer, easing: index === 1 ? 'cubic-bezier(.2,.8,.3,1)' : 'ease-out' }, nr); }
+    if (!await angriffPhase(0, 250, 'translateX(0)', 'translateX(' + (-richtung * 5) + 'px) rotate(' + (-richtung * 7) + 'deg)')) return false;
+    pose(ziel, spieler.get(auswahl.ziel).figur == null ? 'schlag' : 'ziehen', -richtung);
+    if (!await angriffPhase(1, 160, zKoerper.style.transform, 'translateX(' + (richtung * reichweite) + 'px) rotate(' + (richtung * 6) + 'deg)')) return false;
+    var kontakt = 'translateX(' + (richtung * reichweite) + 'px) rotate(' + (richtung * 6) + 'deg)';
+    if (!await angriffPhase(2, 90, kontakt, kontakt)) return false;
     var ruf = el('strong', { class: 'zh-abgewehrt', text: 'ABGEWEHRT!' }); ruf.style.top = p.barriere - 40 + 'px'; effekte.appendChild(ruf);
     if (!(await Promise.all([
-      bewegen(angreifer.querySelector('.zh-koerper'), [{ transform: 'rotate(0deg)' }, { transform: 'rotate(11deg) translateX(9px)', offset: .35 }, { transform: 'rotate(-8deg) translateX(-8px)', offset: .7 }, { transform: 'rotate(0deg)' }], { duration: 750 }, nr),
-      bewegen(ziel.querySelector('.zh-koerper'), [{ transform: 'translateY(0)' }, { transform: 'translateY(-5px) rotate(-5deg)', offset: .4 }, { transform: 'translateY(0) rotate(0deg)' }], { duration: 750 }, nr)
+      angriffPhase(3, 500, kontakt, 'translateX(' + (-richtung * 8) + 'px) rotate(' + (-richtung * 9) + 'deg)'),
+      bewegen(mKoerper, [{ transform: 'translateX(0)' }, { transform: 'translateX(' + (richtung * 8) + 'px) rotate(' + (richtung * 7) + 'deg)', offset: .3 }, { transform: 'translateX(0)' }], { duration: 500 }, nr)
     ])).every(Boolean)) return false;
-    ruf.remove(); pose(ziel, 'bereit');
+    ruf.remove(); zKoerper.style.transform = ''; mKoerper.style.transform = ''; pose(angreifer, 'ziehen', Math.sign(v.x - angriffX) || richtung); pose(ziel, 'bereit', Math.sign(h.x - zielX) || -richtung);
     var rueckweg = [
       bewegen(angreifer, [{ left: angriffX + 'px', top: angriffY + 'px' }, { left: v.x + 'px', top: v.y + 'px' }], { duration: 600, easing: 'ease-in-out' }, nr),
       bewegen(ziel, [{ left: zielX + 'px', top: zielY + 'px' }, { left: h.x + 'px', top: h.y + 'px' }], { duration: 600, easing: 'ease-in-out' }, nr)
@@ -157,13 +217,13 @@ window.MINISPIEL_SZENEN.zombie = function (a) {
     if (platz) { var alt = p.plan.get(platzId); rueckweg.push(bewegen(platz, [{ left: h.x + 'px', top: h.y + 'px' }, { left: alt.x + 'px', top: alt.y + 'px' }], { duration: 600, easing: 'ease-in-out' }, nr)); }
     if (!(await Promise.all(rueckweg)).every(Boolean)) return false;
     if (platz) platz.style.zIndex = '';
-    angreifer.style.zIndex = ''; ziel.style.zIndex = ''; root.removeAttribute('data-angreifer'); root.removeAttribute('data-ziel'); phase('ende'); return true;
+    angreifer.style.zIndex = ''; ziel.style.zIndex = ''; root.removeAttribute('data-angreifer'); root.removeAttribute('data-ziel'); richte(angreifer, h.x - v.x); richte(ziel, v.x - h.x); phase('ende'); return true;
   }
   async function starteLeben() {
     if (lebenAktiv || a.abgeschlossen || !gueltig(lauf) || !zombieVersuch(aktuell, a.spieler, 0)) return;
     lebenAktiv = true; var marke = ++lebenMarke, nr = lauf; zombieAbbrechen = abbrechen;
     try { while (marke === lebenMarke && gueltig(nr)) { if (!await warten(4800, nr) || marke !== lebenMarke) return; var v = zombieVersuch(aktuell, a.spieler, versuche++); if (!v || !await versuch(nr, v)) return; } }
-    finally { if (marke === lebenMarke) { lebenAktiv = false; if (zombieAbbrechen === abbrechen) zombieAbbrechen = null; } }
+    finally { if (marke === lebenMarke) { lebenAktiv = false; if (zombieAbbrechen === abbrechen && !uhrTimer) zombieAbbrechen = null; } }
   }
   async function auftritt(s, nr) {
     phase('auftritt'); zeichne(s, false); var schild = el('div', { class: 'zh-banner' }, [el('small', { text: 'DER AUSBRUCH BEGINNT' }), el('strong', { text: 'Haltet die Horde draußen!' })]); effekte.appendChild(schild);
@@ -195,7 +255,7 @@ window.MINISPIEL_SZENEN.zombie = function (a) {
   async function spiele(start, intro) {
     lauf++; reinigen(); var nr = lauf; if (!root.isConnected) return;
     if (!bewegung() || document.hidden || !a.spieler.length) { endstand(true, false); return; }
-    zombieAbbrechen = abbrechen; root.setAttribute('data-rueckblick', 'true'); skip.hidden = false; replay.hidden = true; zeichne(stationen[start].stand, false); station(start);
+    zombieAbbrechen = abbrechen; root.setAttribute('data-rueckblick', 'true'); skip.hidden = false; replay.hidden = true; station(start); zeichne(stationen[start].stand, false);
     try { phase('laden'); await Promise.race([zombieBilder(a), warten(1600, nr)]); if (!gueltig(nr)) return; medien(); if (intro && !await auftritt(stationen[start].stand, nr)) return;
       for (var i = start + 1; i < stationen.length; i++) { var s = stationen[i], v = stationen[i - 1].stand, w = zombieWechsel(v, s); station(i);
         if (w.korrektur) { phase('korrektur'); zeichne(s.stand, false); status.textContent = 'Der Wochenverlauf wurde korrigiert · neuer Stand'; if (!await warten(500, nr)) return; }
@@ -204,18 +264,18 @@ window.MINISPIEL_SZENEN.zombie = function (a) {
     } finally { if (nr === lauf) { reinigen(); if (root.isConnected) endstand(true, true); } }
   }
   async function korrigiere() {
-    lauf++; reinigen(); var nr = lauf; zombieAbbrechen = abbrechen; phase('korrektur'); root.setAttribute('data-rueckblick', 'true'); skip.hidden = false; replay.hidden = true; zeichne(aktuell, true); status.textContent = 'Der Wochenverlauf wurde korrigiert · neuer Stand'; await warten(500, nr);
+    lauf++; reinigen(); var nr = lauf; zombieAbbrechen = abbrechen; phase('korrektur'); replayZeit = serverJetzt(); root.setAttribute('data-rueckblick', 'true'); skip.hidden = false; replay.hidden = true; zeichne(aktuell, true); status.textContent = 'Der Wochenverlauf wurde korrigiert · neuer Stand'; await warten(500, nr);
     if (nr === lauf) { reinigen(); if (root.isConnected) endstand(true, true); }
   }
-  skip.onclick = function () { abbrechen(); starteLeben(); }; replay.onclick = function () { spiele(0, true); }; medien();
+  skip.onclick = function () { abbrechen(); starteUhr(); starteLeben(); }; replay.onclick = function () { spiele(0, true); }; medien();
   var rueckblick = bewegung() && !document.hidden && a.spieler.length && ab !== null && !geaendert;
-  if (rueckblick) { phase('bereit'); zeichne(stationen[ab].stand, false); status.textContent = 'Die Gruppe sammelt sich im Gym'; replay.hidden = true; }
+  if (rueckblick) { root.setAttribute('data-rueckblick', 'true'); station(ab); phase('bereit'); zeichne(stationen[ab].stand, false); status.textContent = 'Die Gruppe sammelt sich im Gym'; replay.hidden = true; }
   else endstand(false, false);
   zombieDarstellung = function () { if (root.isConnected) { lauf++; reinigen(); endstand(false, true); } };
   zombieBilder(a).then(function () { if (root.isConnected) { medien(); if (root.getAttribute('data-zombiephase') === 'ende') zeichne(aktuell, true); } });
   var anfang = lauf; requestAnimationFrame(function () {
     if (!root.isConnected || lauf !== anfang) return;
-    if (!bewegung() || document.hidden) { endstand(true, false); return; }
+    if (!bewegung() || document.hidden) { endstand(true, true); return; }
     if (ab === null) { if (a.abgeschlossen && gesehen && !gesehen.abgeschlossen) spiele(stationen.length - 1, false); else endstand(true, true); }
     else if (geaendert) korrigiere(); else spiele(ab, !gesehen);
   }); return root;

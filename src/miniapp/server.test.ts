@@ -486,3 +486,21 @@ describe("Mini App", () => {
     }
   });
 });
+
+it('liefert Zombie-Fristen ohne Rohtrainings und nur Angriffsatlanten der anwesenden Figuren', async () => {
+  const t=await aufbau();try {
+    tag('2026-10-20');
+    const ids=t.db.prepare('SELECT CAST(id AS TEXT) AS id, name FROM nutzer ORDER BY name').all() as {id:string;name:string}[];
+    const kevin=ids.find(sp=>sp.name==='Kevin')!.id, peter=ids.find(sp=>sp.name==='Peter')!.id;
+    t.db.prepare('UPDATE teilnahme SET figur=NULL').run();t.db.prepare('UPDATE teilnahme SET figur=0 WHERE nutzer=?').run(Number(kevin));
+    t.db.prepare("INSERT INTO minispiel (season,woche,art,daten) VALUES (1,1,'zombie',?)").run(JSON.stringify({art:'zombie',spieler:[kevin,peter],patientNull:peter,gemeldet:[]}));
+    const a=(await t.holen('/api/ich')).json.seasons[0].minispiel.animation;
+    expect(a.serverZeit).toBe('2026-10-20T08:00:00.000Z');expect(a.aktuell.spieltag).toBe('2026-10-20');
+    expect(a.aktuell.gefahr[kevin]).toEqual({warnAb:'2026-10-19T22:00:00.000Z',frist:'2026-10-20T22:00:00.000Z'});expect(a.aktuell.gefahr[peter]).toBeUndefined();
+    expect(Object.keys(a.zombieAngriffe).sort()).toEqual(['0','gast']);expect(JSON.stringify(a)).not.toMatch(/minuten|erstellt|trainings/);
+    for(const url of Object.values(a.zombieAngriffe) as string[]){const r=await fetch(t.basis+url);expect(r.status).toBe(200);expect(r.headers.get('content-type')).toContain('image/png');expect((await r.arrayBuffer()).byteLength).toBeLessThanOrEqual(102400);}
+    t.db.prepare('UPDATE teilnahme SET figur=3 WHERE nutzer=?').run(Number(peter));
+    const b=(await t.holen('/api/ich')).json.seasons[0].minispiel.animation;
+    expect(Object.keys(b.zombieAngriffe).sort()).toEqual(['0','3']);
+  }finally{t.server.close();t.db.close();}
+});
