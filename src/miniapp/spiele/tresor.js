@@ -71,7 +71,17 @@ window.MINISPIEL_SZENEN.tresor = function (a) {
   var tuerbild = el('div', { class: 'tr-tuerbild', 'aria-hidden': 'true' }), rad = el('div', { class: 'tr-rad', 'aria-hidden': 'true' });
   var code = el('div', { class: 'tr-code', role: 'img' }), ziffern = [0, 1, 2, 3].map(function () { var e = el('span', { text: '?', 'aria-hidden': 'true' }); code.appendChild(e); return e; });
   var tuer = el('div', { class: 'tr-tuer' }, [tuerbild, rad, code]), riegel = [0, 1, 2, 3].map(function (i) { return el('i', { class: 'tr-riegel tr-r' + i, 'aria-hidden': 'true' }); });
-  var safe = el('div', { class: 'tr-safe' }, [innen, chassis].concat(riegel, [tuer]));
+  // Vollständig deckendes Mosaik: darunter liegt keine unzensierte Darstellung.
+  var pixel = el('div', { class: 'tr-fund-pixel', 'aria-hidden': 'true' });
+  var palette = ['#efb09e', '#f4c3a9', '#c27d78', '#a65c68', '#d99186', '#ffd1ad', '#805668'];
+  for (var pi = 0; pi < 80; pi++) {
+    var punkt = el('i'); punkt.style.backgroundColor = palette[(pi * 7 + Math.floor(pi / 8) * 3 + pi % 5) % palette.length]; pixel.appendChild(punkt);
+  }
+  var fund = el('div', { class: 'tr-fund', role: 'img', 'aria-label': 'Vollständig verpixelter Überraschungsfund' }, [
+    el('div', { class: 'tr-fund-blitz', 'aria-hidden': 'true' }), pixel,
+    el('span', { class: 'tr-fund-zensur', text: 'ZENSIERT', 'aria-hidden': 'true' })
+  ]); fund.hidden = true;
+  var safe = el('div', { class: 'tr-safe' }, [innen, chassis, fund].concat(riegel, [tuer]));
   var feld = el('div', { class: 'tr-feld', 'aria-hidden': 'true' }), effekte = el('div', { class: 'tr-effekte', 'aria-hidden': 'true' });
   var arena = el('div', { class: 'tr-arena' }, [raum, licht, safe, feld, effekte]);
   var balken = [0, 1, 2, 3].map(function () { return el('span', {}, [el('i')]); }), wert = el('strong'), hinweis = el('p', { class: 'tr-hinweis' });
@@ -101,6 +111,7 @@ window.MINISPIEL_SZENEN.tresor = function (a) {
     animationen.forEach(function (an) { an.cancel(); }); animationen.clear();
     wartende.forEach(function (ok, t) { clearTimeout(t); ok(false); }); wartende.clear();
     effekte.replaceChildren(); root.removeAttribute('data-aktiv');
+    fund.classList.remove('tr-fund-auftritt'); fund.style.transform = ''; fund.style.opacity = '';
   }
   function svg(parent, text) { parent.innerHTML = text; }
   function medien() {
@@ -135,6 +146,7 @@ window.MINISPIEL_SZENEN.tresor = function (a) {
     var n = tresorStand(s); root.setAttribute('data-ziffern', String(n.ziffern)); root.setAttribute('data-offen', String(n.offen));
     tuer.style.transform = 'rotateY(' + (oeffnungswinkel == null ? n.offen ? -82 : 0 : oeffnungswinkel) + 'deg)';
     rad.style.transform = 'rotate(' + (n.ziffern * 90) + 'deg)'; licht.style.opacity = n.offen ? '.85' : '0';
+    fund.hidden = !n.offen; root.setAttribute('data-fund', String(n.offen));
     ziffern.forEach(function (e, i) { e.textContent = n.code[i]; e.classList.toggle('geloest', n.code[i] !== '?'); riegel[i].classList.toggle('geloest', i < n.ziffern); if (riegel[i].firstChild) riegel[i].firstChild.style.transform = 'translateX(' + (i < n.ziffern ? i % 2 ? -100 : 100 : 0) + '%)'; });
     code.setAttribute('aria-label', 'Tresorcode: ' + n.code.map(function (c) { return c === '?' ? 'unbekannt' : c; }).join(', '));
     balken.forEach(function (b, i) { b.firstChild.style.width = Math.min(1, Math.max(0, n.summe / n.ziel * 4 - i)) * 100 + '%'; b.classList.toggle('geloest', i < n.ziffern); });
@@ -199,6 +211,25 @@ window.MINISPIEL_SZENEN.tresor = function (a) {
     if (!await bewegen(tuer, [{ transform: 'rotateY(0deg)' }, { transform: 'rotateY(-5deg)', offset: .15 }, { transform: 'rotateY(-82deg)' }], { duration: 1400, easing: 'cubic-bezier(.25,.1,.2,1)' }, nr)) return false;
     phase('licht'); partikel(nr, true); status.textContent = 'Zusammen geknackt! Die Beute verrät der Wochenbericht.';
     if (!await warten(450, nr)) return false;
+    phase('fund'); fund.hidden = false; fund.classList.add('tr-fund-auftritt'); root.setAttribute('data-fund', 'true');
+    status.textContent = 'BOING! Ein vollständig verpixelter Überraschungsfund.';
+    var ruf = el('strong', { class: 'tr-boing', text: 'BOING!', 'aria-hidden': 'true' }); effekte.appendChild(ruf);
+    var auftritt = await Promise.all([
+      bewegen(fund, [
+        { opacity: 0, transform: 'translateY(32px) scale(.45,.25) rotate(-9deg)' },
+        { opacity: 1, transform: 'translateY(-14px) scale(1.12,.92) rotate(4deg)', offset: .48 },
+        { opacity: 1, transform: 'translateY(3px) scale(.96,1.04) rotate(-2deg)', offset: .73 },
+        { opacity: 1, transform: 'translateY(0) scale(1) rotate(0deg)' }
+      ], { duration: 760, easing: 'ease-out' }, nr),
+      bewegen(ruf, [
+        { opacity: 0, transform: 'translateY(12px) scale(.5) rotate(-18deg)' },
+        { opacity: 1, transform: 'translateY(0) scale(1.12) rotate(-12deg)', offset: .3 },
+        { opacity: 1, transform: 'translateY(0) scale(1) rotate(-12deg)', offset: .75 },
+        { opacity: 0, transform: 'translateY(-8px) scale(1) rotate(-12deg)' }
+      ], { duration: 1100 }, nr)
+    ]);
+    if (!auftritt.every(Boolean)) return false;
+    ruf.remove(); fund.classList.remove('tr-fund-auftritt');
     phase('jubel'); var bewegungen = [];
     mitglieder.forEach(function (e, id) { if (tresorZahl(tresorStand(s).lasten[id]) > 0) { pose(e, 'jubel'); bewegungen.push(bewegen(e.querySelector('.tr-koerper'), [{ transform: 'translateY(0)' }, { transform: 'translateY(-8px)' }, { transform: 'translateY(0)' }, { transform: 'translateY(-3px)' }, { transform: 'translateY(0)' }], { duration: 800 }, nr)); } });
     return (await Promise.all(bewegungen)).every(Boolean) && await warten(400, nr);
