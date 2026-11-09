@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { zombieGefahr } from './zombie-gefahr.js';
+import { zombieGefahr, zombieSchutz } from './zombie-gefahr.js';
 import { animationsStand } from './animation.js';
 import { zeitpunktIn } from '../scoring/datum.js';
 import type { DatenVon, SpielTraining } from './spiele.js';
@@ -51,5 +51,21 @@ describe('Zombie-Trainingsfristen nach Kalendertagen', () => {
     const s = animationsStand(d, sp(), w, 1, zeit())!;
     expect(s).toMatchObject({ spieltag: '2026-10-20', gefahr: gefahr() });
     expect(JSON.stringify(s)).not.toMatch(/minuten|erstellt|trainings/);
+  });
+});
+
+describe('Training als vorbeugendes Gegengift', () => {
+  it('erteilt erst nach einem gültigen Training Schutz, ohne Rohtraining zu veröffentlichen', () => {
+    expect(zombieSchutz(d,sp(),w,zeit(),new Set(['p']))).toEqual({});
+    expect(zombieSchutz(d,sp([t('2026-10-18'),t('2026-10-21')]),w,zeit(),new Set(['p']))).toEqual({});
+    const schutz=zombieSchutz(d,sp([t('2026-10-20')]),w,zeit(),new Set(['p']));
+    expect(schutz).toEqual({a:{bis:'2026-10-22T22:00:00.000Z'}});expect(JSON.stringify(schutz)).not.toMatch(/datum|minuten|erstellt|trainings/);
+  });
+  it('begrenzt Wochenendschutz auf den konfigurierten Sonntagsschluss', () => {
+    expect(zombieSchutz(d,sp([t('2026-10-24')]),w,zeit('2026-10-25','Europe/Berlin','19:30'),new Set(['p']))).toEqual({a:{bis:'2026-10-25T18:30:00.000Z'}});
+  });
+  it('heilt durch ein heutiges Training keine bereits bestätigte Infektion', () => {
+    expect(zombieSchutz(d,sp([t('2026-10-20')]),w,zeit(),new Set(['p','a']))).toEqual({});
+    expect(zombieSchutz(d,sp([t('2026-10-20')]),w,{...zeit(),abgeschlossen:true},new Set(['p']))).toEqual({});
   });
 });

@@ -81,10 +81,11 @@ it("rekonstruiert Zombie-Fristen ohne spätere Trainingseinträge und ohne neue 
     const [patient,mensch]=t.ids as [string,string];t.spiel({art:"zombie",spieler:t.ids,patientNull:patient,gemeldet:[]});
     t.training(mensch,"2026-11-02","2026-11-03T12:00:00Z");
     const a=animationFuerApp(t.db,t.s,"2026-11-06",mensch)!;
-    const erster=a.verlauf[0]!.stand as {gefahr:Record<string,{warnAb:string;frist:string}>};
+    const erster=a.verlauf[0]!.stand as {gefahr:Record<string,{warnAb:string;frist:string}>;schutz:Record<string,{bis:string}>};
     expect(erster.gefahr[mensch]).toEqual({warnAb:"2026-11-02T23:00:00.000Z",frist:"2026-11-03T23:00:00.000Z"});
     const nachtrag=a.verlauf.find(v=>v.zeitpunkt==="2026-11-03T12:00:00Z")!.stand as typeof erster;
     expect(nachtrag.gefahr[mensch]?.frist).toBe("2026-11-04T23:00:00.000Z");
+    expect(erster.schutz[mensch]).toBeUndefined();expect(nachtrag.schutz[mensch]?.bis).toBe("2026-11-04T23:00:00.000Z");
     expect(a.serverZeit).toBe("2026-11-06T12:00:00.000Z");
     uhr.jetzt=()=>new Date("2026-11-06T12:01:00Z");
     const b=animationFuerApp(t.db,t.s,"2026-11-06",mensch)!;

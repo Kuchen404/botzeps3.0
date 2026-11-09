@@ -152,3 +152,31 @@ it('lädt Gast-Grundposen und Gast-Angriff getrennt trotz gleichem Figurenschlü
   await laden({zombieBilder:{gym:'kulisse',gast:'grundposen'},zombieAngriffe:{gast:'angriff',0:'avatar0'}});
   expect(geladen.sort()).toEqual(['angriff','avatar0','grundposen','kulisse']);
 });
+
+const serum = runInNewContext(readFileSync(new URL('../miniapp/spiele/zombie.js', import.meta.url), 'utf8') + ';({zombieGegengift,zombieBissAngreifer})', {window:{addEventListener(){}},document:{addEventListener(){}}}) as {
+  zombieGegengift:(vorher:object,station:{art:string;stand:object})=>string[];
+  zombieBissAngreifer:(s:Stand,spieler:{id:string}[],ziel:string)=>string|null;
+};
+describe('Gegengift und erfolgreiche Bisse erklären Serverereignisse', () => {
+  const schutz={a:{bis:'2026-10-22T22:00:00Z'}}, erneuert={...start,schutz};
+  it('zeigt eine neue Dosis nur bei tatsächlicher Schutzverlängerung durch Training', () => {
+    expect(serum.zombieGegengift(start,{art:'training',stand:erneuert})).toEqual(['a']);
+    expect(serum.zombieGegengift(erneuert,{art:'training',stand:erneuert})).toEqual([]);
+    expect(serum.zombieGegengift(erneuert,{art:'training',stand:{...start,schutz:{a:{bis:'2026-10-23T22:00:00Z'}}}})).toEqual(['a']);
+    expect(serum.zombieGegengift(start,{art:'tag',stand:erneuert})).toEqual([]);
+  });
+  it('erzählt Wochenendschutz, jedoch keine Korrektur oder Heilung Infizierter als Einnahme', () => {
+    expect(serum.zombieGegengift({...erneuert,gefahr:{a:{}}},{art:'training',stand:erneuert})).toEqual(['a']);
+    expect(serum.zombieGegengift(start,{art:'korrektur',stand:erneuert})).toEqual([]);
+    expect(serum.zombieGegengift(biss,{art:'training',stand:{...biss,schutz}})).toEqual([]);
+    expect(serum.zombieGegengift(biss,{art:'training',stand:erneuert})).toEqual([]);
+    expect(serum.zombieGegengift(start,{art:'training',stand:start})).toEqual([]);
+  });
+  it('besetzt einen Biss nur mit einem bereits sichtbaren Infizierten, ohne Spielstände zu verändern', () => {
+    const snapshot=JSON.stringify(start),spieler=[{id:'a'},{id:'p'},{id:'b'}];
+    expect(serum.zombieBissAngreifer(start,spieler,'a')).toBe('p');
+    expect(serum.zombieBissAngreifer(start,[{id:'a'},{id:'b'}],'a')).toBeNull();
+    expect(serum.zombieBissAngreifer({...start,patientNull:null,zombies:[]},spieler,'a')).toBeNull();
+    expect(JSON.stringify(start)).toBe(snapshot);
+  });
+});

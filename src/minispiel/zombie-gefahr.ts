@@ -22,3 +22,16 @@ export function zombieGefahr(d: DatenVon<'zombie'>, spieler: readonly Spieler[],
   }
   return gefahr;
 }
+
+/** Abgeleiteter Trainingsschutz, ohne einzelne Trainings oder deren Zeitpunkte zu veröffentlichen. */
+export function zombieSchutz(d: DatenVon<'zombie'>, spieler: readonly Spieler[], w: SpielWoche, zeit: ZombieZeit, infiziert: ReadonlySet<string>): Record<string, { bis: string }> {
+  const schutz: Record<string, { bis: string }> = {};
+  if (zeit.abgeschlossen) return schutz;
+  const gefahr = zombieGefahr(d, spieler, w, zeit, infiziert), teilnehmer = new Set(d.spieler);
+  const wochenende = zeitpunktIn(plusTage(w.start, 6), zeit.berichtszeit, zeit.zeitzone).toISOString();
+  for (const sp of spieler) {
+    if (!teilnehmer.has(sp.id) || infiziert.has(sp.id) || !trainingsDerWoche(sp, w).some(t => t.datum <= zeit.tag)) continue;
+    schutz[sp.id] = { bis: gefahr[sp.id]?.frist ?? wochenende };
+  }
+  return schutz;
+}

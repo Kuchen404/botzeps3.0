@@ -1,4 +1,4 @@
-import { zombieGefahr, type ZombieZeit } from "./zombie-gefahr.js";
+import { zombieGefahr, zombieSchutz, type ZombieZeit } from "./zombie-gefahr.js";
 import type { Db } from "../db/index.js";
 import type { SeasonZeile } from "../db/season-repo.js";
 import { gruppenZeitzone, uhr } from "../bot/kontext.js";
@@ -18,7 +18,7 @@ export function animationsStand(d: MinispielDaten, spieler: readonly Spieler[], 
       const sonntag = plusTage(w.start, 6), datum = zeit?.tag ?? plusTage(w.start, Math.max(0, Math.min(6, tage)));
       const spieltag = datum < w.start ? w.start : datum > sonntag ? sonntag : datum;
       const kontext = { tag: spieltag, zeitzone: zeit?.zeitzone ?? gruppenZeitzone(), berichtszeit: zeit?.berichtszeit ?? "20:00", abgeschlossen: zeit?.abgeschlossen ?? false };
-      return { patientNull: d.patientNull, zombies: [...z].map(([id, tag]) => ({ id, tag })), menschen: d.spieler.filter((id) => !z.has(id)), spieltag, gefahr: zombieGefahr(d, spieler, w, kontext, new Set(z.keys())) };
+      return { patientNull: d.patientNull, zombies: [...z].map(([id, tag]) => ({ id, tag })), menschen: d.spieler.filter((id) => !z.has(id)), spieltag, gefahr: zombieGefahr(d, spieler, w, kontext, new Set(z.keys())), schutz: zombieSchutz(d, spieler, w, kontext, new Set(z.keys())) };
     }
     case "kopfgeld": return { gejagter: d.gejagter, ...kopfgeld(d, l), lasten: last };
     case "gipfel": return { ziel: Math.max(1, w.ziel), kletterer: gipfel(d, spieler, w) };
