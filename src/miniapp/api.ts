@@ -27,6 +27,7 @@ import { animationFuerApp } from "../minispiel/animation.js";
 import { aktuelleMarken, minispielFuerApp } from "../minispiel/ablauf.js";
 import type { MiniAppNutzer } from "./auth.js";
 import { BERG_BILDER } from "../figuren/berg-atlanten.js";
+import { DUELL_BILDER } from "../figuren/duell-medien.js";
 import { TRESOR_BILDER } from "../figuren/tresor-medien.js";
 import { JAGD_KULISSE } from "../figuren/lauf-atlanten.js";
 import { FIGUREN, type Pose, figurKletterSvg, figurLaufSvg, figurSvg } from "../figuren/figuren.js";
@@ -133,11 +134,12 @@ function minispielJson(db: Db, s: Parameters<typeof minispielFuerApp>[1], tag: s
       const figur = vergeben.get(Number(sp.id)) ?? null;
       if (figur !== null) figuren[figur] ??= Object.fromEntries((["bereit", "schlag", "jubel", "ko", "ziehen", "klettern"] as const).map((pose) =>
         [pose, figurSvg(FIGUREN[figur]!, pose, { id: `ms${a.art}${figur}${pose}` })]));
-      if (figur !== null && a.art === "tresor") figuren[figur]!.laufen ??= figurLaufSvg(figur, `mstrlauf${figur}`)!;
+      if (figur !== null && (a.art === "tresor" || a.art === "duell")) figuren[figur]!.laufen ??= figurLaufSvg(figur, `mstrlauf${figur}`)!;
       if (figur !== null && (a.art === "kopfgeld" || a.art === "gipfel")) figuren[figur]!.laufen ??= figurLaufSvg(figur, `mslauf${figur}`)!;
       if (figur !== null && a.art === "gipfel") figuren[figur]!.steigen ??= figurKletterSvg(figur, `msberg${figur}`)!;
       return { ...sp, figur };
     });
+    if (a.art === "duell") return { ...m, animation: { ...a, spieler, figuren, duellBilder: Object.fromEntries(Object.entries(DUELL_BILDER).map(([k, v]) => [k, "/api/figurbild/" + v])) } };
     if (a.art === "tresor") return { ...m, animation: { ...a, spieler, figuren, tresorBilder: Object.fromEntries(Object.entries(TRESOR_BILDER).map(([k, v]) => [k, "/api/figurbild/" + v])) } };
     return { ...m, animation: { ...a, spieler, figuren, ...(a.art === "gipfel" ? { bergBilder: Object.fromEntries(Object.entries(BERG_BILDER).map(([art,datei]) => [art,"/api/figurbild/"+datei])) } : {}), ...(a.art === "kopfgeld" ? { kulisse: "/api/figurbild/" + JAGD_KULISSE } : {}) } };
   }
