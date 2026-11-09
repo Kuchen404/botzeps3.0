@@ -64,7 +64,7 @@ window.MINISPIEL_SZENEN.gipfel=function(a){
   var zeit=el('div',{class:'ms-zeit'}),skip=el('button',{class:'knopf leise',text:'Überspringen'}),replay=el('button',{class:'knopf leise gp-replay',text:'↻ Nochmal ansehen'}),laden=el('button',{class:'knopf leise',text:'↻ Stand aktualisieren',onclick:function(){aktualisiereBombe(laden);}});
   var fazit=el('div',{class:'gp-fazit'}),root=el('section',{class:'ms-scene ms-gipfel','aria-label':'Gipfelsturm auf dem gemeinsamen Bergpfad'},[status,titel,arena,el('div',{class:'gp-legende',text:'Basislager < 25 % · Felsroute · Gipfel am Wochenziel'}),fazit,fenster,zeit,el('div',{class:'ms-steuerung'},[skip,replay,laden])]);
   function name(id){return spieler.has(id)?spieler.get(id).name:'Unbekannt';}
-  function z(n){return gipfelZahl(n).toLocaleString('de-DE',{maximumFractionDigits:1});}
+  function z(n){return gipfelZahl(n).toLocaleString('de-DE',{maximumFractionDigits:2});}
   function bewegung(){return !(gipfelBewegungsWahl&&gipfelBewegungsWahl.matches);}
   function gueltig(nr){return nr===lauf&&root.isConnected&&!document.hidden&&bewegung();}
   function phase(p){root.setAttribute('data-bergphase',p);}
