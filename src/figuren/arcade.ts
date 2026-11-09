@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { tresorMedium } from "./tresor-medien.js";
 import { ATLAS_DATEIEN } from "./atlanten.js";
 import { LAUF_ATLANTEN, JAGD_KULISSE } from "./lauf-atlanten.js";
 import { BERG_ATLANTEN, BERG_BILDER } from "./berg-atlanten.js";
@@ -11,6 +12,8 @@ const cache = new Map<string, Buffer>();
 
 /** Ausschließlich bekannte, mit Inhalts-Hash versionierte Dateien ausliefern. */
 export function figurMedium(datei: string): Buffer | null {
+  const tresor = tresorMedium(datei);
+  if (tresor) return tresor;
   if (!ATLAS_DATEIEN.includes(datei) && !LAUF_ATLANTEN.includes(datei) && datei !== JAGD_KULISSE && !BERG_ATLANTEN.includes(datei) && !(Object.values(BERG_BILDER) as readonly string[]).includes(datei)) return null;
   let bild = cache.get(datei);
   if (!bild) {

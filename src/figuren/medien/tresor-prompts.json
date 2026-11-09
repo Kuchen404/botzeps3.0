@@ -1,0 +1,8 @@
+{
+  "werkzeug": "imagegen",
+  "referenz": "Original-Avatar 0 (0-4d792a28c5bc.png); Kammer zusätzlich mit dem geschlossenen Tresor als Referenz",
+  "stil": "Kräftige organische Tuschekonturen, reiches Cel-Shading und handgemalte Materialtexturen im Botzeps-Arcadestil; kühler blaugrüner Stahl, warmes Messinglicht.",
+  "raum": "Porträt 4:5: unterirdische Steinkammer mit gewölbter Decke, Messinglampe links oben, seitlichen Rohren, ruhiger freier Wandmitte und breitem Steinboden. Keine Figuren, Tresore, Wertgegenstände, Beschriftungen oder UI.",
+  "tresor": "Transparentes freigestelltes geschlossenes Stahlgehäuse frontal, schmale rechte Seitenfase, kräftiger Rahmen, linke Scharniere, vier seitliche Bolzen, vier komplett leere dunkle Codefelder und großes symmetrisches Vier-Speichen-Handrad aus Messing. Keine Ziffern, Namen, Figuren oder Beute. Türkontur und Handrad müssen für getrennte Ebenen klar lesbar sein.",
+  "innen": "Leere tiefe Stahlkammer frontal mit perspektivischen Seitenwänden, Decke, Boden und kleinerer Rückwand. Eine dezente Deckenlampe beleuchtet Material und wenige Staubpartikel golden. Keine Gegenstände, Münzen, Goldbarren, Edelsteine, Regale, Beschriftungen oder Figuren. Der Spielpreis wird nicht bildlich vorweggenommen."
+}
