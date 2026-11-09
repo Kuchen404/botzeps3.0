@@ -27,14 +27,20 @@ function gipfelPositionen(s,spieler,breite,hoehe){
   var reihe=spieler.map(function(sp,i){return{sp:sp,i:i,k:karte.get(sp.id)||{anteil:0}};}).sort(function(a,b){return Number(!!b.sp.ich)-Number(!!a.sp.ich)||gipfelAnteil(b.k)-gipfelAnteil(a.k)||a.i-b.i;});
   reihe.forEach(function(e){
     var p=gipfelAnteil(e.k),weg=gipfelWeg(p),x=weg.x/100*breite,y=Math.max(h+3,Math.min(hoehe-label-4,weg.y/100*hoehe)),gefunden=null,cols=Math.ceil(breite/(w+5));
+    // Namensschild darf breiter als die Figur sein; die Kollisionsbox berücksichtigt das.
+    var rang=rangen.indexOf(e.sp.id)+1,schild=label?Math.min(76,Math.max(w,(gipfelSchildText(e.sp,gipfelOben(e.k)?rang:0).length*4.6+8))):w,halb=Math.max(w,schild)/2;
+    function versuche(cx,cy){
+      if(gefunden||cx<halb+3||cx>breite-halb-3||cy<h+3||cy>hoehe-label-4)return;
+      if(p>.92&&cx<Math.max(0,48-(cy/hoehe-.14)*70)/100*breite)return;
+      var box={l:cx-halb-2,r:cx+halb+2,t:cy-h-2,b:cy+label+2};
+      if(!belegt.some(function(b){return box.l<b.r&&box.r>b.l&&box.t<b.b&&box.b>b.t;})){gefunden={x:cx/breite*100,y:cy/hoehe*100,p:p,w:w,schild:schild,rang:rang};belegt.push(box);}
+    }
+    // Unterwegs zuerst entlang des gezeichneten Pfades ausweichen (etwas tiefer, nie höher), damit niemand neben dem Weg schwebt.
+    if(p<=.92)[[0],[0,1,-1]].forEach(function(seiten,durchgang){for(var k=0;k<=(durchgang?80:12)&&!gefunden&&p-k*.01>=0;k++){var pw=gipfelWeg(p-k*.01),px=pw.x/100*breite,py=pw.y/100*hoehe;seiten.forEach(function(r){versuche(px+r*(w*.8),py);});}});
     for(var zeile=0;zeile<n+1&&!gefunden;zeile++){
       var dy=zeile===0?0:(p>.7?1:-1)*Math.ceil(zeile/2)*(h+label+4)*(zeile%2?1:-1);
       for(var spalte=0;spalte<=cols*2&&!gefunden;spalte++){
-        var dx=spalte===0?0:Math.ceil(spalte/2)*(w+5)*(spalte%2?1:-1),cx=x+dx,cy=y+dy;
-        if(cx<w/2+3||cx>breite-w/2-3||cy<h+3||cy>hoehe-label-4)continue;
-        if(p>.92&&cx<Math.max(0,48-(cy/hoehe-.14)*70)/100*breite)continue;
-        var box={l:cx-w/2-2,r:cx+w/2+2,t:cy-h-2,b:cy+label+2};
-        if(!belegt.some(function(b){return box.l<b.r&&box.r>b.l&&box.t<b.b&&box.b>b.t;})){gefunden={x:cx/breite*100,y:cy/hoehe*100,p:p,w:w,rang:rangen.indexOf(e.sp.id)+1};belegt.push(box);}
+        var dx=spalte===0?0:Math.ceil(spalte/2)*(w+5)*(spalte%2?1:-1);versuche(x+dx,y+dy);
       }
     }
     // Nur für eine geometrisch unmögliche übergroße Gruppe; alle IDs bleiben vorhanden.
@@ -42,6 +48,7 @@ function gipfelPositionen(s,spieler,breite,hoehe){
     plan.set(e.sp.id,gefunden);
   });return plan;
 }
+function gipfelSchildText(sp,rang){return(rang?'⚑ '+rang+' · ':'')+sp.name+(sp.ich?' · Du':'');}
 function gipfelSchritte(vor,nach){
   var frames=[],schritte=Math.max(1,Math.ceil(Math.abs(nach.p-vor.p)/.008)),a=gipfelWeg(vor.p),b=gipfelWeg(nach.p);
   for(var i=0;i<=schritte;i++){var t=i/schritte,w=gipfelWeg(vor.p+(nach.p-vor.p)*t);frames.push({left:(w.x+(vor.x-a.x)*(1-t)+(nach.x-b.x)*t)+'%',top:(w.y+(vor.y-a.y)*(1-t)+(nach.y-b.y)*t)+'%',offset:t});}return frames;
@@ -79,8 +86,8 @@ window.MINISPIEL_SZENEN.gipfel=function(a){
   function zeichneFeld(s){
     feld.replaceChildren();var karte=gipfelKarte(s),positionen=plan(s),elemente=new Map();root.setAttribute('data-feld',a.spieler.length>32?'gross':'normal');
     a.spieler.forEach(function(sp){var k=karte.get(sp.id)||{},p=positionen.get(sp.id),oben=gipfelOben(k),avatar=minispielAvatar(a,sp.id,oben?'jubel':gipfelAnteil(k)>0?'klettern':'bereit');
-      var e=el('div',{class:'gp-laeufer'+(oben?' gp-oben':''),'data-id':sp.id,'data-ich':String(!!sp.ich),'data-oben':String(oben),'data-anteil':String(gipfelZahl(k.anteil))},[el('div',{class:'gp-koerper'},[avatar]),el('span',{class:'gp-name',text:(oben?'⚑ '+p.rang+' · ':'')+sp.name+(sp.ich?' · Du':''),title:sp.name})]);
-      e.style.left=p.x+'%';e.style.top=p.y+'%';e.style.width=p.w+'px';e.style.setProperty('--gp-figur',p.w+'px');e.title=sp.name+' · '+z(k.last)+' Last'+(oben?' · '+p.rang+'. am Gipfel':'');feld.appendChild(e);elemente.set(sp.id,e);
+      var e=el('div',{class:'gp-laeufer'+(oben?' gp-oben':''),'data-id':sp.id,'data-ich':String(!!sp.ich),'data-oben':String(oben),'data-anteil':String(gipfelZahl(k.anteil))},[el('div',{class:'gp-koerper'},[avatar]),el('span',{class:'gp-name',text:gipfelSchildText(sp,oben?p.rang:0),title:sp.name})]);
+      e.style.left=p.x+'%';e.style.top=p.y+'%';e.style.width=p.w+'px';e.style.setProperty('--gp-figur',p.w+'px');if(p.schild)e.style.setProperty('--gp-schild',p.schild+'px');e.title=sp.name+' · '+z(k.last)+' Last'+(oben?' · '+p.rang+'. am Gipfel':'');feld.appendChild(e);elemente.set(sp.id,e);
     });return elemente;
   }
   function standText(k,rang){return gipfelOben(k)?'⚑ '+rang+'. am Gipfel':gipfelZahl(k.anteil)>=.999?'Fast oben':z(gipfelZahl(k.anteil)*100)+' % · '+(gipfelZahl(k.anteil)<.25?'Basislager':'Unterwegs');}
