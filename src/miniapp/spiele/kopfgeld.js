@@ -77,7 +77,8 @@ window.MINISPIEL_SZENEN.kopfgeld = function (a) {
   dekor.innerHTML = '<svg viewBox="0 0 400 420" preserveAspectRatio="none"><circle cx="326" cy="43" r="24" fill="#ffe9b3" stroke="#d98e4d" stroke-width="2"/><path d="M0 70L30 42H52L70 70H100L117 34H142L160 70H200L220 50H250L267 70H400V420H0Z" fill="#c8874e" opacity=".3"/><path d="M48 134.4H344V218.4H56V302.4H344V386.4H60" fill="none" stroke="#aa7845" stroke-width="60" stroke-linecap="round" stroke-linejoin="round"/><path d="M48 134.4H344V218.4H56V302.4H344V386.4H60" fill="none" stroke="#efd099" stroke-width="54" stroke-linecap="round" stroke-linejoin="round"/><path d="M48 134.4H344V218.4H56V302.4H344V386.4H60" fill="none" stroke="#c49a62" stroke-width="2" stroke-dasharray="4 10"/><g fill="none" stroke="#6c7047" stroke-width="7" stroke-linecap="round"><path d="M24 305v-30m0 14H12v-11M367 246v-33m0 17h14v-10M192 354v-24m0 14h-12v-10"/></g><g fill="#b27a45"><ellipse cx="175" cy="151" rx="11" ry="5"/><ellipse cx="248" cy="242" rx="15" ry="5"/></g></svg>';
   dekor.appendChild(el("span", {class:"kg-start",text:"START"})); dekor.appendChild(el("span", {class:"kg-versteck",text:"VERSTECK"}));
   var buehne = el("div", { class: "kg-buehne", "aria-hidden": "true" });
-  var arena = el("div", { class: "kg-arena" }, [dekor, buehne]);
+  var kino = el("div", {class:"kg-kino", "aria-hidden":"true"}); kino.hidden=true;
+  var arena = el("div", { class: "kg-arena" }, [dekor, buehne, kino]);
   var zielWert = el("div", { class: "kg-zielwert" }), jagdWert = el("div", { class: "kg-jagdwert" });
   var roster = el("div", { class: "kg-roster", role: "list", "aria-label": "Kopfgeldjäger und ihre tatsächliche Wochenlast" });
   var fenster = el("div", { class: "kg-fenster", tabindex: "0", "aria-label": "Alle Kopfgeldjäger, seitlich scrollbar" }, [roster]);
@@ -96,7 +97,7 @@ window.MINISPIEL_SZENEN.kopfgeld = function (a) {
   function reinigen() {
     animationen.forEach(function (anim) { anim.cancel(); }); animationen.clear();
     wartende.forEach(function (resolve, timer) { clearTimeout(timer); resolve(false); }); wartende.clear();
-    buehne.replaceChildren(); arena.style.transform = ""; root.removeAttribute("data-ergebnis");
+    buehne.replaceChildren(); kino.replaceChildren(); kino.hidden=true; root.removeAttribute("data-kino"); arena.style.transform = ""; root.removeAttribute("data-ergebnis");
   }
   function warten(ms, nr) {
     return new Promise(function (resolve) { var timer = setTimeout(function () { wartende.delete(timer); resolve(gueltig(nr)); }, ms); wartende.set(timer, resolve); });
@@ -108,6 +109,56 @@ window.MINISPIEL_SZENEN.kopfgeld = function (a) {
       if (!gueltig(nr)) return false;
       var letzter = frames[frames.length - 1]; ["transform", "opacity", "left", "top"].forEach(function (p) { if (letzter[p] != null) element.style[p] = letzter[p]; }); return true;
     }, function () { return false; }).finally(function () { animationen.delete(anim); anim.cancel(); });
+  }
+  // Alle Bewegungen gehören diesem Durchlauf, auch die einzelnen SVG-Gelenke.
+  function laufBewegung(e, nr, dauer, index, rechterArmRuhig) {
+    pose(e,"laufen"); var teile=[], tempo=380+(index%4)*37, svg=e.querySelector(".bz-lauf-figur");
+    if(svg) {
+      svg.querySelectorAll(".bz-lauf-arm,.bz-lauf-bein,.bz-lauf-wade,.bz-lauf-unterarm").forEach(function(g) {
+        if(rechterArmRuhig&&g.closest(".bz-lauf-arm.bz-rechts"))return;
+        var arm=g.classList.contains("bz-lauf-arm"), bein=g.classList.contains("bz-lauf-bein"), seite=g.closest(".bz-rechts")?-1:1;
+        var winkel=arm?42:bein?32:g.classList.contains("bz-lauf-wade")?55:25;
+        var frames=arm||bein?[{transform:"rotate("+(-winkel*seite)+"deg)"},{transform:"rotate("+(winkel*seite)+"deg)"},{transform:"rotate("+(-winkel*seite)+"deg)"}]:[{transform:"rotate(0deg)"},{transform:"rotate(-"+winkel+"deg)"},{transform:"rotate(0deg)"}];
+        teile.push(bewegen(g,frames,{duration:tempo,iterations:dauer/tempo,iterationStart:index%5/5+(!arm&&!bein&&seite<0?.5:0),easing:"ease-in-out"},nr));
+      });
+      teile.push(bewegen(svg.querySelector(".bz-lauf-rumpf"),[{transform:"translateY(0) rotate(-7deg)"},{transform:"translateY(-3px) rotate(-3deg)"},{transform:"translateY(0) rotate(-7deg)"}],{duration:tempo/2,iterations:dauer/(tempo/2),iterationStart:index%3/3},nr));
+    } else teile.push(bewegen(e.querySelector(".kg-koerper")||e.querySelector(".ms-avatar"),[{transform:"translateY(0) rotate(-4deg)"},{transform:"translateY(-5px) rotate(4deg)"},{transform:"translateY(0) rotate(-4deg)"}],{duration:tempo,iterations:dauer/tempo},nr));
+    var staub=el("span",{class:"kg-trittstaub"});e.appendChild(staub);
+    teile.push(bewegen(staub,[{opacity:0,transform:"translateX(4px) scale(.4)"},{opacity:.6,transform:"translateX(-4px) scale(1)",offset:.35},{opacity:0,transform:"translateX(-14px) scale(1.5)"}],{duration:tempo/2,iterations:dauer/(tempo/2),iterationStart:index%4/4},nr).then(function(ok){staub.remove();return ok;}));
+    return Promise.all(teile).then(function(werte){return werte.every(Boolean);});
+  }
+  async function einholen(hunter, ziel, nr) {
+    if(!spieler.has(hunter)||!spieler.has(ziel))return true;
+    root.setAttribute("data-kino","true");kino.hidden=false;kino.replaceChildren();
+    var titel=el("strong",{class:"kg-kino-titel",text:"DICHT AUF DEN FERSEN!"});
+    var unten=el("div",{class:"kg-kino-unten",text:"Die Jagd läuft weiter"});
+    function gross(id,klasse,x) {
+      var e=el("div",{class:"kg-kino-person "+klasse,"data-id":id},[el("div",{class:"kg-koerper"},[minispielAvatar(a,id,"laufen")]),el("span",{class:"kg-kino-name",text:name(id)+(spieler.get(id).ich?" · Du":"")})]);
+      e.style.left=x+"%";kino.appendChild(e);return e;
+    }
+    kino.appendChild(titel);kino.appendChild(unten);
+    for(var i=0;i<5;i++){var linie=el("i",{class:"kg-tempostrich"});linie.style.top=(55+i*23)+"px";linie.style.left=(20+i%3*20)+"%";kino.appendChild(linie);bewegen(linie,[{transform:"translateX(70px)",opacity:0},{opacity:.65,offset:.2},{transform:"translateX(-100px)",opacity:0}],{duration:290,iterations:7,iterationStart:i/5},nr);}
+    var jaeger=gross(hunter,"kg-kino-jaeger",23), gejagter=gross(ziel,"kg-kino-ziel",77);
+    // Der Lauf geht während des Wurfs weiter, der Wurfarm bekommt eine eigene Bewegung.
+    laufBewegung(jaeger,nr,1600,0,true);laufBewegung(gejagter,nr,1600,2,false);
+    bewegen(kino,[{opacity:0,transform:"translateY(-12px)"},{opacity:1,transform:"translateY(0)"}],{duration:180},nr);
+    if(!await bewegen(jaeger,[{left:"23%"},{left:"34%"}],{duration:340,easing:"ease-out"},nr))return false;
+    phase("lassowurf");titel.textContent="JETZT DAS LASSO!";
+    var arm=jaeger.querySelector(".bz-lauf-arm.bz-rechts"), lasso=el("div",{class:"kg-kino-lasso"});kino.appendChild(lasso);
+    if(arm)bewegen(arm,[{transform:"rotate(-25deg)"},{transform:"rotate(-135deg)"},{transform:"rotate(-105deg)"}],{duration:300},nr);
+    if(!await bewegen(lasso,[{left:"43%",top:"32%",opacity:1,transform:"translate(-50%,-50%) rotate(-30deg) scale(.6)"},{left:"43%",top:"32%",opacity:1,transform:"translate(-50%,-50%) rotate(330deg) scale(.9)"}],{duration:280,iterations:2},nr))return false;
+    if(arm)bewegen(arm,[{transform:"rotate(-105deg)"},{transform:"rotate(-65deg)"}],{duration:220},nr);
+    if(!await bewegen(lasso,[{left:"43%",top:"32%",transform:"translate(-50%,-50%) rotate(330deg) scale(.9)"},{left:"60%",top:"25%",transform:"translate(-50%,-50%) rotate(400deg) scale(1)"},{left:"77%",top:"60%",transform:"translate(-50%,-50%) rotate(430deg) scale(1.1)"}],{duration:380},nr))return false;
+    phase("reaktion");titel.textContent="KNAPP!";
+    var ruf=el("span",{class:"kg-kino-ruf",text:"!"});gejagter.appendChild(ruf);
+    var kopf=gejagter.querySelector(".bz-lauf-kopf");if(kopf)bewegen(kopf,[{transform:"rotate(0deg)"},{transform:"rotate(-16deg) translateX(-2px)"},{transform:"rotate(0deg)"}],{duration:420},nr);
+    bewegen(gejagter.querySelector(".kg-koerper"),[{transform:"translate(0,0) rotate(0deg)"},{transform:"translate(10px,8px) rotate(18deg)"},{transform:"translate(14px,-3px) rotate(9deg)"},{transform:"translate(6px,0) rotate(0deg)"}],{duration:500},nr);
+    bewegen(ruf,[{transform:"scale(.3) rotate(-15deg)",opacity:0},{transform:"scale(1.2) rotate(8deg)",opacity:1},{transform:"scale(1) rotate(0deg)",opacity:1}],{duration:260},nr);
+    if(!await bewegen(lasso,[{opacity:1,transform:"translate(-50%,-50%) rotate(430deg) scale(1.1)"},{opacity:0,transform:"translate(-50%,15px) rotate(465deg) scale(1.4)"}],{duration:300},nr))return false;
+    lasso.remove();unten.textContent=name(hunter)+" liegt davor · Kopfgeld noch offen";
+    if(!await warten(320,nr))return false;
+    if(!await bewegen(kino,[{opacity:1},{opacity:0}],{duration:180},nr))return false;
+    kino.replaceChildren();kino.hidden=true;root.removeAttribute("data-kino");return true;
   }
   function effekt(klasse, text) { var e = el("div", { class: "kg-effekt " + klasse, text: text || "" }); buehne.appendChild(e); return e; }
   function pose(e, p) { minispielSetzePose(e.querySelector(".ms-avatar"), a, e.getAttribute("data-id"), p); }
@@ -222,20 +273,15 @@ window.MINISPIEL_SZENEN.kopfgeld = function (a) {
     phase("verfolgung"); var staubPunkt=neu.get(k)||neu.get(s.stand.gejagter);if(staubPunkt)staub(nr,staubPunkt.x,staubPunkt.y);
     var bewegungen = [];
     feld.forEach(function(e,id) { bewegungen.push(bewegen(e,kopfgeldLaufFrames(alt.get(id),neu.get(id)),{duration:900,easing:"ease-in-out"},nr)); });
-    bodies.forEach(function (body) { bewegungen.push(bewegen(body, [{ transform: "translateY(3px) rotate(-5deg)" }, { transform: "translateY(-6px) rotate(4deg)" }, { transform: "translateY(0) rotate(-3deg)" }, { transform: "translateY(-4px) rotate(3deg)" }, { transform: "translateY(0) rotate(0deg)" }], { duration: 900 }, nr)); });
+    feld.forEach(function(e,id){bewegungen.push(laufBewegung(e,nr,900,a.spieler.findIndex(function(sp){return sp.id===id;}),false));});
     if (!(await Promise.all(bewegungen)).every(Boolean)) return false;
+    feld.forEach(function(e){pose(e,"bereit");});
     zeichneListe(s.stand, false); if (k != null) zeigeJaeger(k);
     buehne.querySelectorAll(".kg-akteur").forEach(function (e) { e.querySelector(".kg-rolle").textContent = (e.classList.contains("kg-gejagter") ? "Gesucht" : "Jäger") + " · " + z(kopfgeldLast(s.stand, e.getAttribute("data-id"))) + " Last"; });
     phase(w.dazu.length ? "ueberholen" : w.weg.length ? "absetzen" : "aufholen");
     if (w.dazu.length && paar.hunter && paar.ziel) {
       status.textContent = name(k) + " liegt jetzt vor " + name(s.stand.gejagter) + ". Kopfgeld in Reichweite!";
-      pose(paar.hunter, "schlag");
-      var lasso = effekt("kg-lasso"), von=neu.get(k), zu=neu.get(s.stand.gejagter);
-      if (!await bewegen(lasso, [{ left:von.x+"%",top:von.y+"%",opacity:0,transform:"translate(-50%,-35px) rotate(-100deg) scale(.3)" }, {left:(von.x+zu.x)/2+"%",top:((von.y+zu.y)/2-9)+"%",opacity:1,transform:"translate(-50%,-35px) rotate(-35deg) scale(.8)"}, {left:zu.x+"%",top:zu.y+"%",opacity:1,transform:"translate(-50%,-35px) rotate(-12deg) scale(1)"}], {duration:380}, nr)) return false;
-      phase("reaktion");
-      bewegen(paar.ziel.querySelector(".kg-koerper"), [{ transform: "rotate(0deg)" }, { transform: "translateX(-4px) rotate(-7deg)" }, { transform: "rotate(0deg)" }], { duration: 220 }, nr);
-      if (!await bewegen(lasso, [{ opacity: 1 }, { opacity: 0 }], { duration: 220 }, nr)) return false;
-      lasso.remove(); pose(paar.hunter, "bereit");
+      if(!await einholen(k,s.stand.gejagter,nr))return false;
     } else if (w.weg.length) {
       var gleich = k != null && kopfgeldLast(s.stand, k) === kopfgeldWert(s.stand.gejagterLast);
       status.textContent = gleich ? "Gleichstand! " + name(s.stand.gejagter) + " entzieht sich " + name(k) : name(s.stand.gejagter) + " setzt sich von " + (w.weg.length > 1 ? w.weg.length + " Jägern" : name(k)) + " ab";
@@ -261,7 +307,7 @@ window.MINISPIEL_SZENEN.kopfgeld = function (a) {
     }else{
       phase("entkommen");var e=feld.get(aktuell.gejagter), von=plan.get(aktuell.gejagter), nach={fortschritt:1,spur:0};
       staub(nr,von.x,von.y);
-      bewegen(e.querySelector(".kg-koerper"),[{transform:"translateY(0)"},{transform:"translateY(-6px) rotate(6deg)"},{transform:"translateY(0)"}],{duration:900,iterations:2},nr);
+      laufBewegung(e,nr,1600,0,false);
       if(!await bewegen(e,kopfgeldLaufFrames(von,nach),{duration:1600,easing:"ease-in-out"},nr))return false;
       pose(e,"jubel");if(!await warten(300,nr))return false;
     }

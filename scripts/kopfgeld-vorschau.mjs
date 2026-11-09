@@ -1,11 +1,11 @@
 import {readFileSync, writeFileSync} from 'node:fs';
-import {FIGUREN, figurSvg} from '../dist/figuren/figuren.js';
+import {FIGUREN, figurSvg, figurLaufSvg} from '../dist/figuren/figuren.js';
 import {ATLAS_DATEIEN} from '../dist/figuren/atlanten.js';
 import {figurMedium} from '../dist/figuren/arcade.js';
 
 const nummern=[0,3,7,9,10];
 const medien=Object.fromEntries(nummern.map(nr=>[ATLAS_DATEIEN[nr],'data:image/png;base64,'+figurMedium(ATLAS_DATEIEN[nr]).toString('base64')]));
-const figuren=Object.fromEntries(nummern.map(nr=>[nr,Object.fromEntries(['bereit','schlag','ziehen','ko','jubel'].map(p=>[p,figurSvg(FIGUREN[nr],p,{id:`kv${nr}${p}`})]))]));
+const figuren=Object.fromEntries(nummern.map(nr=>[nr,Object.assign({laufen:figurLaufSvg(nr,'kvlauf'+nr)},Object.fromEntries(['bereit','schlag','ziehen','ko','jubel'].map(p=>[p,figurSvg(FIGUREN[nr],p,{id:`kv${nr}${p}`})])))]));
 const app=readFileSync(new URL('../src/miniapp/app.html',import.meta.url),'utf8');
 const css=app.slice(app.indexOf('<style>')+7,app.indexOf('</style>'))+['runtime.css','kopfgeld.css'].map(f=>readFileSync(new URL('../src/miniapp/spiele/'+f,import.meta.url),'utf8')).join('\n');
 const helpers=app.slice(app.indexOf('function el('),app.indexOf('function zeile('));

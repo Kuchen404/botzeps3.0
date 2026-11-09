@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FIGUREN, figurSvg } from "./figuren.js";
+import { FIGUREN, figurSvg, figurLaufSvg } from "./figuren.js";
 import { createHash } from "node:crypto";
 import { ATLAS_DATEIEN } from "./atlanten.js";
 import { figurMedium } from "./arcade.js";
@@ -17,6 +17,21 @@ describe("Spielerfiguren", () => {
         expect(svg).not.toContain("NaN");
       }
     }
+  });
+
+  it("jede Lauf-Figur hat getrennte Gelenke und verwendet ihren vorhandenen Avatar-Atlas", () => {
+    for (let nr=0;nr<FIGUREN.length;nr++) {
+      const svg=figurLaufSvg(nr,`lauf${nr}`)!;
+      expect(svg.match(/class="bz-lauf-arm /g)).toHaveLength(2);
+      expect(svg.match(/class="bz-lauf-bein /g)).toHaveLength(2);
+      expect(svg.match(/class="bz-lauf-wade"/g)).toHaveLength(2);
+      expect(svg).toContain(ATLAS_DATEIEN[nr]);expect(svg).toContain(FIGUREN[nr]!.shirt);
+      expect(svg).not.toMatch(/undefined|NaN/);
+      const eingebettet=svg.replace(`/api/figurbild/${ATLAS_DATEIEN[nr]}`,`data:image/png;base64,${figurMedium(ATLAS_DATEIEN[nr]!)!.toString("base64")}`);
+      const pixel=new Resvg(eingebettet).render().pixels;
+      expect(pixel.some((a,i)=>i%4===3&&a>0)).toBe(true);
+    }
+    expect(figurLaufSvg(-1,"unbekannt")).toBeNull();expect(figurLaufSvg(12,"unbekannt")).toBeNull();
   });
 
   it("Zombie-Variante bekommt einen Farbfilter", () => {

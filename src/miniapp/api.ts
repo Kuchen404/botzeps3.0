@@ -26,7 +26,7 @@ import { laternen } from "../db/laterne-repo.js";
 import { animationFuerApp } from "../minispiel/animation.js";
 import { aktuelleMarken, minispielFuerApp } from "../minispiel/ablauf.js";
 import type { MiniAppNutzer } from "./auth.js";
-import { FIGUREN, type Pose, figurSvg } from "../figuren/figuren.js";
+import { FIGUREN, type Pose, figurLaufSvg, figurSvg } from "../figuren/figuren.js";
 import { ANZAHL_FIGUREN, darfFigurWaehlen, figurFreigabe, figurIn, figurenDerSeason, vergebeneFiguren, waehleFigur } from "../figuren/zuteilung.js";
 
 /**
@@ -125,11 +125,12 @@ function minispielJson(db: Db, s: Parameters<typeof minispielFuerApp>[1], tag: s
     const a = animationFuerApp(db, s, tag, ich);
     if (!a) return m;
     const vergeben = figurenDerSeason(db, s.id);
-    const figuren: Record<number, Partial<Record<Pose, string>>> = {};
+    const figuren: Record<number, Partial<Record<Pose | "laufen", string>>> = {};
     const spieler = a.spieler.map((sp) => {
       const figur = vergeben.get(Number(sp.id)) ?? null;
       if (figur !== null) figuren[figur] ??= Object.fromEntries((["bereit", "schlag", "jubel", "ko", "ziehen", "klettern"] as const).map((pose) =>
         [pose, figurSvg(FIGUREN[figur]!, pose, { id: `ms${a.art}${figur}${pose}` })]));
+      if (figur !== null && a.art === "kopfgeld") figuren[figur]!.laufen ??= figurLaufSvg(figur, `mslauf${figur}`)!;
       return { ...sp, figur };
     });
     return { ...m, animation: { ...a, spieler, figuren } };
