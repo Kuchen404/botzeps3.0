@@ -1,0 +1,20 @@
+{
+  "stil": "Polierter Arcade-Cartoon, bestehende Avataridentität/Kleidung, transparent, vollständige Figur, kein Blut.",
+  "aufbau": "2×2: Ausholen, Vorstoß mit ausgestreckten Armen, Schnappen mit offenem Mund, abgewehrter Rückstoß. Alle vier Posen blicken nach rechts. Gleicher Maßstab und Fußhöhe; Gast zeigt beim Schnappen ein leuchtendes Mundsymbol im Visier.",
+  "normalisierung": "node scripts/zombie-angriffe-optimieren.mjs quellen.json; isolierte Überstände einer Nachbarzelle entfernt, gemeinsamer horizontaler Ausschnitt, Fußlinie 282/300, 224 Farben, Inhalts-Hash.",
+  "originale": {
+    "0": "/workspace/generated_images/exec-a1f38a19-4634-4836-8d72-50a9c6c3eaee.png",
+    "1": "/workspace/generated_images/exec-51bb88ae-9faa-491e-9787-182102786cc2.png",
+    "2": "/workspace/generated_images/exec-4c0db5e4-bf30-4381-8ede-a4c7db36ca81.png",
+    "3": "/workspace/generated_images/exec-36618f9a-56e1-4540-b16f-4a4e47772a14.png",
+    "4": "/workspace/generated_images/exec-a620bb2d-3cf9-44a6-b99d-d6fcf11ed54e.png",
+    "5": "/workspace/generated_images/exec-04da3b37-aa06-4d61-899d-cc8531a5c73b.png",
+    "6": "/workspace/generated_images/exec-f88b1a0d-0f2a-4175-9802-cf69109e6b20.png",
+    "7": "/workspace/generated_images/exec-a5f51eb2-ddef-41eb-b631-bf0b49eb9012.png",
+    "8": "/workspace/generated_images/exec-060c1864-2808-433c-9e1b-be5c5ceb8a77.png",
+    "9": "/workspace/generated_images/exec-2fa8248e-b706-4702-9c37-1d9681ad9690.png",
+    "10": "/workspace/generated_images/exec-0943140d-9d82-4162-b42a-250f22e1e7e2.png",
+    "11": "/workspace/generated_images/exec-6f9f2344-d99c-4b40-8cd2-952dc3a45df4.png",
+    "gast": "/workspace/generated_images/exec-716d54bb-c097-4711-983d-a28face76f2a.png"
+  }
+}

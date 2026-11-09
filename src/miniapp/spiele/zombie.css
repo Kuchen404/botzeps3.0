@@ -1,67 +1,21 @@
-/* Feste Bühne im verlassenen Gym; alle Spieler bleiben auf der Tribüne erreichbar. */
-.ms-zombie.zombie-gym { border:1px solid #4e6a50; border-radius:14px; background:#172b29; color:#eff2da; isolation:isolate; }
-.ms-zombie > .ms-status { background:#263d32; color:#d4e9b4; font-size:12px; overflow-wrap:anywhere; }
-.ms-zombie .zg-top { padding:12px 14px 9px; background:#233b35; border-bottom:1px solid #142a23; }
-.ms-zombie .zg-heading { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:6px; }
-.ms-zombie .zg-heading strong { font-size:20px; line-height:1.2; letter-spacing:-.3px; overflow-wrap:anywhere; }
-.ms-zombie .zg-day { font-size:10px; padding:4px 6px; color:#eddfae; border:1px solid #77885d; border-radius:4px; white-space:nowrap; }
-.ms-zombie .zg-story { margin:7px 0 0; min-height:32px; font-size:11px; line-height:1.45; color:#c5d4b8; }
-.ms-zombie .zg-room { position:relative; height:274px; overflow:hidden; background:linear-gradient(#354c3d 0,#4f6247 145px,#263b30 147px,#293e31 100%); }
-.ms-zombie .zg-scenery { position:absolute; inset:0 0 auto; width:100%; height:255px; pointer-events:none; opacity:.8; }
-.ms-zombie .zg-floor { position:absolute; inset:147px 0 0; background:repeating-linear-gradient(0deg,transparent 0 60px,#172b293b 61px 63px),repeating-linear-gradient(98deg,transparent 0 68px,#1f332e55 69px 70px); }
-.ms-zombie .zg-stage { position:absolute; inset:0; }
-.ms-zombie .zg-stage::before { content:""; position:absolute; left:7%; right:7%; top:209px; height:34px; border-radius:50%; background:radial-gradient(ellipse,#bccf8c22,#10241c66 65%,transparent 72%); border-bottom:1px solid #d1d99b22; }
-.ms-zombie .zg-focus { position:absolute; top:75px; width:104px; z-index:2; transform-origin:50% 95%; text-align:center; }
-.ms-zombie .zg-focus .ms-avatar { width:104px; height:156px; }
-.ms-zombie .zg-focus-name { display:block; width:116px; margin:4px 0 0 -6px; padding:3px 4px; border-radius:5px; background:#10251fe6; color:#e8ecc9; font-size:11px; font-weight:750; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.ms-zombie .zg-center { left:calc(50% - 52px); }
-.ms-zombie .zg-opfer { left:calc(66% - 52px); }
-.ms-zombie .zg-gruppe { top:98px; width:84px; }
-.ms-zombie .zg-gruppe .ms-avatar { width:84px; height:126px; }
-.ms-zombie .zg-gruppe .zg-focus-name { width:90px; margin-left:-3px; font-size:10px; }
-.ms-zombie .zg-anzahl2.zg-platz1 { left:calc(32% - 42px); }
-.ms-zombie .zg-anzahl2.zg-platz2 { left:calc(68% - 42px); }
-.ms-zombie .zg-anzahl3.zg-platz1 { left:calc(20% - 42px); }
-.ms-zombie .zg-anzahl3.zg-platz2 { left:calc(50% - 42px); }
-.ms-zombie .zg-anzahl3.zg-platz3 { left:calc(80% - 42px); }
-.ms-zombie .is-zombie > .ms-avatar { filter:sepia(.65) saturate(1.45) hue-rotate(35deg); }
-.ms-zombie .ms-avatar > .bz-spieler-illustriert { animation:none; }
-.ms-zombie.zg-live .zg-focus.is-zombie > .ms-avatar { animation:zg-shamble 3.8s ease-in-out infinite; }
-.ms-zombie.zg-live .zg-focus.is-human > .ms-avatar { animation:zg-ready 3.6s ease-in-out infinite; }
-.ms-zombie .zg-effekt { position:absolute; pointer-events:none; }
-.ms-zombie .zg-banner,.ms-zombie .zg-ergebnis { left:5%; right:5%; top:12px; z-index:6; padding:8px 4px; color:#daf59e; background:linear-gradient(90deg,transparent,#14291fef 15% 85%,transparent); border-block:1px solid #a2bd6588; text-align:center; font-size:21px; font-weight:950; letter-spacing:.07em; }
-.ms-zombie .zg-gerettet { color:#ffe39b; border-color:#e5c36d88; }
-.ms-zombie .zg-schatten { left:calc(24% - 45px); top:88px; width:90px; height:142px; z-index:2; filter:drop-shadow(0 0 8px #b4e65c33); }
-.ms-zombie .zg-schatten > svg { width:100%; height:100%; }
-.ms-zombie .zg-bissfunken { left:calc(66% - 31px); top:113px; width:62px; height:62px; z-index:5; background:#d3f89d; clip-path:polygon(50% 0,60% 30%,85% 10%,72% 42%,100% 50%,70% 60%,88% 88%,59% 70%,50% 100%,39% 72%,12% 90%,29% 59%,0 50%,29% 40%,12% 11%,40% 29%); }
-.ms-zombie .zg-bissring { left:66%; top:144px; width:55px; height:55px; border:3px solid #c8ef9b; border-radius:50%; z-index:4; }
-.ms-zombie .zg-nebel { left:calc(50% - 90px); top:157px; width:180px; height:84px; z-index:3; border-radius:50%; background:radial-gradient(ellipse at 28% 60%,#b1dc72b3 0 20%,transparent 25%),radial-gradient(ellipse at 68% 58%,#99c75aa6 0 25%,transparent 30%),radial-gradient(ellipse at 50% 35%,#d3eda080 0 30%,transparent 35%); }
-.ms-zombie .zg-nebel-opfer { left:calc(66% - 90px); }
-.ms-zombie .zg-spore { top:209px; width:15px; height:15px; border-radius:50%; background:radial-gradient(circle,#d9f6a6,#9bc75977 50%,transparent 72%); z-index:5; }
-.ms-zombie .zg-konfetti { top:25px; width:7px; height:12px; background:#e5cf79; border-radius:2px; z-index:5; }
-.ms-zombie .zg-konfetti:nth-child(3n) { background:#c3e393; }
-.ms-zombie .zg-bottom { display:flex; flex-wrap:wrap; justify-content:space-between; gap:8px; padding:10px 12px; background:#1b3028; border-block:1px solid #45604366; font-size:11px; color:#d5e2bf; }
-.ms-zombie .zg-counter { display:flex; align-items:center; gap:6px; }
-.ms-zombie .zg-dot { width:7px; height:7px; border-radius:50%; background:#a6d5bd; }
-.ms-zombie .zg-infected .zg-dot { background:#bde770; }
-.ms-zombie .zg-fenster { overflow-x:auto; scrollbar-width:thin; }
-.ms-zombie .zg-roster { position:relative; display:flex; justify-content:safe center; gap:5px; width:max-content; min-width:100%; padding:8px; }
-.ms-zombie .zg-person { position:relative; width:65px; flex:0 0 65px; text-align:center; border:1px solid #7e98513b; border-radius:7px; padding:3px 2px; }
-.ms-zombie .zg-person.is-zombie { background:#a7ce5820; border-color:#a7ce5855; }
-.ms-zombie .zg-person .ms-avatar { width:46px; height:69px; margin:auto; }
-.ms-zombie .zg-person .ms-avatar-ersatz { font-size:15px; background:radial-gradient(circle,var(--ms-avatar-farbe) 0 20px,transparent 21px); }
-.ms-zombie .zg-name { display:block; font-size:10px; line-height:1.4; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.ms-zombie .zg-person[data-me="true"] .zg-name { color:#ffe29b; font-weight:850; }
-.ms-zombie .zg-badge { display:block; min-height:16px; margin-top:3px; color:#c9dbb1; font-size:9px; line-height:1.3; }
-.ms-zombie .zg-person.is-zombie .zg-badge { color:#d3ec94; }
-.ms-zombie .zg-schreck .ms-avatar { animation:zg-schreck .4s ease-out; }
-.ms-zombie > .ms-zeit { font-size:10px; color:#aebf9f; }
-.ms-zombie .ms-steuerung { gap:6px; padding:8px 10px 12px; }
-.ms-zombie .ms-steuerung .knopf { min-height:38px; padding:8px 10px; font-size:11px; background:#344d3f; color:#eaf1d7; }
-.ms-zombie .zg-rule { margin:0; padding:10px 12px; background:#172b25; border-top:1px solid #2b4033; color:#b4c6aa; font-size:10px; line-height:1.5; }
-.ms-zombie .zg-empty { max-width:240px; min-height:72px; display:grid; place-items:center; margin:0; font-size:11px; color:#d7e2ca; }
-@keyframes zg-shamble { 0%,100% { transform:translateX(-2px) rotate(-3deg); } 50% { transform:translateX(2px) rotate(2deg); } }
-@keyframes zg-ready { 50% { transform:translateY(-2px) rotate(1deg); } }
-@keyframes zg-schreck { 35% { transform:translateX(3px) rotate(5deg); } 70% { transform:translateX(-2px) rotate(-3deg); } }
-@media (max-width:350px) { .ms-zombie .zg-heading strong { font-size:18px; } .ms-zombie .zg-banner { font-size:18px; } }
-@media (prefers-reduced-motion:reduce) { .ms-zombie *, .ms-zombie *::before, .ms-zombie *::after { animation:none!important; transition:none!important; scroll-behavior:auto!important; } }
+.ms-scene.ms-zombie{background:#172e2c;color:#ecf0d5;border:2px solid #365647;border-radius:17px;overflow:hidden;isolation:isolate;box-shadow:0 5px 0 #10292444}.ms-zombie,.ms-zombie *{box-sizing:border-box}
+.ms-zombie>.ms-status{position:static;margin:0;min-height:58px;padding:11px 13px;background:#182e29;color:#d7e9b1;font-size:12px;font-weight:800;line-height:1.45;overflow-wrap:anywhere}.zh-kopf{padding:10px 12px;background:#243e34;border-bottom:1px solid #4f6750}.zh-kopf strong{display:block;font:900 19px/1.2 Georgia,serif;color:#e5e9c6;letter-spacing:.02em}.zh-kopf>span{display:block;font-size:8px;font-weight:700;color:#a8bba3;letter-spacing:.15em;margin-top:4px}
+.zh-arena{position:relative;overflow:hidden;isolation:isolate;min-height:320px;background:repeating-linear-gradient(0deg,transparent 0 54px,#10251e44 55px 57px),repeating-linear-gradient(98deg,transparent 0 77px,#1e332a44 78px 79px),linear-gradient(#3a5547,#314534 40%,#253a31)}
+.zh-hintergrund{position:absolute;inset:0 0 auto;width:100%;pointer-events:none}.zh-hintergrund>img{display:block;width:100%;height:auto;mask-image:linear-gradient(#000 0 85%,transparent)}.zh-hordenlicht{position:absolute;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 50% 80%,#b0ca5933,transparent 65%),linear-gradient(transparent,#193b2f88);pointer-events:none}
+.zh-feld,.zh-effekte{position:absolute;inset:0;width:100%;height:100%}.zh-effekte{pointer-events:none;z-index:15}.zh-feld{z-index:3}
+.zh-zonenname{position:absolute;left:50%;transform:translateX(-50%);max-width:94%;padding:4px 8px;border:1px solid #73835b;border-radius:4px;background:#162c25e6;color:#dfe9c2;font-size:9px;line-height:13px;letter-spacing:.07em;font-weight:850;white-space:nowrap;z-index:4}.zh-menschen{top:22px}.zh-zombies{color:#dcf2aa;background:#203728ee;border-color:#7b955a}
+.zh-akteur{position:absolute;transform:translate(-50%,-100%);z-index:3;text-align:center}.zh-koerper{width:100%;aspect-ratio:2/3;transform-origin:50% 92%}.zh-akteur::before{content:"";position:absolute;bottom:-2px;left:12%;width:76%;height:7px;border-radius:50%;background:#0c211a77;z-index:-1}.zh-akteur[data-ich="true"]::before{background:#ecd17b77;box-shadow:0 0 0 1px #f2d88b55}
+.ms-zombie .zh-koerper>.ms-avatar,.ms-zombie .zh-koerper>.ms-avatar>svg{width:100%;height:100%;animation:none}.ms-zombie .zh-koerper>.ms-avatar-ersatz{font-size:18px;background:radial-gradient(circle closest-side at 50% 60%,var(--ms-avatar-farbe,#6b8c86) 0 95%,transparent 100%)}.ms-zombie .zh-gast>svg{overflow:hidden}.zh-akteur.is-zombie .zh-koerper{filter:sepia(.6) saturate(1.25) hue-rotate(32deg)}
+.zh-schild{position:absolute;left:50%;bottom:calc(100% + 1px);transform:translateX(-50%);width:84px;max-width:144%;padding:2px 3px;border:1px solid #607762;border-radius:4px;background:#142b24ed;box-shadow:0 2px 3px #10211d66;color:#ecf0d5}.zh-name{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:9px;line-height:13px;font-weight:800}.zh-schild small{display:block;font-size:7px;line-height:10px;color:#acc7ac}.is-zombie .zh-schild{background:#2c3b24ef;border-color:#8ca45f}.is-zombie .zh-schild small{color:#d3ec93}.zh-akteur[data-ich="true"] .zh-schild{border-color:#e0c97b;box-shadow:0 0 0 1px #e0c97b55}.zh-akteur[data-ich="true"] .zh-name{color:#ffe39c}
+.zh-barriere{position:absolute;left:4%;width:92%;height:29px;z-index:4;filter:drop-shadow(0 4px 2px #101f1b88);pointer-events:none}.zh-barriere[hidden]{display:none}.zh-barriere>i{position:absolute;top:2px;left:0;width:100%;height:11px;border:2px solid #243b31;border-radius:2px;background:repeating-linear-gradient(0deg,transparent 0 2px,#684d2a55 3px 4px),linear-gradient(#bc9b61,#846c40);transform:rotate(-2deg)}.zh-barriere>i:nth-child(2){top:16px;transform:rotate(2deg);background:linear-gradient(#a78b57,#6d5f3f)}.zh-barriere>i:nth-child(3){left:43%;top:1px;width:15%;height:30px;transform:rotate(-12deg);background:repeating-linear-gradient(135deg,#dfc465 0 6px,#324638 7px 12px);border-color:#273d31}
+.zh-banner{position:absolute;top:48px;left:7%;width:86%;padding:12px 9px;text-align:center;background:#142c26eb;border:2px solid #99b46c;border-radius:7px;color:#e5edc7;box-shadow:0 5px 10px #10261d77}.zh-banner small{display:block;font-size:8px;letter-spacing:.1em;font-weight:800;color:#b5cf8b;line-height:18px}.zh-banner strong{display:block;font:900 clamp(15px,4.5vw,21px)/1.3 Georgia,serif}.zh-spore{position:absolute;width:13px;height:13px;border-radius:50%;background:radial-gradient(circle,#dff5a3,#98bf6a99 45%,transparent 70%);pointer-events:none}.zh-abgewehrt{position:absolute;left:50%;transform:translateX(-50%) rotate(-4deg);padding:5px 8px;border:2px solid #1b352c;border-radius:4px;background:#e2d59b;color:#243b2e;font-size:10px;line-height:13px;white-space:nowrap;box-shadow:2px 3px #172c2466}
+.zh-zaehler{padding:10px 12px;background:#243c31;border-block:1px solid #486346;font-size:12px;font-weight:800;color:#e1ebc5}.zh-details{padding:0 12px;border-bottom:1px solid #38533c;background:#1c342c}.zh-details summary{padding:10px 0;font-size:10px;color:#c8d9b5;cursor:pointer}.zh-roster{display:grid;gap:5px;padding-bottom:10px}.zh-person{display:flex;justify-content:space-between;gap:10px;font-size:10px;line-height:16px}.zh-person strong{min-width:0;overflow-wrap:anywhere}.zh-person span{color:#b0c99b;text-align:right}
+.ms-zombie>.ms-zeit{padding:5px 12px;margin:0;font-size:10px;color:#b2c8a5}.ms-zombie>.ms-steuerung{padding:7px 10px;margin:0;gap:6px}.ms-zombie>.ms-steuerung .knopf{min-height:40px;background:#304c3b;color:#edf2cf;font-size:11px}.ms-zombie .zh-regel{margin:0;padding:10px 12px;border-top:1px solid #36513c;color:#b4c5a5;font-size:10px;line-height:1.5}
+@media(prefers-reduced-motion:reduce){.ms-zombie *{animation:none!important;transition:none!important}}
+/* Haltung, Blickrichtung und Bewegung haben eigene Ebenen. Das Schild bleibt lesbar. */
+.zh-haltung,.zh-spiegel{width:100%;height:100%;transform-origin:50% 92%}.ms-zombie .zh-koerper .ms-avatar,.ms-zombie .zh-koerper .ms-avatar>svg{width:100%;height:100%;animation:none}.ms-zombie .zh-koerper svg{overflow:hidden}.ms-zombie .zh-koerper .ms-avatar-ersatz{font-size:18px;background:radial-gradient(circle closest-side at 50% 60%,var(--ms-avatar-farbe,#6b8c86) 0 95%,transparent 100%)}
+.zh-akteur[data-gefahr="warnung"] .zh-haltung{filter:saturate(.65) brightness(1.07)}.zh-akteur[data-gefahr="kritisch"] .zh-haltung,.zh-akteur[data-gefahr="abgelaufen"] .zh-haltung{filter:saturate(.35) brightness(.94);transform:translateY(2px) rotate(-7deg) scaleY(.96)}
+.zh-akteur[data-gefahr="warnung"] .zh-schild{border-color:#eab465}.zh-akteur[data-gefahr="warnung"] .zh-schild small{color:#ffd394}.zh-akteur[data-gefahr="kritisch"] .zh-schild,.zh-akteur[data-gefahr="abgelaufen"] .zh-schild{border-color:#ff827e;background:#492a2a}.zh-akteur[data-gefahr="kritisch"] .zh-schild small,.zh-akteur[data-gefahr="abgelaufen"] .zh-schild small{color:#ffb6a9;font-weight:800}.zh-schild small{font-variant-numeric:tabular-nums}.zh-akteur[data-gefahr="abgelaufen"] .zh-schild small{font-size:6px;line-height:8px}
+/* Trainingsschutz bleibt eine eigene Ebene neben Figur und Namensschild. */
+.zh-schutz{display:none;position:absolute;right:-3px;top:27%;width:15px;height:19px;filter:drop-shadow(0 0 3px #79f5b98a);pointer-events:none}.zh-schutz>svg,.zh-dosis>svg{display:block;width:100%;height:100%}.zh-akteur[data-schutz="aktiv"] .zh-schutz{display:block}.zh-akteur[data-schutz="aktiv"]::before{box-shadow:0 0 0 1px #88f6be99,0 0 9px #80ebaf44}.zh-akteur[data-gefahr="warnung"] .zh-schutz{filter:sepia(.5) hue-rotate(325deg)}.zh-akteur[data-gefahr="kritisch"] .zh-schutz{filter:sepia(.8) saturate(3) hue-rotate(305deg);opacity:.65}.zh-akteur[data-gefahr="kritisch"] .zh-schutz .zh-serum{opacity:.2}
+.zh-dosis{position:absolute;top:20%;right:4%;width:30px;height:38px;pointer-events:none;z-index:5;filter:drop-shadow(0 0 5px #9dffce)}.zh-serumwelle{position:absolute;inset:8% -8% -2%;border:2px solid #9dffcf;border-radius:45% 45% 38% 38%;background:radial-gradient(ellipse,#91ffc528,transparent 65%);box-shadow:inset 0 0 12px #9dffcf55,0 0 12px #9dffcf55;pointer-events:none;z-index:4}.zh-gebissen{background:#f3b4a3;color:#582b26;border-color:#682f28}
