@@ -1,0 +1,17 @@
+# Tresor-Coup
+
+Alle Spieler stehen vor demselben illustrierten Tresor, einschließlich Mitgliedern ohne Last. Die eigene Figur ist markiert; die seitlich scrollbare Liste zeigt jeden tatsächlichen Beitrag. Bei jedem Training tritt dessen Avatar mit den gemeinsamen gezeichneten Laufphasen ans Handrad. Vorhandene vollständige Charakterposen ersetzen keine Körperteile durch Vektorgelenke.
+
+Pro verdientem Viertel rastet eine Codeziffer ein und ein Stahlriegel fährt zurück. Mehrere Viertel durch ein Training bleiben eine Aktion mit mehreren aufeinanderfolgenden Schlössern. Nur die Serverzahl `ziffern` bestimmt, welche einzelnen Code-Tokens sichtbar sind. Unbekanntes bleibt `?`, auch wenn ein fehlerhafter Payload weitere Ziffern enthält. Führende Nullen bleiben erhalten. Vier Ziffern und `offen: true` öffnen die Tür sofort während der Woche. Im Inneren liegt kein erfundener Preis: Die Beute bleibt dem Wochenbericht vorbehalten.
+
+Der erste Besuch spielt den tatsächlichen Verlauf ab; auch der erste synchrone Frame enthält nur den damaligen Code. Identische Zustände mit neuen Snapshot-Zeitpunkten starten keine Wiederholung. Neue Einträge setzen am zuletzt gesehenen Zustand fort. Rückgänge von Last/Ziffern, geänderte Ziele oder bereits bekannte Ziffern werden ruhig neu gezeichnet. Eine Korrektur kann die Tür wieder schließen. Zusätzliche Last bei offenem Tresor öffnet ihn nicht erneut; ein reines Abschlussupdate zeigt nur den Missionsabschluss.
+
+Alle WAAPI-Animationen und Wartezeiten gehören zur Szene. Überspringen, Navigation, Hintergrund, reduzierte Bewegung und Breitenänderungen beenden sie. Eine reine Höhenänderung der mobilen Browserleiste unterbricht nicht. Die statische Ansicht verteilt die Figuren nach einer Breitenänderung neu. Ausgefallene neue Bilder fallen auf die Grundkulisse, den CSS-Tresor und vorhandene Avatarposen zurück. Reduzierte Bewegung zeigt trotzdem die illustrierten Bilder.
+
+## Bilder und Vorschau
+
+`src/figuren/tresor-medien.ts` enthält die feste Medienliste. Raum (600×750), Tresor (400×500, transparent) und Kammer (300×375) benötigen zusammen etwa 338 KB. Chassis, Tür, Handrad und vier Bolzen sind präzise Ausschnitte desselben Tresorbilds. Bei einem Motivwechsel müssen die Koordinaten in `tresor.js` und `.css` angepasst werden. Die Kammer ist eine eigene Illustration. Alle URLs nutzen den bestehenden versionierten PNG-Endpunkt mit langfristigem Cache.
+
+`node scripts/tresor-optimieren.mjs quellen.json` normalisiert drei Bildquellen und schreibt Inhalts-Hashes in die Liste. Die JSON-Datei enthält `{ "raum": "/pfad/raum.png", "tresor": "/pfad/tresor.png", "innen": "/pfad/innen.png" }`; Originale bleiben erhalten. Referenz und Bildbeschreibungen stehen in `src/figuren/medien/tresor-prompts.json`.
+
+Nach `npm run build` erzeugt `node scripts/tresor-vorschau.mjs /tmp/tresor.html` eine selbstständige HTML-Vorschau mit neun Szenarien und derselben Laufzeit: Erfolg, Wochenabschluss, gescheitert, mehrere Schlösser in einer Einheit, Korrektur, fast geschafft, 80 Spieler, Start und leere Gruppe. Die Vorschau enthält Beispieldaten; der App-Rückblick verwendet ausschließlich die API-Zustände.
