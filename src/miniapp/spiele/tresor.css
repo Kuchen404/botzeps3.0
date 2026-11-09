@@ -29,10 +29,10 @@
 .ms-tresor .tr-person>.ms-avatar,.ms-tresor .tr-person>.ms-avatar>svg{width:40px;height:60px;margin:0 auto;animation:none}.tr-person-name,.tr-last{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:18px}.tr-person-name{font-size:10px}.tr-last{font-size:11px;color:#ffe0a1}.tr-leer{font-size:12px;color:#bbced5}
 .ms-tresor>.ms-zeit{padding:4px 12px;margin:0;font-size:10px;color:#b3c8d1}.ms-tresor>.ms-steuerung{margin:0;padding:7px 10px;gap:6px}.ms-tresor>.ms-steuerung .knopf{color:#ffe2a0;background:#2c4956;font-size:11px;min-height:40px}
 .ms-tresor .bz-lauf-figur{overflow:hidden}.ms-tresor .bz-lauf-spiegel{transform-box:view-box;transform-origin:0 0}
-/* Der Überraschungsfund besteht nur aus deckenden Pixeln und einer Zensur-Banderole. */
+/* Der Überraschungsfund besteht nur aus deckenden Pixeln. */
 .tr-fund{position:absolute;left:27%;top:23%;width:46%;height:53%;z-index:1;transform-origin:50% 100%;filter:drop-shadow(0 7px 3px #09172388)}.tr-fund[hidden]{display:none}
 .tr-fund-pixel{position:absolute;inset:0;display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(10,1fr);border:4px solid #172c3a;background:#172c3a;box-shadow:0 0 0 2px #e6c57a;clip-path:polygon(37.5% 0,62.5% 0,62.5% 10%,75% 10%,75% 60%,87.5% 60%,87.5% 70%,100% 70%,100% 90%,87.5% 90%,87.5% 100%,62.5% 100%,62.5% 90%,37.5% 90%,37.5% 100%,12.5% 100%,12.5% 90%,0 90%,0 70%,12.5% 70%,12.5% 60%,25% 60%,25% 10%,37.5% 10%)}
-.tr-fund-pixel>i{display:block;min-width:0;min-height:0}.tr-fund-zensur{position:absolute;left:-6%;top:46%;width:112%;padding:7% 1%;border:2px solid #101d29;background:#152632;color:#fff1c0;font:900 clamp(10px,3.2vw,16px)/1 ui-monospace,monospace;letter-spacing:.06em;text-align:center;transform:rotate(-8deg);box-shadow:0 3px 0 #080e1680}
+.tr-fund-pixel>i{display:block;min-width:0;min-height:0}
 .tr-fund-blitz{position:absolute;inset:-20% -32%;opacity:0;background:#ffe092;clip-path:polygon(50% 0,59% 25%,80% 9%,77% 35%,100% 38%,81% 53%,97% 76%,71% 73%,70% 98%,51% 80%,32% 100%,31% 75%,5% 82%,20% 58%,0 43%,26% 36%,22% 11%,43% 27%);filter:drop-shadow(2px 3px #172c3a)}.tr-fund-auftritt .tr-fund-blitz{opacity:.9}
 .tr-boing{position:absolute;left:11%;top:21%;max-width:76%;padding:3px 7px;color:#ffe49b;font:900 clamp(29px,10vw,49px)/1.2 Georgia,serif;letter-spacing:.025em;-webkit-text-stroke:1px #172c3a;text-shadow:2px 3px 0 #172c3a,-1px 0 #172c3a,0 -1px #172c3a;transform-origin:50% 75%}
 @media(prefers-reduced-motion:reduce){.ms-tresor *{animation:none!important;transition:none!important}}

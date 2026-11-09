@@ -78,8 +78,7 @@ window.MINISPIEL_SZENEN.tresor = function (a) {
     var punkt = el('i'); punkt.style.backgroundColor = palette[(pi * 7 + Math.floor(pi / 8) * 3 + pi % 5) % palette.length]; pixel.appendChild(punkt);
   }
   var fund = el('div', { class: 'tr-fund', role: 'img', 'aria-label': 'Vollständig verpixelter Überraschungsfund' }, [
-    el('div', { class: 'tr-fund-blitz', 'aria-hidden': 'true' }), pixel,
-    el('span', { class: 'tr-fund-zensur', text: 'ZENSIERT', 'aria-hidden': 'true' })
+    el('div', { class: 'tr-fund-blitz', 'aria-hidden': 'true' }), pixel
   ]); fund.hidden = true;
   var safe = el('div', { class: 'tr-safe' }, [innen, chassis, fund].concat(riegel, [tuer]));
   var feld = el('div', { class: 'tr-feld', 'aria-hidden': 'true' }), effekte = el('div', { class: 'tr-effekte', 'aria-hidden': 'true' });
@@ -230,9 +229,20 @@ window.MINISPIEL_SZENEN.tresor = function (a) {
     ]);
     if (!auftritt.every(Boolean)) return false;
     ruf.remove(); fund.classList.remove('tr-fund-auftritt');
-    phase('jubel'); var bewegungen = [];
+    phase('wackeln'); var bewegungen = [bewegen(fund, [
+      { transform: 'rotate(0deg) scaleX(1)' },
+      { transform: 'rotate(-10deg) scaleX(.98)', offset: .12 },
+      { transform: 'rotate(10deg) scaleX(1.02)', offset: .26 },
+      { transform: 'rotate(-8deg) scaleX(.99)', offset: .4 },
+      { transform: 'rotate(7deg) scaleX(1.01)', offset: .54 },
+      { transform: 'rotate(-5deg) scaleX(1)', offset: .68 },
+      { transform: 'rotate(3deg) scaleX(1)', offset: .8 },
+      { transform: 'rotate(-1.5deg) scaleX(1)', offset: .9 },
+      { transform: 'rotate(0deg) scaleX(1)' }
+    ], { duration: 2000, easing: 'ease-in-out' }, nr)];
     mitglieder.forEach(function (e, id) { if (tresorZahl(tresorStand(s).lasten[id]) > 0) { pose(e, 'jubel'); bewegungen.push(bewegen(e.querySelector('.tr-koerper'), [{ transform: 'translateY(0)' }, { transform: 'translateY(-8px)' }, { transform: 'translateY(0)' }, { transform: 'translateY(-3px)' }, { transform: 'translateY(0)' }], { duration: 800 }, nr)); } });
-    return (await Promise.all(bewegungen)).every(Boolean) && await warten(400, nr);
+    if (!(await Promise.all(bewegungen)).every(Boolean)) return false;
+    phase('jubel'); return warten(400, nr);
   }
   async function zug(vorher, s, nr) {
     var w = tresorWechsel(vorher, s), v = tresorStand(vorher), n = tresorStand(s.stand); zeichne(vorher);
