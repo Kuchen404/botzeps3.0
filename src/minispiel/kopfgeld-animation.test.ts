@@ -1,135 +1,53 @@
 import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
 import { describe, expect, it } from "vitest";
-
-// Kleines DOM für die Szenenlogik; echte SVGs/Layout werden zusätzlich im Browser geprüft.
-class Element {
-  className = "";
-  textContent = "";
-  innerHTML = "";
-  dataset: Record<string, string> = {};
-  attributes: Record<string, string> = {};
-  children: Element[] = [];
-  style: Record<string, unknown> & { setProperty: (key: string, value: string) => void } = {
-    setProperty: (key, value) => { this.style[key] = value; },
-  };
-  appendChild(child: Element) { this.children.push(child); return child; }
-  setAttribute(key: string, value: string) { this.attributes[key] = value; }
-  find(klasse: string): Element[] {
-    const selbst: Element[] = this.className.split(" ").includes(klasse) ? [this] : [];
-    return selbst.concat(this.children.flatMap((x) => x.find(klasse)));
-  }
-  text(): string { return this.textContent + this.children.map((x) => x.text()).join(" "); }
-}
-interface Stand {
-  gejagter: string;
-  gejagterLast: number;
-  jaeger: string[];
-  lasten: Record<string, number>;
-}
-interface Meta { vorher: Stand | null; bewegt: boolean }
-interface Config {
-  klasse: string;
-  inhalt: Element;
-  zeichne: (stand: Stand, meta: Meta) => void;
-  beschreibe: (stand: Stand, meta: Meta) => string;
-}
-const stand = (ziel: number, hunter: number): Stand => ({
-  gejagter: "ziel", gejagterLast: ziel, jaeger: hunter > ziel ? ["hunter"] : [], lasten: { ziel, hunter },
+const api = runInNewContext(readFileSync(new URL("../miniapp/spiele/kopfgeld.js", import.meta.url), "utf8") + `\n({kopfgeldVorn,kopfgeldWechsel,kopfgeldFokus,kopfgeldPosition,kopfgeldFortsetzung,kopfgeldSignaturen,kopfgeldLast})`, {
+  window: { addEventListener() {}, innerWidth: 390 }, document: { addEventListener() {} },
 });
-function szene(aktuell: Stand, verlauf: Stand[] = [], mehr = 0) {
-  let config!: Config;
-  const namen = [{ id: "ziel", name: "Käpt’n Ziel", ich: false, figur: 4 }, { id: "hunter", name: "Jäger <script>", ich: true, figur: null }];
-  for (let i = 0; i < mehr; i++) namen.push({ id: `extra${i}`, name: `Verfolger ${i}`, ich: false, figur: null });
-  const window: { MINISPIEL_SZENEN: Record<string, (a: unknown) => Element> } = { MINISPIEL_SZENEN: {} };
-  runInNewContext(readFileSync(new URL("../miniapp/spiele/kopfgeld.js", import.meta.url), "utf8"), {
-    window,
-    document: { createElement: () => new Element(), createElementNS: () => new Element() },
-    minispielAvatar: (_a: unknown, id: string, pose: string) => {
-      const avatar = new Element();
-      avatar.className = "ms-avatar";
-      avatar.dataset.id = id;
-      avatar.dataset.pose = pose;
-      return avatar;
-    },
-    minispielSetzePose: (avatar: Element, _a: unknown, id: string, pose: string) => {
-      expect(avatar.dataset.id).toBe(id);
-      avatar.dataset.pose = pose;
-    },
-    minispielAnimationSzene: (_a: unknown, c: Config) => { config = c; return c.inhalt; },
+const stand = (ziel: number, hunter: number, extra = 0) => ({ gejagter: "ziel", gejagterLast: ziel, jaeger: ["hunter", "extra"].filter(id => ({hunter, extra})[id as "hunter" | "extra"] > ziel), lasten: { ziel, hunter, extra } });
+describe("Kopfgeldjagd: echte Wochenlast und Wiedergabe", () => {
+  it("lässt bei Gleichstand und bei null Last das Kopfgeld offen", () => {
+    expect(api.kopfgeldVorn(stand(120,120))).toEqual([]);
+    expect(api.kopfgeldVorn(stand(0,0))).toEqual([]);
+    expect(api.kopfgeldVorn(stand(120,120.01))).toEqual(["hunter"]);
   });
-  const root = window.MINISPIEL_SZENEN.kopfgeld!({
-    aktuell, verlauf: verlauf.map((s) => ({ stand: s })), spieler: namen,
+  it("zählt alle gemeldeten berechtigten Jäger genau einmal und niemals den Gejagten", () => {
+    const s = stand(100,130,140); s.jaeger.push("hunter","ziel","unbekannt");
+    expect(api.kopfgeldVorn(s)).toEqual(["hunter","extra"]);
+    s.jaeger=[]; expect(api.kopfgeldVorn(s)).toEqual([]);
   });
-  return { root, config, zeichne: (s: Stand, vorher: Stand | null = null, bewegt = false) => config.zeichne(s, { vorher, bewegt }) };
-}
-
-describe("Kopfgeldjagd-Animation", () => {
-  it("nennt im Hinweis den Gejagten beim Namen statt fest „er“", () => {
-    const { root } = szene(stand(120, 100));
-    const hinweis = root.find("kg-hinweis")[0]!.textContent;
-    expect(hinweis).toContain("Bei Gleichstand bleibt Käpt’n Ziel frei");
-    expect(hinweis).not.toMatch(/\ber\b/);
+  it("erkennt Überholen und den Verlust des Kopfgelds bei Gleichstand", () => {
+    expect(api.kopfgeldWechsel(stand(120,80),{art:"training",stand:stand(120,140)})).toMatchObject({training:true,dazu:["hunter"],weg:[]});
+    expect(api.kopfgeldWechsel(stand(120,140),{art:"training",stand:stand(140,140)})).toMatchObject({training:true,dazu:[],weg:["hunter"]});
   });
-
-  it("zeigt bei Gleichstand einen freien Gejagten und niemals ein Fang-Lasso", () => {
-    const gleich = stand(120, 120);
-    const { root, zeichne } = szene(gleich);
-    zeichne(gleich);
-    expect(root.find("kg-spur")[0]!.dataset.gefangen).toBe("false");
-    expect(root.find("kg-spurstatus")[0]!.textContent).toContain("Gleichstand reicht nicht");
-    expect(root.find("kg-schild")[0]!.textContent).toBe("Auf der Flucht");
-    expect(root.dataset.aktion).toBe("");
+  it("verwechselt den Rückstand eines Jägers nicht mit dem Ergebnis aller Jäger", () => {
+    const neu=stand(140,140,180);
+    expect(api.kopfgeldWechsel(stand(120,140,180),{art:"training",stand:neu}).weg).toEqual(["hunter"]);
+    expect(api.kopfgeldVorn(neu)).toEqual(["extra"]);
   });
-
-  it("wirft erst beim echten Überholen das Lasso und lässt den Gejagten beim Aufholen entkommen", () => {
-    const start = stand(120, 110), fang = stand(120, 140), flucht = stand(140, 140);
-    const { root, zeichne } = szene(flucht, [start, fang, flucht]);
-    zeichne(fang, start, true);
-    expect(root.dataset.aktion).toBe("fang");
-    expect(root.find("kg-spur")[0]!.dataset.gefangen).toBe("true");
-    expect(root.find("kg-laeufer")[0]!.find("ms-avatar")[0]!.dataset.pose).toBe("ziehen");
-    expect(root.find("kg-held-bild")[0]!.find("ms-avatar")[0]!.dataset.pose).toBe("ko");
-    expect(root.find("kg-lage-text")[0]!.textContent).toContain("wirft das Lasso");
-    zeichne(flucht, fang, true);
-    expect(root.dataset.aktion).toBe("flucht");
-    expect(root.find("kg-spur")[0]!.dataset.gefangen).toBe("false");
-    expect(root.find("kg-lage-text")[0]!.textContent).toContain("entwischt");
-    expect(root.find("kg-held-bild")[0]!.find("ms-avatar")[0]!.dataset.pose).toBe("jubel");
+  it("spielt nach Löschung und nachträglichen Änderungen keine erfundenen Überholmanöver", () => {
+    expect(api.kopfgeldWechsel(stand(100,150),{art:"training",stand:stand(100,80)})).toMatchObject({korrektur:true,training:false,dazu:[],weg:[]});
+    expect(api.kopfgeldWechsel(stand(100,80),{art:"korrektur",stand:stand(100,150)})).toMatchObject({korrektur:true,training:false,dazu:[]});
   });
-
-  it("verwendet dieselbe Lastskala für die ganze Wiedergabe und bewahrt genaue Daten", () => {
-    const start = stand(50, 25), ende = stand(100, 200);
-    const { root, zeichne } = szene(ende, [start, ende]);
-    zeichne(start);
-    expect(root.style["--kg-ziel"]).toBe("25%");
-    expect(root.find("kg-laeufer")[0]!.style.left).toBe("12.5%");
-    expect(root.find("kg-poster-last")[0]!.textContent).toBe("50 Lastpunkte");
-    zeichne(ende, start, true);
-    expect(root.style["--kg-ziel"]).toBe("50%");
-    expect(root.find("kg-laeufer")[0]!.style.left).toBe("100%");
+  it("gibt dem eigenen berechtigten Avatar Vorrang, ohne falsche Sieger auszuwählen", () => {
+    const s=stand(100,130,160), p=[{id:"ziel",ich:true},{id:"hunter",ich:true},{id:"extra"}];
+    expect(api.kopfgeldFokus(s,p,["hunter","extra"])).toEqual(["hunter","extra"]);
+    expect(api.kopfgeldFokus(s,p,["extra"])).toEqual(["extra"]);
   });
-
-  it("überspringt Bewegungen für den sofortigen Endstand, auch wenn sich der Fang geändert hat", () => {
-    const start = stand(40, 10), ende = stand(40, 80);
-    const { root, zeichne } = szene(ende);
-    zeichne(ende, start, false);
-    expect(root.dataset.sofort).toBe("true");
-    expect(root.dataset.abspielen).toBe("false");
-    expect(root.dataset.aktion).toBe("");
-    expect(root.find("kg-spur")[0]!.dataset.gefangen).toBe("true");
+  it("hält Darsteller im Bild und tauscht ihre Reihenfolge erst beim Überholen", () => {
+    const vor=api.kopfgeldPosition(stand(100,100),"hunter"), nach=api.kopfgeldPosition(stand(100,101),"hunter");
+    expect(vor.jaeger).toBeLessThan(vor.ziel);expect(nach.jaeger).toBeGreaterThan(nach.ziel);
+    for(const s of [stand(0,0),stand(0,1000),stand(1000,0)]) for(const n of Object.values(api.kopfgeldPosition(s,"hunter")) as number[]) {expect(n).toBeGreaterThanOrEqual(20);expect(n).toBeLessThanOrEqual(80);}
   });
-
-  it("übernimmt Spieleridentitäten, sichere Namen, fehlende Figuren und viele Verfolger", () => {
-    const ende = stand(0, 0);
-    const { root, zeichne, config } = szene(ende, [], 70);
-    zeichne(ende);
-    expect(config.klasse).toBe("ms-kopfgeld");
-    expect(root.find("kg-spur")).toHaveLength(71);
-    expect(root.find("kg-spurname")[0]!.textContent).toBe("Jäger <script> · du");
-    expect(root.find("kg-spurname")[0]!.innerHTML).toBe("");
-    expect(root.find("kg-poster-figur")[0]!.find("ms-avatar")[0]!.dataset.id).toBe("ziel");
-    expect(root.find("kg-spur").every((p) => p.dataset.gefangen === "false")).toBe(true);
-    expect(root.style["--kg-ziel"]).toBe("0%");
+  it("setzt nur neue Stationen fort und startet bei geänderter Historie neu", () => {
+    expect(api.kopfgeldFortsetzung(["a","b"],["a","b","c"])).toBe(1);
+    expect(api.kopfgeldFortsetzung(["a","b"],["a","b"])).toBeNull();
+    expect(api.kopfgeldFortsetzung(["a","b"],["a","c"])).toBe(0);
+    expect(api.kopfgeldFortsetzung(null,[])).toBeNull();
+  });
+  it("ignoriert wechselnde Abfragezeiten, erhält aber Änderungen der Lastwerte", () => {
+    const a=[{art:"training",zeitpunkt:"a",stand:stand(100,130)}], b=[{...a[0],zeitpunkt:"b"}];
+    expect(api.kopfgeldSignaturen(a)).toEqual(api.kopfgeldSignaturen(b));
+    expect(api.kopfgeldLast(stand(100,NaN),"hunter")).toBe(0);
   });
 });
