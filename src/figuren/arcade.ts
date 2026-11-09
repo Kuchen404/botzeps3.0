@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { zombieMedium } from "./zombie-medien.js";
 import { duellMedium } from "./duell-medien.js";
 import { tresorMedium } from "./tresor-medien.js";
 import { ATLAS_DATEIEN } from "./atlanten.js";
@@ -13,6 +14,8 @@ const cache = new Map<string, Buffer>();
 
 /** Ausschließlich bekannte, mit Inhalts-Hash versionierte Dateien ausliefern. */
 export function figurMedium(datei: string): Buffer | null {
+  const zombie = zombieMedium(datei);
+  if (zombie) return zombie;
   const duell = duellMedium(datei);
   if (duell) return duell;
   const tresor = tresorMedium(datei);

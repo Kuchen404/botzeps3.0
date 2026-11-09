@@ -1,3 +1,7 @@
+import { createHash } from "node:crypto";
+import { figurMedium } from "../figuren/arcade.js";
+import { ZOMBIE_BILDER } from "../figuren/zombie-medien.js";
+import { Resvg } from "@resvg/resvg-js";
 import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
 import { describe, expect, it } from "vitest";
@@ -51,5 +55,42 @@ describe("Zombie-Inszenierung folgt den Serverzuständen", () => {
     const neu = zombieSignaturen([{ art: "tag", stand: biss, zeitpunkt: "2026-10-24T05:05:00Z" }]);
     expect(zombieFortsetzung(alt, neu)).toBeNull();
     expect(zombieSignaturen([{ art: "korrektur", stand: biss, zeitpunkt: "2026-10-24T05:05:00Z" }])).not.toEqual(alt);
+  });
+});
+
+const extra = runInNewContext(readFileSync(new URL('../miniapp/spiele/zombie.js', import.meta.url), 'utf8') + ';({ zombiePositionen, zombieVersuch })', { window: { addEventListener() {} }, document: { addEventListener() {} } }) as {
+  zombiePositionen: (s: Stand, spieler: { id: string }[], breite: number) => { hoehe: number; plan: Map<string, { x: number; y: number; w: number; zombie: boolean }> };
+  zombieVersuch: (s: Stand, spieler: { id: string }[], index: number) => { angreifer: string; ziel: string } | null;
+};
+describe('Gemeinsames Gym und dekorative Abwehr', () => {
+  it('plant jeden Spieler genau einmal samt Platz für sein Namensschild', () => {
+    for (const n of [1, 6, 12, 80]) for (const breite of [256, 326, 448]) for (const infiziert of [1, Math.ceil(n / 2), n]) {
+      const spieler = Array.from({ length: n }, (_, i) => ({ id: String(i) }));
+      const s: Stand = { patientNull: '0', zombies: spieler.slice(0, infiziert).map(sp => ({ id: sp.id, tag: 0 })), menschen: spieler.slice(infiziert).map(sp => sp.id) };
+      const p = extra.zombiePositionen(s, spieler, breite); expect(p.plan.size).toBe(n);
+      const boxes = [...p.plan.values()].map(e => ({ l: e.x - e.w * .72, r: e.x + e.w * .72, t: e.y - e.w * 1.5 - 27, b: e.y }));
+      for (let i = 0; i < boxes.length; i++) { const b = boxes[i]!; expect(b.l).toBeGreaterThanOrEqual(0); expect(b.r).toBeLessThanOrEqual(breite); expect(b.t).toBeGreaterThanOrEqual(0); expect(b.b).toBeLessThan(p.hoehe); for (let j = 0; j < i; j++) { const v = boxes[j]!; expect(b.l < v.r && b.r > v.l && b.t < v.b && b.b > v.t).toBe(false); } }
+    }
+  });
+  it('wählt nur bekannte Infizierte und tatsächlich noch menschliche Ziele', () => {
+    const spieler = [{ id: 'p' }, { id: 'a' }, { id: 'b' }];
+    expect(extra.zombieVersuch(start, spieler, 0)).toEqual({ angreifer: 'p', ziel: 'a' });
+    expect(extra.zombieVersuch(start, spieler, 1)).toEqual({ angreifer: 'p', ziel: 'b' });
+    expect(extra.zombieVersuch(biss, spieler, 0)).toBe(null);
+    expect(extra.zombieVersuch({ ...start, patientNull: 'weg', zombies: [] }, spieler, 0)).toBe(null);
+    expect(extra.zombieVersuch(start, [], 0)).toBe(null);
+  });
+  it('verändert durch die Auswahl eines Abwehrversuchs keine Spielzustände', () => {
+    const kopie = JSON.stringify(start); for (let i = 0; i < 20; i++) extra.zombieVersuch(start, [{ id: 'p' }, { id: 'a' }, { id: 'b' }], i);
+    expect(JSON.stringify(start)).toBe(kopie);
+  });
+});
+
+describe('Zombie-Gym-Medien', () => {
+  it('liefert nur feste, kompakte PNGs mit passenden Hashes und vier transparenten Gastposen', () => {
+    for (const [art, datei] of Object.entries(ZOMBIE_BILDER)) { const b = figurMedium(datei)!; expect(b.length).toBeLessThan(220_000); expect(datei).toBe('zombie-gym-' + art + '-' + createHash('sha256').update(b).digest('hex').slice(0, 12) + '.png'); expect([b.readUInt32BE(16), b.readUInt32BE(20)]).toEqual(art === 'gym' ? [600, 750] : [400, 600]); }
+    const png = figurMedium(ZOMBIE_BILDER.gast)!, raster = new Resvg(`<svg xmlns="http://www.w3.org/2000/svg" width="400" height="600"><image href="data:image/png;base64,${png.toString('base64')}" width="400" height="600"/></svg>`).render().pixels, hashes = [];
+    for (let i = 0; i < 4; i++) { const x = i % 2 * 200, y = Math.floor(i / 2) * 300; expect(raster[(y * 400 + x) * 4 + 3]).toBe(0); const b = Buffer.concat(Array.from({ length: 300 }, (_, j) => raster.subarray(((y + j) * 400 + x) * 4, ((y + j) * 400 + x + 200) * 4))); expect(b.some((n, j) => j % 4 === 3 && n > 0)).toBe(true); hashes.push(createHash('sha256').update(b).digest('hex')); }
+    expect(new Set(hashes).size).toBe(4); expect(figurMedium('../zombie-medien.ts')).toBe(null); expect(figurMedium('zombie-fremd.png')).toBe(null);
   });
 });
