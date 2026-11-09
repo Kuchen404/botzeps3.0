@@ -52,9 +52,6 @@
 .ms-kopfgeld .kg-poster{top:8px;left:calc(50% - 120px);width:240px;display:grid;grid-template-columns:40px minmax(0,1fr);column-gap:8px;padding:5px 10px}
 .ms-kopfgeld .kg-poster>.ms-avatar,.ms-kopfgeld .kg-poster>.ms-avatar svg{width:36px;height:54px;grid-column:1;grid-row:1 / 5;margin:0}
 .ms-kopfgeld .kg-wanted{grid-column:2;font-size:18px}.ms-kopfgeld .kg-poster-name{grid-column:2;font-size:12px}.ms-kopfgeld .kg-poster-last{grid-column:2;font-size:9px;margin:0}.ms-kopfgeld .kg-poster-klein{grid-column:2;font-size:6px;margin:0}
-/* Laufgelenke: feste Drehpunkte, Bewegung ausschließlich über den Szenen-Controller. */
-.ms-kopfgeld .bz-lauf-arm,.ms-kopfgeld .bz-lauf-bein,.ms-kopfgeld .bz-lauf-wade,.ms-kopfgeld .bz-lauf-unterarm{transform-box:fill-box;transform-origin:50% 5%}
-.ms-kopfgeld .bz-lauf-rumpf{transform-box:fill-box;transform-origin:50% 80%}.ms-kopfgeld .bz-lauf-kopf{transform-box:fill-box;transform-origin:50% 90%}
 .kg-trittstaub{position:absolute;bottom:16px;left:20%;width:13px;height:7px;border-radius:50%;background:#b18349;pointer-events:none;z-index:-1;box-shadow:-7px 2px 0 -1px #c4985b}
 .ms-kopfgeld[data-kino="true"] .kg-dekor,.ms-kopfgeld[data-kino="true"] .kg-buehne{transform:translateY(194px) scale(.52);transform-origin:50% 0}
 .kg-kino{position:absolute;inset:0 0 auto;height:194px;overflow:hidden;border-bottom:3px solid #69452b;background:radial-gradient(ellipse at 70% 30%,#ffedbc,transparent 65%),linear-gradient(#eab06a 0%,#f8d797 73%,#bb874d 74%,#e3b371 100%);isolation:isolate;z-index:10;pointer-events:none}
@@ -66,3 +63,16 @@
 .kg-kino-ziel .kg-kino-name{background:#75422b;color:#fff1cc}.kg-kino-lasso{position:absolute;width:36px;height:51px;border:3px solid #855126;box-shadow:0 0 0 1px #ffe8ad,inset 0 0 0 1px #ffe8ad;border-radius:50%;z-index:4}.kg-kino-lasso::after{content:"";position:absolute;top:38px;left:-20px;width:40px;height:3px;background:#855126;transform:rotate(-35deg)}
 .kg-kino-ruf{position:absolute;top:3px;right:3px;font:900 28px/1 Georgia,serif;color:#a83c20;text-shadow:1px 1px #ffe9b1,-1px -1px #ffe9b1;z-index:7}
 .kg-tempostrich{position:absolute;width:55px;height:2px;border-radius:2px;background:#fff0bc;z-index:1}
+/* Gezeichnete Laufphasen und eine ruhige filmische Einhol-Szene. */
+.ms-kopfgeld .kg-kino{height:222px;border-bottom:2px solid #6d4728;background:#de9d57}
+.ms-kopfgeld[data-kino="true"] .kg-dekor,.ms-kopfgeld[data-kino="true"] .kg-buehne{transform:translateY(226px) scale(.45)}
+.kg-kino-kulisse{position:absolute;inset:0 auto 0 0;width:112%;height:100%;object-fit:cover;object-position:center 70%;z-index:0}
+.ms-kopfgeld .kg-kino::before{inset:0;background:linear-gradient(#3b211733,transparent 30%,transparent 70%,#4a2c2340);transform:none;z-index:1}
+.ms-kopfgeld .kg-kino-titel{top:9px;left:10px;width:auto;max-width:80%;padding:4px 8px;border-radius:4px;background:#38251cdd;color:#fff2cf;font-family:inherit;font-weight:800;font-size:11px;line-height:1.3;letter-spacing:.01em;text-shadow:none}
+.ms-kopfgeld .kg-kino-person{top:30px;width:100px}.ms-kopfgeld .kg-kino-person .kg-koerper{height:150px}
+.ms-kopfgeld .kg-kino-name{margin:0 auto;background:#fff0cfdb;color:#4c2b18;font-size:10px;box-shadow:0 1px 2px #4c2b1840}
+.ms-kopfgeld .kg-kino-unten{font-size:9px;font-weight:600;background:#3d281ddd;padding:4px 8px}
+.ms-kopfgeld .kg-kino-ruf{top:6px;right:8px;font-size:23px}
+.ms-kopfgeld .kg-tempostrich{opacity:.35;background:#ffe3a1}
+
+.ms-kopfgeld .bz-lauf-figur{overflow:hidden}.ms-kopfgeld .bz-lauf-spiegel{transform-box:view-box;transform-origin:0 0}

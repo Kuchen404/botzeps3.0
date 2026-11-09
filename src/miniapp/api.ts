@@ -26,6 +26,7 @@ import { laternen } from "../db/laterne-repo.js";
 import { animationFuerApp } from "../minispiel/animation.js";
 import { aktuelleMarken, minispielFuerApp } from "../minispiel/ablauf.js";
 import type { MiniAppNutzer } from "./auth.js";
+import { JAGD_KULISSE } from "../figuren/lauf-atlanten.js";
 import { FIGUREN, type Pose, figurLaufSvg, figurSvg } from "../figuren/figuren.js";
 import { ANZAHL_FIGUREN, darfFigurWaehlen, figurFreigabe, figurIn, figurenDerSeason, vergebeneFiguren, waehleFigur } from "../figuren/zuteilung.js";
 
@@ -133,7 +134,7 @@ function minispielJson(db: Db, s: Parameters<typeof minispielFuerApp>[1], tag: s
       if (figur !== null && a.art === "kopfgeld") figuren[figur]!.laufen ??= figurLaufSvg(figur, `mslauf${figur}`)!;
       return { ...sp, figur };
     });
-    return { ...m, animation: { ...a, spieler, figuren } };
+    return { ...m, animation: { ...a, spieler, figuren, ...(a.art === "kopfgeld" ? { kulisse: "/api/figurbild/" + JAGD_KULISSE } : {}) } };
   }
   const vergeben = figurenDerSeason(db, s.id);
   const figuren: Record<number, Partial<Record<Pose, string>>> = {};

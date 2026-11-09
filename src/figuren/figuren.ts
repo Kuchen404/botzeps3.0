@@ -3,7 +3,7 @@
  * illustrierte Posen aus einem gecachten Atlas; eigene Baukastenfiguren bleiben möglich.
  */
 
-import { ATLAS_DATEIEN } from "./atlanten.js";
+import { LAUF_ATLANTEN } from "./lauf-atlanten.js";
 import { arcadeSpieler } from "./arcade.js";
 
 export type Pose = "bereit" | "schlag" | "jubel" | "ko" | "ziehen" | "klettern";
@@ -343,34 +343,11 @@ export function figurSvg(f: Figur, pose: Pose = "bereit", opt: FigurOptionen = {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${view}"${w}${h} overflow="visible"><defs>${defs}</defs><g class="bz-spieler"${filter} transform="translate(0 ${p.huepf})${neig}">${inner}</g></svg>`;
 }
 
-/** Beweglicher Laufkörper mit dem illustrierten Kopf und den Farben der Season-Figur.
- * Die Gliedmaßen sind einzelne SVG-Gruppen; der Browser animiert sie nur während der Jagd.
- * Derselbe bereits gecachte Atlas liefert den Kopf, es entstehen keine weiteren Bilddownloads.
- */
+/** Vier vollständig illustrierte Laufphasen; derselbe Atlas bleibt im Browsercache. */
 export function figurLaufSvg(nr: number, id: string): string | null {
-  const f = FIGUREN[nr], datei = ATLAS_DATEIEN[nr];
+  const f = FIGUREN[nr], datei = LAUF_ATLANTEN[nr];
   if (!f || !datei) return null;
-  // Unterkante von Gesicht/Bart im Bereit-Feld; Handschuhe bleiben außerhalb der Kopfmaske.
-  const unten = [148,143,145,124,153,139,140,144,151,146,168,150][nr]!;
-  const breit = nr === 9 || nr === 10 || nr === 1 || nr === 11;
-  const kopfPfad = `M${breit ? 38 : 48} 30 H${breit ? 166 : 153} V${unten-32} L132 ${unten-18} L120 ${unten} H80 L65 ${unten-18} L${breit ? 38 : 48} ${unten-32}Z`;
-  const muskel = (pfad: string, breite: number) => glied(pfad, f.haut, breite) +
-    `<path d="${pfad}" transform="translate(2 0)" fill="none" stroke="${dunkel(f.haut,.23)}" stroke-width="${breite*.33}" stroke-linecap="round"/><path d="${pfad}" transform="translate(-2 -1)" fill="none" stroke="${hell(f.haut,.4)}" stroke-width="${breite*.18}" stroke-linecap="round"/>`;
-  const bein = (seite: number) => `<g transform="translate(${seite*10} 111)"><g class="bz-lauf-bein ${seite<0?"bz-links":"bz-rechts"}">` +
-    muskel(`M0 0 L${seite*3} 23`, 17) + `<path d="M-9 -2 H9 L9 14 Q0 18 -9 14Z" ${o(f.hose)}/>` +
-    `<g transform="translate(${seite*3} 23)"><g class="bz-lauf-wade">` + muskel("M0 0 L0 23",12) +
-    (f.socken?`<path d="M0 17 V25" stroke="${f.socken}" stroke-width="11"/>`:"") +
-    `<path d="M-8 29 Q-8 19 0 19 Q11 19 15 28 Q17 32 11 33 H-6Z" ${o(f.schuh)}/><path d="M-6 29 H13" stroke="${hell(f.schuh,.7)}" stroke-width="2.5"/><path d="M-2 22 L5 23 M-2 25 L7 26" stroke="#fff" stroke-width="1.6"/>` +
-    `</g></g></g></g>`;
-  const arm = (seite: number) => `<g transform="translate(${seite*23} 80)"><g class="bz-lauf-arm ${seite<0?"bz-links":"bz-rechts"}">` +
-    muskel(`M0 0 L${seite*12} 17`,14) + (!f.tank?glied(`M0 0 L${seite*4} 6`,f.shirt,13):"") +
-    `<g transform="translate(${seite*12} 17)"><g class="bz-lauf-unterarm">` + muskel(`M0 0 L${-seite*9} 17`,12) + faust(-seite*9,17,f,10) + `</g></g></g></g>`;
-  const kopfBild = `<g transform="translate(-65 ${72-unten*.65}) scale(.65)"><image clip-path="url(#${id}kopf)" href="/api/figurbild/${datei}" width="600" height="600"/></g>`;
-  // Die Baukasten-Helfer überschreiben einzelne Konturbreiten; XML verlangt eindeutige Attribute.
-  return (`<svg xmlns="http://www.w3.org/2000/svg" viewBox="-68 5 136 174" class="bz-lauf-figur" role="img" aria-label="${f.name}"><defs><clipPath id="${id}kopf"><path d="${kopfPfad}"/></clipPath></defs><g class="bz-lauf-rumpf">` +
-    arm(-1) + bein(-1) + bein(1) + `<path d="M-23 107 H23 L21 122 Q10 127 0 118 Q-10 127 -21 122Z" ${o(f.hose)}/>` +
-    `<path d="M-6 67 H6 V83 H-6Z" ${o(f.haut)}/><g transform="translate(0 -48) scale(1.15 1.4)">${rumpf(f)}</g>` + arm(1) +
-    `<g class="bz-lauf-kopf">${kopfBild}</g></g></svg>`).replace(/stroke-width="3\.2"(?=[^>]*stroke-width=)/g, "");
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300" class="bz-lauf-figur" role="img" aria-label="${f.name}" overflow="hidden"><defs><clipPath id="${id}lauf"><rect width="200" height="300"/></clipPath></defs><g class="bz-lauf-rumpf" clip-path="url(#${id}lauf)"><g class="bz-lauf-spiegel"><image class="bz-lauf-atlas" href="/api/figurbild/${datei}" width="400" height="600"/></g></g></svg>`;
 }
 
 // Die 12 Startfiguren – frei zuteilbar, jede aus Baukasten-Teilen

@@ -1,0 +1,70 @@
+{
+  "werkzeug": "ImageGen",
+  "referenzen": "Jeweils der vorhandene 3×2-Avatar-Atlas derselben Figur; zusätzlich der neue Laufzyklus von Figur 0 als Stil- und Posenreferenz.",
+  "raster": {
+    "spalten": 2,
+    "zeilen": 2,
+    "posen": [
+      "Kontakt links",
+      "Flugphase links",
+      "Kontakt rechts",
+      "Flugphase rechts"
+    ]
+  },
+  "prompt": "Same exact character identity, clothing, hairstyle, skin, accessories, gloves, shoes and emblem as the supplied avatar atlas. Four coherent full-body running phases in an equal 2×2 grid, transparent background. Consistent three-quarter side view toward screen right, athletic forward lean, alternating arms and legs, same character scale and expressive face, original richly shaded muscular chibi illustration style and bold ink. Contact foot baseline at 90% of each cell, centered within each cell with transparent padding. No scenery, ground shadows, dust, text or grid lines.",
+  "kulisse": {
+    "rohdatei": "exec-d479aa68-f011-4d0a-9639-7326352656d4.png",
+    "prompt": "Wide illustrated western canyon chase background, same ink and rich cel-shaded arcade style, warm sandstone mesas, golden sunset, fine atmospheric dust, broad empty horizontal sand trail, central area clear for two characters, foreground rocks only at extreme corners, no people or text."
+  },
+  "normalisierung": "scripts/lauf-optimieren.mjs: Kontakt-/Flugpaare im gemeinsamen Maßstab, transparente 200×300-Zellen, 2×2-Atlas mit 224 Farben; Rohdateien unverändert außerhalb des Repositories.",
+  "quellen": [
+    {
+      "nr": 0,
+      "rohdatei": "exec-1bdc3f80-f477-45e0-ba9c-a2c552053601.png"
+    },
+    {
+      "nr": 1,
+      "rohdatei": "exec-b6258c44-4974-4f62-b986-8a7c204a6a5b.png"
+    },
+    {
+      "nr": 2,
+      "rohdatei": "exec-fc835099-be17-4029-afc5-1f1d955fd29f.png"
+    },
+    {
+      "nr": 3,
+      "rohdatei": "exec-655347cd-df96-42c1-bfa1-e91b02a97f6d.png"
+    },
+    {
+      "nr": 4,
+      "rohdatei": "exec-a86f047d-254d-448d-8fab-376b2bae7f13.png"
+    },
+    {
+      "nr": 5,
+      "rohdatei": "exec-d2808de0-7a8a-4998-9c38-e9739fccaeb3.png"
+    },
+    {
+      "nr": 6,
+      "rohdatei": "exec-04ccff09-822a-4d27-8989-0c21260c683d.png"
+    },
+    {
+      "nr": 7,
+      "rohdatei": "exec-13c4b69f-f018-4c8c-9061-54b292cc8080.png"
+    },
+    {
+      "nr": 8,
+      "rohdatei": "exec-52c2b9e4-a76f-4681-a416-c75f33a82bf6.png"
+    },
+    {
+      "nr": 9,
+      "rohdatei": "exec-9434d4b4-5ebf-45e7-8ba9-0ba8a612eecb.png"
+    },
+    {
+      "nr": 10,
+      "rohdatei": "exec-972cc573-9a31-47a8-b49b-cb89c3078b30.png"
+    },
+    {
+      "nr": 11,
+      "rohdatei": "exec-b7bbced2-6965-4040-9975-8810d1e845a5.png"
+    }
+  ]
+}

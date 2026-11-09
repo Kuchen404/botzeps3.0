@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
 import { describe, expect, it } from "vitest";
-const api = runInNewContext(readFileSync(new URL("../miniapp/spiele/kopfgeld.js", import.meta.url), "utf8") + `\n({kopfgeldVorn,kopfgeldWechsel,kopfgeldFokus,kopfgeldWeg,kopfgeldLaufplan,kopfgeldLaufFrames,kopfgeldFortsetzung,kopfgeldSignaturen,kopfgeldLast})`, {
+const api = runInNewContext(readFileSync(new URL("../miniapp/spiele/kopfgeld.js", import.meta.url), "utf8") + `\n({kopfgeldVorn,kopfgeldWechsel,kopfgeldFokus,kopfgeldWeg,kopfgeldLaufplan,kopfgeldLaufFrames,kopfgeldFortsetzung,kopfgeldSignaturen,kopfgeldLast,kopfgeldLaufZyklus,kopfgeldBlickFrames})`, {
   window: { addEventListener() {}, innerWidth: 390 }, document: { addEventListener() {} },
 });
 const stand = (ziel: number, hunter: number, extra = 0) => ({ gejagter: "ziel", gejagterLast: ziel, jaeger: ["hunter", "extra"].filter(id => ({hunter, extra})[id as "hunter" | "extra"] > ziel), lasten: { ziel, hunter, extra } });
@@ -57,6 +57,18 @@ describe("Kopfgeldjagd: echte Wochenlast und Wiedergabe", () => {
       expect(frames.length).toBeGreaterThan(50);expect(frames[0].offset).toBe(0);expect(frames.at(-1).offset).toBe(1);
       for(let i=1;i<frames.length;i++) {expect(Math.abs(parseFloat(frames[i].left)-parseFloat(frames[i-1].left))).toBeLessThan(5);expect(Math.abs(parseFloat(frames[i].top)-parseFloat(frames[i-1].top))).toBeLessThan(5);}
     }
+  });
+  it("spielt vier vollständige Laufphasen mit harten Bildwechseln als geschlossene Schleife", () => {
+    const frames=api.kopfgeldLaufZyklus();expect(frames).toHaveLength(5);
+    expect(new Set(frames.map((f:{transform:string})=>f.transform)).size).toBe(4);
+    expect(frames.at(-1).transform).toBe(frames[0].transform);
+    expect(frames.every((f:{easing:string})=>f.easing==="steps(1,end)")).toBe(true);
+  });
+  it("dreht den Läufer an den Kurven in die tatsächliche Laufrichtung", () => {
+    const weg=[{left:"20%",offset:0},{left:"40%",offset:.4},{left:"40%",offset:.6},{left:"20%",offset:1}];
+    const frames=api.kopfgeldBlickFrames(weg,0);
+    expect(frames[0].transform).toContain("scaleX(1)");expect(frames[2].transform).toContain("scaleX(-1)");
+    expect(frames.every((f:{easing:string})=>f.easing==="steps(1,end)")).toBe(true);
   });
   it("setzt nur neue Stationen fort und startet bei geänderter Historie neu", () => {
     expect(api.kopfgeldFortsetzung(["a","b"],["a","b","c"])).toBe(1);

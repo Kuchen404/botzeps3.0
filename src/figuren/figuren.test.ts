@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { FIGUREN, figurSvg, figurLaufSvg } from "./figuren.js";
 import { createHash } from "node:crypto";
 import { ATLAS_DATEIEN } from "./atlanten.js";
+import { LAUF_ATLANTEN, JAGD_KULISSE } from "./lauf-atlanten.js";
 import { figurMedium } from "./arcade.js";
 import { Resvg } from "@resvg/resvg-js";
 
@@ -19,19 +20,30 @@ describe("Spielerfiguren", () => {
     }
   });
 
-  it("jede Lauf-Figur hat getrennte Gelenke und verwendet ihren vorhandenen Avatar-Atlas", () => {
-    for (let nr=0;nr<FIGUREN.length;nr++) {
+  it("jede Figur hat vier illustrierte Laufphasen in einem kompakten transparenten Atlas", () => {
+    expect(LAUF_ATLANTEN).toHaveLength(12);
+    for(let nr=0;nr<FIGUREN.length;nr++) {
+      const datei=LAUF_ATLANTEN[nr]!,png=figurMedium(datei)!;
+      expect([png.readUInt32BE(16),png.readUInt32BE(20)]).toEqual([400,600]);
+      expect(png.length).toBeLessThan(100*1024);
+      expect(datei).toBe(`lauf-${nr}-${createHash("sha256").update(png).digest("hex").slice(0,12)}.png`);
       const svg=figurLaufSvg(nr,`lauf${nr}`)!;
-      expect(svg.match(/class="bz-lauf-arm /g)).toHaveLength(2);
-      expect(svg.match(/class="bz-lauf-bein /g)).toHaveLength(2);
-      expect(svg.match(/class="bz-lauf-wade"/g)).toHaveLength(2);
-      expect(svg).toContain(ATLAS_DATEIEN[nr]);expect(svg).toContain(FIGUREN[nr]!.shirt);
-      expect(svg).not.toMatch(/undefined|NaN/);
-      const eingebettet=svg.replace(`/api/figurbild/${ATLAS_DATEIEN[nr]}`,`data:image/png;base64,${figurMedium(ATLAS_DATEIEN[nr]!)!.toString("base64")}`);
-      const pixel=new Resvg(eingebettet).render().pixels;
-      expect(pixel.some((a,i)=>i%4===3&&a>0)).toBe(true);
+      expect(svg).toContain('class="bz-lauf-atlas"');expect(svg).toContain(datei);
+      expect(svg).toContain(`clip-path="url(#lauf${nr}lauf)"`);expect(svg).not.toMatch(/bz-lauf-arm|bz-lauf-bein|undefined|NaN/);
+      const raster=new Resvg(`<svg xmlns="http://www.w3.org/2000/svg" width="400" height="600"><image href="data:image/png;base64,${png.toString("base64")}" width="400" height="600"/></svg>`).render().pixels;
+      const phasen=[];
+      for(let i=0;i<4;i++){
+        const x=i%2*200,y=Math.floor(i/2)*300;
+        expect(raster[(y*400+x)*4+3]).toBe(0);
+        const pixel=Buffer.concat(Array.from({length:300},(_,zeile)=>raster.subarray(((y+zeile)*400+x)*4,((y+zeile)*400+x+200)*4)));
+        expect(pixel.some((a,j)=>j%4===3&&a>0)).toBe(true);phasen.push(createHash("sha256").update(pixel).digest("hex"));
+      }
+      expect(new Set(phasen).size).toBe(4);
+      const eingebettet=svg.replace(`/api/figurbild/${datei}`,`data:image/png;base64,${png.toString("base64")}`);
+      expect(new Resvg(eingebettet).render().pixels.some((a,i)=>i%4===3&&a>0)).toBe(true);
     }
     expect(figurLaufSvg(-1,"unbekannt")).toBeNull();expect(figurLaufSvg(12,"unbekannt")).toBeNull();
+    expect(figurMedium(JAGD_KULISSE)!.length).toBeLessThan(150*1024);
   });
 
   it("Zombie-Variante bekommt einen Farbfilter", () => {
