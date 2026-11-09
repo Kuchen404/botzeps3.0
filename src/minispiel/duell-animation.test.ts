@@ -1,137 +1,89 @@
-import { readFileSync } from "node:fs";
-import { runInNewContext } from "node:vm";
-import { describe, expect, it } from "vitest";
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { runInNewContext } from 'node:vm';
+import { Resvg } from '@resvg/resvg-js';
+import { describe, expect, it } from 'vitest';
+import { figurMedium } from '../figuren/arcade.js';
+import { DUELL_BILDER } from '../figuren/duell-medien.js';
 
-class Knoten {
-  children: Knoten[] = [];
-  attrs: Record<string, string> = {};
-  dataset: Record<string, string> = {};
-  textContent = "";
-  innerHTML = "";
-  parent: Knoten | null = null;
-  offsetWidth = 300;
-  klassen = new Set<string>();
-  classList = {
-    add: (...namen: string[]) => namen.forEach((n) => this.klassen.add(n)),
-    remove: (...namen: string[]) => namen.forEach((n) => this.klassen.delete(n)),
-    contains: (name: string) => this.klassen.has(name),
-  };
-  setAttribute(k: string, v: string) {
-    this.attrs[k] = v;
-    if (k === "class") this.klassen = new Set(v.split(" "));
-    if (k.startsWith("data-")) this.dataset[k.slice(5)] = v;
-  }
-  appendChild(k: Knoten) { k.parent = this; this.children.push(k); return k; }
-  remove() { if (this.parent) this.parent.children = this.parent.children.filter((k) => k !== this); }
-  addEventListener() {}
-  querySelector(sel: string): Knoten | null {
-    if (sel === "svg" && this.innerHTML.includes("<svg")) return this;
-    for (const kind of this.children) {
-      if (sel.startsWith(".") && kind.classList.contains(sel.slice(1))) return kind;
-      const gefunden = kind.querySelector(sel);
-      if (gefunden) return gefunden;
+const ctx: Record<string, any> = { window: { innerWidth: 390, addEventListener() {} }, document: { addEventListener() {} } };
+runInNewContext(readFileSync(new URL('../miniapp/spiele/duell.js', import.meta.url), 'utf8'), ctx);
+const paar = (a = 0, b = 0, idA = 'a', idB = 'b') => ({ a: idA, b: idB, lastA: a, lastB: b });
+const stand = (...paare: ReturnType<typeof paar>[]) => ({ paare });
+const wechsel = (v: unknown, n: unknown, art = 'training') => ctx.duellWechsel(v, { art, stand: n });
+
+describe('Losduell: Wochenlast und echte Trainingsaktionen', () => {
+  it('entscheidet strikt nach tatsächlicher Last, einschließlich Nachkommastellen', () => {
+    expect(ctx.duellFuehrt(paar(100.01, 100))).toBe('a');
+    expect(ctx.duellFuehrt(paar(100, 100.01))).toBe('b');
+    expect(ctx.duellFuehrt(paar(100, 100))).toBe(null);
+    expect(ctx.duellFuehrt(paar())).toBe(null);
+  });
+  it('zeigt den Lastanteil ohne erfundene Trefferpunkte oder Wochenziel', () => {
+    expect(ctx.duellAnteil(paar())).toBe(.5); expect(ctx.duellAnteil(paar(300, 100))).toBe(.75);
+    expect(ctx.duellAnteil(paar(0, 300))).toBe(0); expect(ctx.duellAnteil(paar(300, 0))).toBe(1);
+  });
+  it('animiert genau den tatsächlichen Beitragenden und dessen Delta', () => {
+    const p = paar(120, 80), n = paar(120, 180);
+    expect(wechsel(stand(p), stand(n)).aktionen).toEqual([{ key: JSON.stringify(['a', 'b']), id: 'b', delta: 100 }]);
+    expect(wechsel(stand(p), stand(n)).korrektur).toBe(false);
+  });
+  it('behält mehrere Zuwächse in derselben Station als getrennte Aktionen', () => {
+    const w = wechsel(stand(paar(), paar(0, 300, 'c', 'bot')), stand(paar(100, 80), paar(90, 300, 'c', 'bot')));
+    expect(w.aktionen.map((a: any) => [a.id, a.delta])).toEqual([['a', 100], ['b', 80], ['c', 90]]);
+  });
+  it('lässt Botzeps von Anfang an beim Wochenziel und erzeugt kein Bottraining', () => {
+    const w = wechsel(stand(paar(0, 300, 'a', 'bot')), stand(paar(300, 300, 'a', 'bot')));
+    expect(w.aktionen).toHaveLength(1); expect(w.aktionen[0].id).toBe('a');
+    expect(ctx.duellFuehrt(paar(300, 300, 'a', 'bot'))).toBe(null);
+    expect(wechsel(stand(paar(0, 300, 'a', 'bot')), stand(paar(0, 320, 'a', 'bot'))).korrektur).toBe(true);
+  });
+  it('korrigiert gelöschte Trainings und geänderte Paarungen ohne Angriff', () => {
+    for (const n of [stand(paar(80, 200)), stand(paar(200, 200, 'b', 'a')), stand(), stand(paar(200, 200), paar(0, 0, 'c', 'd'))]) {
+      const w = wechsel(stand(paar(200, 200)), n); expect(w.korrektur).toBe(true); expect(w.aktionen).toEqual([]);
     }
-    return null;
-  }
-}
-function el(_tag: string, attrs: Record<string, string> = {}, kinder: Knoten[] = []) {
-  const k = new Knoten();
-  for (const [name, wert] of Object.entries(attrs)) {
-    if (name === "text") k.textContent = wert;
-    else k.setAttribute(name, wert);
-  }
-  kinder.forEach((kind) => k.appendChild(kind));
-  return k;
-}
-interface Paar { a: string; b: string; lastA: number; lastB: number }
-interface Stand { paare: Paar[] }
-interface Szene {
-  klasse: string;
-  inhalt: Knoten;
-  zeichne: (stand: Stand, meta: { vorher: Stand | null; bewegt: boolean }) => void;
-  beschreibe: (stand: Stand) => string;
-}
-function aufbau() {
-  let config!: Szene;
-  const window = { MINISPIEL_SZENEN: {} as Record<string, (a: unknown) => Knoten> };
-  runInNewContext(readFileSync(new URL("../miniapp/spiele/duell.js", import.meta.url), "utf8"), {
-    window, el,
-    minispielAnimationSzene: (_a: unknown, c: Szene) => { config = c; return c.inhalt; },
-    minispielAvatar: (_a: unknown, id: string, pose: string) => {
-      const bild = el("div", { class: "ms-avatar", "data-id": id, "data-pose": pose });
-      if (id !== "c") bild.innerHTML = '<svg data-gewaehlte-figur="7"></svg>';
-      return bild;
-    },
-    minispielSetzePose: (bild: Knoten, _a: unknown, _id: string, pose: string) => { bild.dataset.pose = pose; },
   });
-  window.MINISPIEL_SZENEN.duell!({
-    spieler: [{ id: "a", name: "Anna", ich: true, figur: 7 }, { id: "b", name: "Bert", figur: 2 }, { id: "c", name: "Carl", figur: null }, { id: "bot", name: "Botzeps", figur: null }],
+  it('verwendet Tages- und Korrektursnapshots nicht als Trainingsschlag', () => {
+    expect(wechsel(stand(paar()), stand(paar(200, 0)), 'tag').aktionen).toEqual([]);
+    expect(wechsel(stand(paar()), stand(paar(200, 0)), 'korrektur').aktionen).toEqual([]);
+    expect(wechsel(stand(paar()), stand(paar())).aktionen).toEqual([]);
   });
-  const zeichne = (stand: Stand, vorher: Stand | null = null, bewegt = false) => config.zeichne(stand, { vorher, bewegt });
-  const pair = () => config.inhalt.querySelector(".duell-paar")!;
-  return { get config() { return config; }, zeichne, pair };
-}
-const stand = (lastA: number, lastB: number): Stand => ({ paare: [{ a: "a", b: "b", lastA, lastB }] });
-
-describe("Losduell-Szene", () => {
-  it("zeigt beide echten Wochenlasten und gewählte Figuren, ohne einen Wochensieg vorwegzunehmen", () => {
-    const t = aufbau();
-    t.zeichne(stand(960, 450));
-    expect(t.config.klasse).toBe("ms-duell");
-    expect(t.pair().querySelector(".duell-links")!.querySelector(".duell-last")!.textContent).toBe("960");
-    expect(t.pair().querySelector(".duell-rechts")!.querySelector(".duell-last")!.textContent).toBe("450");
-    expect(t.pair().querySelector(".duell-vorsprung")!.textContent).toBe("Anna führt · +510 Lastpunkte");
-    expect(t.config.beschreibe(stand(960, 450))).not.toMatch(/gewinnt|siegt|Schaden|HP/);
-    expect(t.pair().querySelector(".duell-avatar")!.querySelector("svg")!.innerHTML).toContain('data-gewaehlte-figur="7"');
+  it('bevorzugt das eigene Duell, respektiert die Wahl und behandelt leere Gruppen', () => {
+    const paare = [paar(0, 0, 'c', 'd'), paar()], spieler = [{ id: 'b', ich: true }];
+    expect(ctx.duellStartpaar(paare, spieler, null)).toBe(JSON.stringify(['a', 'b']));
+    expect(ctx.duellStartpaar(paare, spieler, JSON.stringify(['c', 'd']))).toBe(JSON.stringify(['c', 'd']));
+    expect(ctx.duellStartpaar(paare, spieler, 'weg')).toBe(JSON.stringify(['a', 'b']));
+    expect(ctx.duellStartpaar([], spieler, 'weg')).toBe(null);
   });
-  it("reagiert nur beim betroffenen Paar und hebt einen echten Führungswechsel hervor", () => {
-    const t = aufbau();
-    const vorher = { paare: [...stand(100, 80).paare, { a: "c", b: "bot", lastA: 40, lastB: 450 }] };
-    t.zeichne(vorher);
-    const nachher = { paare: [...stand(100, 120).paare, vorher.paare[1]!] };
-    t.zeichne(nachher, vorher, true);
-    expect(t.pair().dataset.vorne).toBe("rechts");
-    expect(t.pair().classList.contains("duell-wechsel")).toBe(true);
-    expect(t.pair().querySelector(".duell-athlet-rechts")!.classList.contains("duell-angriff")).toBe(true);
-    expect(t.pair().querySelector(".duell-athlet-links")!.classList.contains("duell-reaktion")).toBe(true);
-    const botpaar = t.config.inhalt.children.filter((k) => k.classList.contains("duell-paar"))[1]!;
-    expect(botpaar.classList.contains("duell-wechsel")).toBe(false);
-    expect(botpaar.querySelector(".duell-angriff")).toBeNull();
+  it('setzt bei neuen Zuständen fort, ignoriert verschobene Snapshot-Zeiten', () => {
+    const a = [{ art: 'start', zeitpunkt: 'alt', stand: stand(paar()) }, { art: 'training', stand: stand(paar(20, 0)) }];
+    const alt = ctx.duellSignaturen(a);
+    expect(ctx.duellFortsetzung(alt, ctx.duellSignaturen([{ ...a[0], zeitpunkt: 'neu' }, a[1]]))).toBe(null);
+    expect(ctx.duellFortsetzung(alt, ctx.duellSignaturen([...a, { art: 'training', stand: stand(paar(20, 50)) }]))).toBe(1);
+    expect(ctx.duellFortsetzung(alt, ctx.duellSignaturen([a[0], { art: 'korrektur', stand: stand(paar()) }]))).toBe(0);
   });
-  it("behandelt Gleichstand und bloßen Lastzuwachs ohne falschen Führungswechsel", () => {
-    const t = aufbau();
-    t.zeichne(stand(120, 120), stand(120, 80), true);
-    expect(t.pair().dataset.vorne).toBe("gleich");
-    expect(t.pair().classList.contains("duell-wechsel")).toBe(false);
-    expect(t.pair().querySelector(".duell-vorsprung")!.textContent).toContain("Gleichstand");
-    t.zeichne(stand(140, 120), stand(130, 120), true);
-    expect(t.pair().classList.contains("duell-wechsel")).toBe(false);
+  it('begrenzt ungültige Zahlen ohne falschen Vorsprung', () => {
+    expect(ctx.duellFuehrt(paar(NaN, Infinity))).toBe(null);
+    expect(ctx.duellAnteil(paar(-5, NaN))).toBe(.5);
+    expect(ctx.duellListe({})).toEqual([]);
   });
-  it("stellt Anfang, Überspringen und reduzierte Bewegung sofort ruhig dar; Korrekturen schlagen nicht zu", () => {
-    const t = aufbau();
-    t.zeichne(stand(100, 120), stand(100, 80), true);
-    t.zeichne(stand(200, 120), stand(100, 120), false);
-    expect(t.pair().querySelector(".duell-angriff")).toBeNull();
-    expect(t.pair().querySelector(".duell-reaktion")).toBeNull();
-    expect(t.pair().classList.contains("duell-wechsel")).toBe(false);
-    t.zeichne(stand(80, 120), stand(200, 120), true);
-    expect(t.pair().querySelector(".duell-angriff")).toBeNull();
+  it('liefert kompakte, feste PNGs mit zutreffendem Inhalts-Hash', () => {
+    for (const [art, datei] of Object.entries(DUELL_BILDER)) {
+      const png = figurMedium(datei)!; expect(png.subarray(1, 4).toString()).toBe('PNG'); expect(png.length).toBeLessThan(300_000);
+      expect(datei).toBe('duell-' + art + '-' + createHash('sha256').update(png).digest('hex').slice(0, 12) + '.png');
+      expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual(art === 'ring' ? [600, 750] : [400, 600]);
+    }
+    expect(figurMedium('../duell-medien.ts')).toBe(null); expect(figurMedium('duell-fremd.png')).toBe(null);
   });
-  it("zeigt Botzeps als Roboter mit fester tatsächlicher Ziellast und nutzt den Initialen-Fallback", () => {
-    const t = aufbau();
-    const s = { paare: [{ a: "c", b: "bot", lastA: 450, lastB: 450 }] };
-    t.zeichne(s);
-    expect(t.pair().querySelector(".duell-bot")!.innerHTML).toContain("Trainingsroboter");
-    expect(t.pair().querySelector(".duell-ersatz")).not.toBeNull();
-    expect(t.pair().querySelector(".duell-bot-hinweis")!.textContent).toContain("von Anfang an");
-    expect(t.config.beschreibe(s)).toContain("Gleichstand · 450 : 450");
-  });
-  it("zeigt alle Paare auch in großen Gruppen und räumt entfallene Paare auf", () => {
-    const t = aufbau();
-    t.zeichne({ paare: Array.from({ length: 20 }, (_, i) => ({ a: "links" + i, b: "rechts" + i, lastA: i, lastB: 0 })) });
-    expect(t.config.inhalt.children.filter((k) => k.classList.contains("duell-paar"))).toHaveLength(20);
-    t.zeichne({ paare: [] });
-    expect(t.config.inhalt.querySelector(".duell-paar")).toBeNull();
-    expect(t.config.inhalt.querySelector(".duell-leer")!.textContent).toContain("ausgelost");
+  it('enthält vier unterschiedliche transparente Roboterposen statt einer Vektorpuppe', () => {
+    const png = figurMedium(DUELL_BILDER.bot)!, raster = new Resvg(`<svg xmlns="http://www.w3.org/2000/svg" width="400" height="600"><image href="data:image/png;base64,${png.toString('base64')}" width="400" height="600"/></svg>`).render().pixels;
+    const hashes = [];
+    for (let i = 0; i < 4; i++) {
+      const x = i % 2 * 200, y = Math.floor(i / 2) * 300;
+      expect(raster[(y * 400 + x) * 4 + 3]).toBe(0);
+      const pixel = Buffer.concat(Array.from({ length: 300 }, (_, zeile) => raster.subarray(((y + zeile) * 400 + x) * 4, ((y + zeile) * 400 + x + 200) * 4)));
+      expect(pixel.some((p, j) => j % 4 === 3 && p > 0)).toBe(true); hashes.push(createHash('sha256').update(pixel).digest('hex'));
+    }
+    expect(new Set(hashes).size).toBe(4);
   });
 });

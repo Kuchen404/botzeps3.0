@@ -1,0 +1,7 @@
+{
+  "werkzeug": "imagegen",
+  "referenz": "Original-Avatar 0: 0-4d792a28c5bc.png",
+  "stil": "Kräftige organische Tuschekonturen, reiches handgemaltes Cel-Shading, warme Messinglichter und kühle blaue Schatten, dieselbe plastische Arcade-Charakterqualität wie die Spielerfiguren.",
+  "ring": "Leere unterirdische Boxarena frontal im 4:5-Hochformat. Rote Ecke links, cyanfarbene Ecke rechts, dunkle Tribünen, goldene Industrielampen und Stahl-/Steinarchitektur. Ruhiger dunkler oberer Bildbereich für HUD. Großer freier Ringboden unten; hintere Seile und seitliche Pfosten im Hintergrund, vordere Ringkante nur ganz unten. Keine Kämpfer, Beschriftungen, Zahlen oder UI.",
+  "bot": "2×2-Atlas eines identischen kompakten blau-grauen Trainingsroboters mit Messinggelenken, Mint-Augen im dunklen Visier, Antenne, rotem und cyanfarbenem gepolsterten Boxhandschuh sowie gelbem Blitzsymbol. Vollständig transparent, klare Zellränder, ganzer Körper in jeder Zelle. Oben links kampfbereit; oben rechts Uppercut zur rechten Bildseite; unten links jubelnd; unten rechts harmlos erschöpft/sitzend mit Comic-Sternen. Keine Schrift, Hintergründe oder Körperteil-Rigs. Gleichbleibende Proportionen und Materialfarben."
+}

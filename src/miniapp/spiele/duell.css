@@ -1,55 +1,16 @@
-.duell-szene { --duell-ink:#241c3b; --duell-paper:#fff5df; --duell-red:#ff7970; --duell-blue:#6ddbd9; display:grid; gap:14px; padding:12px; }
-.duell-szene * { box-sizing:border-box; }
-.duell-regel { margin:0; color:var(--hint,#9aa5b5); font-size:12px; line-height:1.55; }
-.duell-paar { position:relative; overflow:hidden; border:2px solid var(--duell-ink); border-radius:20px; background:#24243d; color:var(--duell-paper); box-shadow:0 5px 0 rgba(12,10,25,.3); isolation:isolate; }
-.duell-kopf { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:12px 14px 8px; }
-.duell-nummer { font-size:10px; text-transform:uppercase; font-weight:850; letter-spacing:1.5px; color:#cfbfdc; }
-.duell-live { padding:4px 8px; border:1px solid #71607c; border-radius:20px; color:#e6deef; font-size:10px; font-weight:700; }
-.duell-live::before { content:""; display:inline-block; width:6px; height:6px; margin-right:5px; border-radius:50%; background:#baf0a1; }
-.duell-stand { display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); gap:5px; align-items:start; padding:0 12px; text-align:center; position:relative; z-index:3; }
-.duell-name { display:block; font-size:13px; line-height:1.3; font-weight:800; overflow-wrap:anywhere; }
-.duell-ich { display:inline-block; padding:1px 4px; margin-left:3px; border-radius:4px; font-size:9px; background:#fff0b3; color:#352544; vertical-align:middle; }
-.duell-last { display:block; font-variant-numeric:tabular-nums; font-size:25px; line-height:1.3; font-weight:900; color:var(--duell-red); }
-.duell-rechts .duell-last { color:var(--duell-blue); }
-.duell-einheit { font-size:9px; font-weight:650; letter-spacing:.5px; color:#bdb0cc; }
-.duell-vs { padding-top:13px; font-size:11px; font-style:italic; font-weight:900; color:#b4a5c2; }
-.duell-ring { position:relative; height:227px; margin-top:-2px; overflow:hidden; background:radial-gradient(ellipse at 50% 95%,#69648955,transparent 62%),repeating-linear-gradient(0deg,transparent 0 19px,#ffffff03 20px 21px); }
-.duell-ring::before,.duell-ring::after { content:""; position:absolute; top:-40px; height:255px; width:120px; background:linear-gradient(#fff5bd25,#fff5bd00); clip-path:polygon(40% 0,60% 0,100% 100%,0 100%); pointer-events:none; opacity:.2; transition:opacity .3s; }
-.duell-ring::before { left:7%; transform:rotate(-13deg); }
-.duell-ring::after { right:7%; transform:rotate(13deg); }
-.duell-paar[data-vorne="links"] .duell-ring::before,.duell-paar[data-vorne="rechts"] .duell-ring::after { opacity:1; }
-.duell-boden { position:absolute; bottom:12px; left:4%; width:92%; height:70px; background:#75628f; border:3px solid var(--duell-ink); border-radius:50% 50% 18px 18px / 25% 25% 18px 18px; box-shadow:inset 0 8px #a08eb2,inset 0 -8px #59416e,0 7px 0 #161225; }
-.duell-boden::after { content:""; position:absolute; width:60px; height:20px; left:calc(50% - 30px); top:17px; border:2px dashed #e5d8ef60; border-radius:50%; }
-.duell-seile { position:absolute; left:7%; right:7%; bottom:61px; height:73px; border-left:8px solid #e3c2b4; border-right:8px solid #b2ccdb; border-radius:5px; transform:perspective(300px) rotateX(-4deg); }
-.duell-seile::before,.duell-seile::after { content:""; position:absolute; left:-5px; right:-5px; height:4px; border:1px solid #241c3b; border-radius:4px; background:#b7a8ca; }
-.duell-seile::before { top:10px; box-shadow:0 23px 0 #aca0c0; }
-.duell-seile::after { bottom:1px; }
-.duell-athlet { position:absolute; bottom:39px; width:39%; max-width:160px; height:165px; z-index:2; transform-origin:50% 94%; }
-.duell-athlet-links { left:10%; --duell-richtung:1; }
-.duell-athlet-rechts { right:10%; --duell-richtung:-1; }
-.duell-athlet::before { content:""; position:absolute; bottom:-3px; left:22%; width:58%; height:10px; border-radius:50%; background:#241c3b66; filter:blur(2px); }
-.duell-avatar { position:relative; height:100%; width:100%; transform-origin:50% 92%; }
-.duell-avatar > svg,.duell-avatar > img,.duell-avatar > div { height:100%; width:100%; object-fit:contain; }
-.duell-athlet-rechts .duell-avatar { transform:scaleX(-1); }
-.duell-avatar svg text { fill:currentColor; }
-.duell-ersatz { display:grid; place-items:center; width:84px!important; height:94px!important; position:absolute; bottom:0; left:calc(50% - 42px); border:3px solid var(--duell-ink); border-radius:42px 42px 22px 22px; background:var(--duell-red); box-shadow:inset -8px -8px #0002,0 5px 0 var(--duell-ink); font-size:26px; font-weight:900; color:var(--duell-ink); }
-.duell-athlet-rechts .duell-ersatz { transform:scaleX(-1); background:var(--duell-blue); }
-.duell-ersatz::before,.duell-ersatz::after { content:""; position:absolute; width:27px; height:32px; top:32px; border:3px solid var(--duell-ink); border-radius:11px; background:#fff1bd; }
-.duell-ersatz::before { left:-18px; transform:rotate(-16deg); }
-.duell-ersatz::after { right:-18px; transform:rotate(16deg); }
-.duell-bot { overflow:visible; }
-.duell-vorsprung { position:relative; z-index:3; margin:0 12px 11px; min-height:31px; display:flex; align-items:center; justify-content:center; gap:5px; padding:7px 9px; border-radius:9px; background:#161326; color:#e4d8ef; text-align:center; font-size:11px; line-height:1.4; }
-.duell-bot-hinweis { display:block; padding:0 14px 12px; margin-top:-4px; color:#baaaca; font-size:10px; line-height:1.5; text-align:center; }
-.duell-puls { position:absolute; top:57px; left:calc(50% - 23px); width:46px; height:46px; z-index:4; display:grid; place-items:center; border:3px solid var(--duell-ink); border-radius:16px; background:#fff0b3; color:var(--duell-ink); font-size:21px; font-weight:900; opacity:0; transform:scale(.4) rotate(-9deg); pointer-events:none; }
-.duell-paar.duell-wechsel { animation:duell-wechsel .85s ease-out; }
-.duell-paar.duell-wechsel .duell-puls { animation:duell-puls .85s ease-out; }
-.duell-athlet.duell-angriff { animation:duell-antippen .7s ease-in-out; }
-.duell-athlet.duell-reaktion { animation:duell-abfedern .7s ease-in-out; }
-.duell-leer { padding:24px 12px; border:1px dashed #77638c; border-radius:16px; text-align:center; color:var(--hint,#a9a0b7); }
-@keyframes duell-antippen { 0%,100%{ transform:translateX(0) rotate(0); } 30%{ transform:translateX(calc(17px * var(--duell-richtung))) rotate(calc(5deg * var(--duell-richtung))); } 65%{ transform:translateX(calc(4px * var(--duell-richtung))) rotate(calc(-2deg * var(--duell-richtung))); } }
-@keyframes duell-abfedern { 0%,100%{ transform:translateX(0) rotate(0); } 39%{ transform:translateX(calc(-7px * var(--duell-richtung))) rotate(calc(-5deg * var(--duell-richtung))); } }
-@keyframes duell-puls { 0%,100%{ opacity:0; transform:scale(.4) rotate(-9deg); } 24%,72%{ opacity:1; transform:scale(1) rotate(-9deg); } }
-@keyframes duell-wechsel { 25%{ box-shadow:0 0 0 3px #ffe49c,0 0 28px #ffe49c44; } }
-@media(min-width:620px) { .duell-szene { grid-template-columns:repeat(2,minmax(0,1fr)); } .duell-regel,.duell-leer { grid-column:1/-1; } }
-@media(max-width:350px) { .duell-ring { height:207px; } .duell-athlet { height:148px; } .duell-name { font-size:12px; } .duell-last { font-size:23px; } }
-@media(prefers-reduced-motion:reduce) { .duell-szene *, .duell-szene *::before, .duell-szene *::after { animation:none!important; transition:none!important; } }
+.ms-scene.ms-duell{background:#1b2639;color:#f6ead3;border:2px solid #24354b;border-radius:17px;overflow:hidden;isolation:isolate;box-shadow:0 5px 0 #18243244}.ms-duell,.ms-duell *{box-sizing:border-box}
+.ms-duell>.ms-status{position:static;min-height:62px;padding:12px 14px;margin:0;background:#142235;color:#ffe5ae;font-size:13px;font-weight:800;line-height:1.45;overflow-wrap:anywhere}
+.dd-arena{position:relative;aspect-ratio:4/5;isolation:isolate;overflow:hidden;background:radial-gradient(ellipse at 50% 50%,#d9b26066,transparent 60%),linear-gradient(#16283a 0 60%,#b78b58 61% 95%,#553729 96%)}
+.dd-kulisse,.dd-kulisse>img,.dd-feld,.dd-effekte{position:absolute;inset:0;width:100%;height:100%}.dd-kulisse>img{object-fit:cover}.dd-effekte{pointer-events:none;z-index:6}.dd-feld{z-index:3}
+.dd-hud{position:absolute;inset:10px 8px auto;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;z-index:7}.dd-ecke{min-width:0;padding:8px 6px;text-align:center;background:#142235de;border:1px solid #d08468;border-radius:6px;box-shadow:0 3px 8px #060e1c66}.dd-blau{border-color:#6cb9bf}.dd-name{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px;line-height:17px;font-weight:800;color:#f6b69b}.dd-blau .dd-name{color:#a6e5e5}.dd-ecke[data-ich="true"] .dd-name{color:#ffe8a5}.dd-last{display:block;font-size:24px;line-height:29px;font-variant-numeric:tabular-nums;color:#fff1cb}.dd-ecke small{display:block;font-size:7px;font-weight:700;letter-spacing:.07em;color:#bfcede}.dd-vs{position:absolute;top:24px;left:50%;transform:translateX(-50%);font:900 15px/1 Georgia,serif;color:#f7d07d;text-shadow:1px 2px #132237}
+.dd-athlet{position:absolute;top:85%;left:28%;width:32%;max-width:144px;transform:translate(-50%,-100%);text-align:center;z-index:2}.dd-athlet-rechts{left:72%}.dd-athlet::before{content:"";position:absolute;bottom:-3px;left:12%;width:76%;height:10px;border-radius:50%;background:#2d263a77;z-index:-1}.dd-spiegel,.dd-koerper{width:100%;aspect-ratio:2/3;transform-origin:50% 95%}.dd-athlet-rechts .dd-spiegel{transform:scaleX(-1)}.dd-spiegel:has(.ms-avatar-ersatz){transform:none!important}
+.ms-duell .dd-koerper>.ms-avatar,.ms-duell .dd-koerper>.ms-avatar>svg{width:100%;height:100%;animation:none}.ms-duell .dd-koerper>.ms-avatar-ersatz{font-size:28px;background:radial-gradient(circle closest-side at 50% 60%,var(--ms-avatar-farbe,#557a93) 0 95%,transparent 100%)}.ms-duell .dd-bot>svg{overflow:hidden}
+.dd-fighter-name{display:block;position:absolute;top:100%;left:50%;transform:translateX(-50%);max-width:110%;padding:1px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:#162438d9;border:1px solid #b3865a;border-radius:3px;color:#ffedbd;font-size:10px;line-height:16px;font-weight:800}.dd-athlet[data-ich="true"] .dd-fighter-name{box-shadow:0 0 0 1px #ffe39b}
+.dd-banner,.dd-ergebnis{position:absolute;top:29%;left:7%;width:86%;padding:12px 10px;text-align:center;background:#142235ee;border:2px solid #c39753;border-radius:7px;box-shadow:0 6px 15px #0b132966}.dd-banner small,.dd-ergebnis small{display:block;color:#d5ae6b;font-size:9px;line-height:18px;letter-spacing:.12em;font-weight:800}.dd-banner strong,.dd-ergebnis strong{display:block;font:900 clamp(17px,5.2vw,26px)/1.35 Georgia,serif;color:#ffe4a0;overflow-wrap:anywhere}.dd-ergebnis{top:30%;padding:10px 8px}.dd-ergebnis strong{font-size:clamp(15px,4.8vw,23px)}.dd-ergebnis span{display:block;font-size:12px;line-height:22px}.dd-ergebnis small{font-size:8px}
+.dd-impact{position:absolute;top:65%;width:25%;aspect-ratio:1;transform:translate(-50%,-50%);z-index:3;filter:drop-shadow(0 2px 1px #291b3544)}.dd-impact>svg{width:100%;height:100%}.dd-tempo{position:absolute;left:37%;width:20%;height:3px;border-radius:2px;background:#ffe7b9;box-shadow:0 1px #44323b}.dd-plus{position:absolute;top:40%;font-size:12px;color:#fff0b6;text-shadow:1px 2px #1b2537;white-space:nowrap}.dd-wechsel{position:absolute;top:31%;left:6%;width:88%;padding:10px 5px;border:2px solid #362a35;background:#f9d68c;color:#452c2d;text-align:center;font:900 clamp(13px,4vw,21px)/1.3 Georgia,serif;letter-spacing:.04em;box-shadow:3px 4px #15223577}
+.dd-stand{padding:10px 12px;background:#233348;border-top:1px solid #76583e}.dd-vorsprung{font-size:12px;font-weight:800;min-height:18px;overflow-wrap:anywhere;color:#f6e1b5}.dd-anteil{height:5px;border-radius:3px;overflow:hidden;margin-top:7px;background:#71bfc4}.dd-anteil>i{display:block;height:100%;background:#db8e72}
+.dd-fenster{padding:10px 8px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;scrollbar-color:#ba925a #1b2639}.dd-liste{display:flex;gap:8px;width:max-content;min-width:100%}.ms-duell .dd-paar{display:grid;grid-template-columns:1fr 1fr;gap:2px 5px;flex:0 0 160px;width:160px;min-width:0;padding:6px;border:1px solid #566173;border-radius:8px;background:#26374b;color:#f4e4c5;font:inherit;text-align:center;cursor:pointer;box-shadow:none}.ms-duell .dd-paar[aria-pressed="true"]{border:2px solid #e0b96f;padding:5px;box-shadow:0 0 0 1px #e0b96f40}.dd-paar:focus-visible{outline:3px solid #a0e0e5;outline-offset:2px}.dd-paar-nr,.dd-paar-status{grid-column:1/3;display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.dd-paar-nr{font-size:8px;color:#bdced9;font-weight:800;letter-spacing:.12em;line-height:16px}.dd-teilnehmer{min-width:0}.ms-duell .dd-teilnehmer>.ms-avatar,.ms-duell .dd-teilnehmer>.ms-avatar>svg{width:40px;height:60px;margin:auto;animation:none}.dd-paar-name,.dd-paar-last{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:17px}.dd-paar-name{font-size:9px}.dd-paar-last{font-size:12px;font-variant-numeric:tabular-nums}.dd-teilnehmer[data-ich="true"] .dd-paar-name{color:#ffe4a0;font-weight:900}.dd-teilnehmer[data-gewonnen="true"] .dd-paar-last{color:#bce4b6}.dd-paar-status{font-size:9px;line-height:18px;color:#cbd7dc;margin-top:3px}
+.ms-duell .dd-regel{font-size:10px;line-height:1.5;padding:8px 12px;margin:0;border-top:1px solid #3e4c5e;color:#b8c9d3}.dd-leer{padding:12px;font-size:12px;color:#cfdae1}.dd-feld>.dd-leer{position:absolute;left:7%;right:7%;top:60%;text-align:center;background:#162538bb;border-radius:6px}
+.ms-duell>.ms-zeit{padding:4px 12px;margin:0;color:#adbfce;font-size:10px}.ms-duell>.ms-steuerung{padding:7px 10px;margin:0;gap:6px}.ms-duell>.ms-steuerung .knopf{min-height:40px;background:#2a3b51;color:#fce2a7;font-size:11px}
+.ms-duell .bz-lauf-figur{overflow:hidden}.ms-duell .bz-lauf-spiegel{transform-box:view-box;transform-origin:0 0}
+@media(prefers-reduced-motion:reduce){.ms-duell *{animation:none!important;transition:none!important}}
