@@ -75,3 +75,4 @@
 .boss-splitter-glanz { width: 17px; height: 17px; background: #ffdc6f; clip-path: polygon(50% 0,62% 37%,100% 50%,62% 63%,50% 100%,38% 63%,0 50%,38% 37%); }
 .boss-splitter-fell { width: 16px; height: 11px; background: #bb793b; clip-path: polygon(0 60%,14% 12%,36% 30%,47% 0,64% 25%,84% 5%,100% 65%,62% 100%,27% 85%); }
 .boss-splitter-knopf { width: 10px; height: 10px; border: 2px solid #9d6b19; border-radius: 50%; background: radial-gradient(circle,#9d6b19 0 1px,#ffe07c 2px); }
+.boss-pff { position:absolute;top:32%;left:60%;z-index:6;padding:3px 7px;border:1px solid #c4ae86;border-radius:50%;background:#fff2d9;color:#594134;font:900 16px/1.1 Georgia,serif;pointer-events:none; }
