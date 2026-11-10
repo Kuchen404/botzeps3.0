@@ -11,7 +11,7 @@ describe('Sequenzen ausschließlich für Schweinehund Stufe 1',()=>{
   for(const name of BOSS_NAMEN)for(const stufe of [1,2] as const)if(name!=='Der innere Schweinehund'||stufe!==1)expect(bossReaktionen(name,stufe)).not.toHaveProperty('sequenzen');
  });
  it('begrenzt und versioniert jeden transparenten 2×2-Atlas auf 100 KB',()=>{
-  for(const s of Object.values(schweinehundSequenzen())){
+  for(const s of new Map(Object.values(schweinehundSequenzen()).map(s=>[s.atlas,s])).values()){
    const datei=s.atlas.split('/').at(-1)!,b=bossReaktionsMedium(datei)!;expect(b).not.toBeNull();expect(b.length).toBeLessThanOrEqual(102400);
    expect(datei).toMatch(/^schweinehund1-[a-z]+-[a-f0-9]{12}\.png$/);expect(datei.endsWith(createHash('sha256').update(b).digest('hex').slice(0,12)+'.png')).toBe(true);expect([b.readUInt32BE(16),b.readUInt32BE(20)]).toEqual([512,512]);
    const pixel=new Resvg(`<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512"><image href="data:image/png;base64,${b.toString('base64')}" width="512" height="512"/></svg>`).render().pixels,hashes=[];

@@ -71,6 +71,10 @@ function bossTrefferWucht(schaden, lebenspunkte) {
     ring: 46 + 50 * w, schrift: 22 + 14 * w, pause: 60 + 50 * w, partikel: 4 + Math.round(4 * w) };
 }
 
+function bossSchweinTreffer(schaden, lebenspunkte) {
+  return Math.max(0, schaden) / Math.max(1, lebenspunkte) >= .1 ? 'trefferGross' : 'trefferKlein';
+}
+
 function bossKarte(b, kontext) {
   if (bossKampfAbbrechen) bossKampfAbbrechen();
   var lpText = el("div", { class: "text" });
@@ -89,7 +93,7 @@ function bossKarte(b, kontext) {
     var vorladen = new Image();
     vorladen.onload = function () {
       reaktionGeladen = true;
-      if (arena && arena.isConnected && !sequenzAktiv) setzeBossPose(erwarteteBossPose);
+      if (arena && arena.isConnected && !sequenzAktiv && !bild.querySelector('.boss-sequenzpose')) setzeBossPose(erwarteteBossPose);
     };
     vorladen.src = b.reaktion.atlas;
   }
@@ -359,7 +363,8 @@ function bossKarte(b, kontext) {
         if (!await bewegen(angreifer, [{ transform: "translate(-22px,4px) rotate(-9deg)" }, { transform: "translate(28px,-24px) rotate(5deg) scale(1.08)" }], { duration: 115, easing: "ease-in" }, lauf)) return;
         summe += k.schaden;
         var toedlich = b.besiegt && summe >= b.lebenspunkte;
-        setzeBossPose("treffer");
+        var trefferArt = toedlich ? 'trefferFinal' : bossSchweinTreffer(k.schaden, b.lebenspunkte);
+        if (sequenzVerfuegbar(trefferArt)) sequenzBild(trefferArt, 0); else setzeBossPose('treffer');
         setzeLp(summe, false); phase("trefferpause"); arena.classList.add("boss-hitstop");
         var funken = el("div", { class: "trefferfunken", "aria-hidden": "true" });
         var ring = el("div", { class: "boss-ring", "aria-hidden": "true" });
@@ -376,6 +381,7 @@ function bossKarte(b, kontext) {
         bewegen(kamera, [{ transform: "translate(0,0)" }, { transform: "translate(" + -ruck + "px," + ruck / 2 + "px)" }, { transform: "translate(" + ruck + "px," + -ruck / 2 + "px)" }, { transform: "translate(" + -ruck / 2 + "px,0)" }, { transform: "translate(0,0)" }], { duration: 220 }, lauf);
         // Beide Rückbewegungen abschließen, bevor die K.O.-Animation den Boss übernimmt.
         var reaktionen = await Promise.all([
+          sequenzVerfuegbar(trefferArt) ? spieleSequenz(trefferArt, lauf) : Promise.resolve(true),
           bewegen(bild, [{ transform: "translate(0,0)", filter: "brightness(1.2)" }, { transform: "translate(" + weg + "px," + -weg / 3 + "px) rotate(" + weg / 2.5 + "deg)", offset: .25 }, { transform: "translate(" + -weg / 3 + "px,0) rotate(" + -weg / 5 + "deg)", offset: .65 }, { transform: "translate(0,0)", filter: "brightness(1)" }], { duration: 280, easing: "ease-out" }, lauf),
           bewegen(angreifer, [{ transform: "translate(28px,-24px) rotate(5deg) scale(1.08)" }, { transform: "translate(0,0) rotate(0deg) scale(1)" }], { duration: 230, easing: "ease-out" }, lauf)
         ]);

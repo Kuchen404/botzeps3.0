@@ -2,8 +2,10 @@
   "stil": "Use ONLY the SMALL relaxed LEFT character in the reference, never the muscular right version. Same pink pig-dog hybrid, huge floppy brown dog ears, small pink hair tuft, brown patches, round little belly, thin little arms and legs, curled tail, black studded collar with large gold ring, no clothes. Polished 2D arcade cartoon, bold dark outlines, glossy pink cel shading. Recognizable exact character identity. Transparent game animation atlas, exactly 4 separate full-body drawings in an evenly spaced 2 by 2 grid of equal square cells. Front/three-quarter front view. Identical head/body size, foot baseline and hip center in all frames. Character occupies about 74% of cell height, soles at 94%. All limbs and ears fully inside each cell, at least 8% clear margin horizontally. No contact between cells, no stray pieces, no props from other bosses. Actual transparent background, no floor/shadow, no labels or letters.",
   "originale": {
     "auftritt": "/workspace/generated_images/exec-3867a567-ea8f-4fd4-8575-3a280e1b47d5.png",
-    "ruhe": "/workspace/generated_images/exec-a00fef6a-3d23-465f-95ec-3eca1bc331c1.png"
+    "ruhe": "/workspace/generated_images/exec-a00fef6a-3d23-465f-95ec-3eca1bc331c1.png",
+    "treffer": "/workspace/generated_images/exec-4e45d24a-9212-4ea2-9810-66c4da06bae2.png"
   },
   "auftritt": "Vier gezeichnete Phasen: Gähnen, Schlurfen, Bauchkratzen, provozierendes Grinsen. Referenz ausschließlich die kleine linke Stufe-1-Figur aus schweinehund.png.",
-  "ruhe": "Blick links, Blick rechts, Schnüffeln mit Ohrenzucken, kurzes Einnicken mit geschlossenen Augen. Gleiche kleine Figur und Fußhöhe."
+  "ruhe": "Blick links, Blick rechts, Schnüffeln mit Ohrenzucken, kurzes Einnicken mit geschlossenen Augen. Gleiche kleine Figur und Fußhöhe.",
+  "treffer": "Kleiner Treffer mit Ohren-/Backenreaktion, großer Treffer mit herausfliegender Zunge, Stolpern und verlegenes Richten des Halsbands. Kleine Figur ohne Muskelwachstum."
 }
