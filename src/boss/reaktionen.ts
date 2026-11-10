@@ -1,3 +1,4 @@
+import { schweinehundMedium, schweinehundSequenzen } from './schweinehund-animationen.js';
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import type { BossStufe } from "../scoring/boss.js";
@@ -28,6 +29,7 @@ function atlas(motiv: string) {
 
 /** Nur bekannte, mit Inhalts-Hash versionierte Atlanten, keine freien Dateipfade. */
 export function bossReaktionsMedium(datei: string): Buffer | null {
+  const sequenz = schweinehundMedium(datei); if (sequenz) return sequenz;
   const motiv = Object.values(MOTIVE).find((m) => datei.startsWith(`${m}-reaktionen-`));
   if (!motiv) return null;
   const a = atlas(motiv);
@@ -49,5 +51,5 @@ export function bossReaktionen(name: string, stufe: BossStufe) {
     const klein = stufe === 1 && (motiv === "sofa" || motiv === "chips") ? ' transform="translate(26 48) scale(.78)"' : "";
     return `<svg xmlns="http://www.w3.org/2000/svg" class="boss-illustriert boss-reaktionspose" viewBox="-30 -20 300 280" width="240" height="240"><g${klein}><svg x="0" y="0" width="240" height="240" viewBox="${x} ${y} ${breite} ${feld}" overflow="hidden"><defs><clipPath id="${id}"><rect x="${x}" y="${y}" width="${breite}" height="${feld}"/></clipPath></defs><image clip-path="url(#${id})" href="${BOSS_REAKTIONS_PFAD}${a.datei}" width="${a.groesse}" height="${a.groesse}"/></svg></g></svg>`;
   }
-  return { motiv, atlas: BOSS_REAKTIONS_PFAD + a.datei, treffer: pose("treffer"), ko: pose("ko") };
+  return { motiv, atlas: BOSS_REAKTIONS_PFAD + a.datei, treffer: pose("treffer"), ko: pose("ko"), ...(name === "Der innere Schweinehund" && stufe === 1 ? { sequenzen: schweinehundSequenzen() } : {}) };
 }

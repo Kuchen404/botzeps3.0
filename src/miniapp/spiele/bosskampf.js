@@ -5,6 +5,16 @@ document.addEventListener("visibilitychange", function () { if (document.hidden 
 var bossBewegungsWahl = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)");
 if (bossBewegungsWahl && bossBewegungsWahl.addEventListener) bossBewegungsWahl.addEventListener("change", function (e) { if (e.matches && bossKampfAbbrechen) bossKampfAbbrechen(); });
 
+// Sequenzen sind optional. Jede Karte kann auf die bisherigen Posen zurückfallen.
+var bossSequenzCache = new Map(), bossSequenzBereit = new Set(), bossSequenzZaehler = 0;
+function bossSequenzenLaden(sequenzen) {
+  return Promise.all(Array.from(new Set(Object.values(sequenzen).map(function (s) { return s.atlas; }))).map(function (url) {
+    if (!bossSequenzCache.has(url)) bossSequenzCache.set(url, new Promise(function (ok) {
+      var bild = new Image(); bild.onload = function () { bossSequenzBereit.add(url); ok(true); }; bild.onerror = function () { bossSequenzCache.delete(url); ok(false); }; bild.src = url;
+    }));
+    return bossSequenzCache.get(url);
+  }));
+}
 /** Kurze, abgeschlossene Auftritte; jede Bewegung endet wieder am selben Bühnenpunkt. */
 function bossAuftrittProfil(motiv, stufe) {
   var schwer = stufe === 2, druck = schwer ? 1.12 : 1.06, sprung = schwer ? 12 : 7;
@@ -71,13 +81,15 @@ function bossKarte(b, kontext) {
   var illustriert = !!bild.querySelector(".boss-illustriert");
   var auftrittProfil = bossAuftrittProfil(b.reaktion && b.reaktion.motiv, b.stufe);
   if (illustriert) bild.classList.add("neu");
-  var reaktionGeladen = false, erwarteteBossPose = "bereit";
+  var reaktionGeladen = false, erwarteteBossPose = "bereit", sequenzAktiv = null, sequenzMarke = 0;
+  var sequenzen = b.name === "Der innere Schweinehund" && b.stufe === 1 && b.reaktion && b.reaktion.sequenzen || {};
+  var sequenzLaden = bossSequenzenLaden(sequenzen);
   // Früh laden; auf langsamen Verbindungen bleibt die neutrale Figur bis dahin sichtbar.
   if (b.reaktion && b.reaktion.atlas) {
     var vorladen = new Image();
     vorladen.onload = function () {
       reaktionGeladen = true;
-      if (arena && arena.isConnected) setzeBossPose(erwarteteBossPose);
+      if (arena && arena.isConnected && !sequenzAktiv) setzeBossPose(erwarteteBossPose);
     };
     vorladen.src = b.reaktion.atlas;
   }
@@ -129,6 +141,7 @@ function bossKarte(b, kontext) {
   function gueltig(lauf) { return lauf === durchlauf && arena.isConnected && !document.hidden && bewegung(); }
   function phase(name) { arena.setAttribute("data-kampfphase", name); }
   function reinigen() {
+    sequenzMarke++; sequenzAktiv = null;
     animationen.forEach(function (a) { a.cancel(); }); animationen.clear();
     wartende.forEach(function (resolve, id) { clearTimeout(id); resolve(false); }); wartende.clear();
     if (angreifer) angreifer.remove(); angreifer = null;
@@ -153,6 +166,26 @@ function bossKarte(b, kontext) {
     var svg = pose !== "bereit" && reaktionGeladen && b.reaktion && b.reaktion[pose];
     bild.setAttribute("data-boss-pose", svg ? pose : "bereit");
     if (b.bild) bild.innerHTML = svg || b.bild;
+  }
+  function sequenzVerfuegbar(name) { var s = sequenzen[name]; return !!(s && s.bilder && s.bilder.length && bossSequenzBereit.has(s.atlas)); }
+  function sequenzBild(name, index) {
+    var s = sequenzen[name], f = s && s.bilder[index]; if (!f || !sequenzVerfuegbar(name)) return false;
+    var id = 'bosssequenz' + (++bossSequenzZaehler);
+    bild.setAttribute('data-boss-pose', name + '-' + index);
+    bild.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="boss-illustriert boss-reaktionspose boss-sequenzpose" viewBox="-30 -20 300 280"><svg x="0" y="0" width="240" height="240" viewBox="' + f.x + ' ' + f.y + ' ' + s.zelle + ' ' + s.zelle + '" overflow="hidden"><defs><clipPath id="' + id + '"><rect x="' + f.x + '" y="' + f.y + '" width="' + s.zelle + '" height="' + s.zelle + '"/></clipPath></defs><image clip-path="url(#' + id + ')" href="' + s.atlas + '" width="' + s.groesse + '" height="' + s.groesse + '"/></svg></svg>';
+    return true;
+  }
+  async function spieleSequenz(name, lauf) {
+    if (!sequenzVerfuegbar(name) || !gueltig(lauf)) return false;
+    var marke = ++sequenzMarke; sequenzAktiv = name;
+    try {
+      for (var i = 0; i < sequenzen[name].bilder.length; i++) {
+        if (!gueltig(lauf) || marke !== sequenzMarke) return false;
+        sequenzBild(name, i);
+        if (!await warte(sequenzen[name].bilder[i].dauer, lauf)) return false;
+      }
+      return true;
+    } finally { if (marke === sequenzMarke) sequenzAktiv = null; }
   }
   function schnipsel(final, lauf, anzahlTreffer) {
     if (!b.reaktion) return;
@@ -188,6 +221,21 @@ function bossKarte(b, kontext) {
     warte(final ? 1050 : 700, lauf).then(function () { layer.remove(); });
   }
   async function auftritt(lauf) {
+    if (sequenzen.auftritt) {
+      await Promise.race([sequenzLaden, warte(600, lauf)]); if (!gueltig(lauf)) return false;
+      if (sequenzVerfuegbar('auftritt')) {
+        phase('auftritt'); status.textContent = 'Der innere Schweinehund · Morgen reicht auch!';
+        var spruch = el('div', { class: 'boss-auftritt boss-schwein-spruch', 'aria-hidden': 'true' }, [el('span', { class: 'boss-auftritt-stufe', text: 'BOSS-WOCHE ' + b.woche }), el('strong', { text: 'Morgen reicht auch!' })]); platz.appendChild(spruch);
+        var ok = await Promise.all([
+          spieleSequenz('auftritt', lauf),
+          bewegen(bild, [{ opacity: 0, transform: 'translate(-75px,4px)' }, { opacity: 1, transform: 'translate(-45px,0)', offset: .2 }, { opacity: 1, transform: 'translate(0,0)', offset: .7 }, { opacity: 1, transform: 'translate(0,0)' }], { duration: 1800, easing: 'ease-in-out' }, lauf)
+        ]);
+        if (!ok.every(Boolean)) return false;
+        setzeBossPose('bereit');
+        if (!await bewegen(spruch, [{ opacity: 1 }, { opacity: 0 }], { duration: 160 }, lauf)) return false;
+        spruch.remove(); bossAuftrittGezeigt[auftrittSchluessel] = true; return true;
+      }
+    }
     phase("auftritt"); status.textContent = b.stufe === 2 ? "Er ist zurück. Aufgepumpt!" : "Der Boss betritt die Arena!";
     var schild = el("div", { class: "boss-auftritt", "aria-hidden": "true" }, [
       el("span", { class: "boss-auftritt-stufe", text: b.stufe === 2 ? "STUFE 2 · AUFGEPUMPT" : "BOSS-WOCHE " + b.woche }),
