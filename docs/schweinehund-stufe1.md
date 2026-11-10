@@ -6,10 +6,10 @@ Jeder fertige Schritt wird geprüft, einzeln committed und sofort auf `codex/sch
 - [x] 2. Ruhe: Blick, Schnüffeln, Ohrenzucken und Einnicken.
 - [x] 3. Treffer: kleine Reaktionen und Stolpern ab 10 % der maximalen LP.
 - [x] 4. Zustände: selbstsicher, knurrend bei ≤60 %, nervös bei ≤25 % LP.
-- [ ] 5. Niederlage: letzter Grunzer, Hinsetzen, Ohren über Augen, Umkippen.
+- [x] 5. Niederlage: letzter Grunzer, Hinsetzen, Ohren über Augen, Umkippen.
 - [ ] 6. Vorschau, abschließende Browserprüfung und Feinschliff.
 
-Nächster Schritt: 5. Eigene Niederlagensequenz ergänzen.
+Nächster Schritt: 6. Browsermatrix, Vorschau und abschließender Feinschliff.
 
 Schritt 1 geprüft: Build, Typprüfung, 15 Boss-Tests; Chromium bei 390 px mit allen vier Auftrittsphasen, unveränderten LP, Überspringen und reduzierter Bewegung. Atlas: 40.165 Bytes.
 
@@ -24,3 +24,5 @@ Schritt 2 geprüft: Build, Typprüfung und 15 Boss-Tests; Chromium bei 390 px mi
 Schritt 3 geprüft: Build, Typprüfung und 16 Boss-Tests einschließlich exakter 10-%-Grenze; Chromium bei 390 px mit 5-%-Treffer, 10-%-Treffer, Zunge/Stolpern/Halsband und Abbruch im Rückstoß. LP bleiben korrekt. Ein tödlicher Treffer endet ohne Halsband-Richten. Atlas: 43.076 Bytes.
 
 Schritt 4 geprüft: Build, Typprüfung und 17 Boss-Tests; Chromium bei 390 px mit exakt 60 %/25 % verbleibenden LP, gesundem Start des Rückblicks und korrektem statischem Zustand nach Überspringen/reduzierter Bewegung. Die Berechnung folgt dem gezeigten kumulierten Schaden. Nervöse Figuren nicken nicht mehr ein. Atlas: 39.760 Bytes.
+
+Schritt 5 geprüft: Build, Typprüfung und 18 Boss-Tests; Chromium bei 390 px mit allen vier Niederlagenphasen, synchronem „Pff“, dauerhaftem letzten K.O.-Bild und Abbruch während des Hinsetzens. Reduzierte Bewegung zeigt direkt die bestätigte K.O.-Pose. Atlas: 36.914 Bytes.

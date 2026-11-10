@@ -10,11 +10,12 @@ export interface BossSequenz {
 const cache = new Map<string, Buffer>();
 const ablaeufe: Readonly<Record<string, readonly [number, number][]>> = {
   auftritt: [[0, 400], [1, 440], [2, 480], [3, 480]],
+  niederlage: [[0, 320], [1, 380], [2, 380], [3, 500]],
   zustandSelbstsicher: [[0, 600]], zustandKnurren: [[1, 700]], zustandNervoes: [[2, 140], [3, 140], [2, 140], [3, 140], [2, 140]],
   trefferKlein: [[0, 190]], trefferGross: [[1, 130], [2, 200], [3, 230]], trefferFinal: [[1, 130], [2, 200]],
   ruheLinks: [[0, 650]], ruheRechts: [[1, 650]], schnueffeln: [[2, 400], [0, 180], [2, 300]], einnicken: [[3, 1000]],
 };
-function atlasArt(name: string): string { return name === 'auftritt' ? name : name.startsWith('treffer') ? 'treffer' : name.startsWith('zustand') ? 'zustand' : 'ruhe'; }
+function atlasArt(name: string): string { return name === 'auftritt' || name === 'niederlage' ? name : name.startsWith('treffer') ? 'treffer' : name.startsWith('zustand') ? 'zustand' : 'ruhe'; }
 export function schweinehundSequenzen(): Record<string, BossSequenz> {
   return Object.fromEntries(Object.entries(ablaeufe).filter(([name]) => SCHWEINEHUND_ATLANTEN[atlasArt(name)]).map(([name, bilder]) => [name, {
     atlas: '/api/bossbild/' + SCHWEINEHUND_ATLANTEN[atlasArt(name)], groesse: 512, zelle: 256,

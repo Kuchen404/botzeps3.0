@@ -21,5 +21,6 @@ describe('Sequenzen ausschließlich für Schweinehund Stufe 1',()=>{
   }
   for(const f of ['../schweinehund.png','schweinehund1-auftritt.png','schweinehund1-auftritt-falsch.png'])expect(bossReaktionsMedium(f)).toBeNull();
  });
+ it('beendet die Niederlage mit einer eigenen dauerhaften letzten Pose',()=>{const s=schweinehundSequenzen().niederlage!;expect(s.bilder).toHaveLength(4);expect(s.bilder.at(-1)).toEqual({x:256,y:256,dauer:500});});
  it('hält den Auftritt kurz und vollständig',()=>{expect(schweinehundSequenzen().auftritt!.bilder).toHaveLength(4);expect(schweinehundSequenzen().auftritt!.bilder.reduce((n,f)=>n+f.dauer,0)).toBe(1800);});
 });

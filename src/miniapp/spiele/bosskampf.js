@@ -156,7 +156,7 @@ function bossKarte(b, kontext) {
     if (angreifer) angreifer.remove(); angreifer = null;
     if (quelle) quelle.style.visibility = ""; quelle = null;
     arena.classList.remove("boss-hitstop", "boss-laeuft");
-    arena.querySelectorAll(".zahl, .trefferfunken, .boss-ring, .boss-staub, .boss-ko, .boss-schnipsel, .boss-auftritt").forEach(function (e) { e.remove(); });
+    arena.querySelectorAll(".zahl, .trefferfunken, .boss-ring, .boss-staub, .boss-ko, .boss-schnipsel, .boss-auftritt, .boss-pff").forEach(function (e) { e.remove(); });
   }
   function warte(ms, lauf) {
     return new Promise(function (resolve) {
@@ -172,7 +172,9 @@ function bossKarte(b, kontext) {
   }
   function setzeBossPose(pose) {
     erwarteteBossPose = pose;
+    if (pose === 'ko' && sequenzVerfuegbar('niederlage')) { sequenzBild('niederlage', sequenzen.niederlage.bilder.length - 1); bild.setAttribute('data-boss-pose', 'ko'); return; }
     if (pose === 'bereit') { var zustand = bossSchweinZustand(gezeigterSchaden, b.lebenspunkte), sequenz = zustand === 'nervoes' ? 'zustandNervoes' : zustand === 'knurrend' ? 'zustandKnurren' : 'zustandSelbstsicher'; if (sequenzVerfuegbar(sequenz)) { sequenzBild(sequenz, 0); return; } }
+    bild.removeAttribute('data-boss-sequenz');
     var svg = pose !== "bereit" && reaktionGeladen && b.reaktion && b.reaktion[pose];
     bild.setAttribute("data-boss-pose", svg ? pose : "bereit");
     if (b.bild) bild.innerHTML = svg || b.bild;
@@ -181,17 +183,17 @@ function bossKarte(b, kontext) {
   function sequenzBild(name, index) {
     var s = sequenzen[name], f = s && s.bilder[index]; if (!f || !sequenzVerfuegbar(name)) return false;
     var id = 'bosssequenz' + (++bossSequenzZaehler);
-    bild.setAttribute('data-boss-pose', name + '-' + index);
+    bild.setAttribute('data-boss-pose', name + '-' + index); bild.setAttribute('data-boss-sequenz', name + '-' + index);
     bild.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="boss-illustriert boss-reaktionspose boss-sequenzpose" viewBox="-30 -20 300 280"><svg x="0" y="0" width="240" height="240" viewBox="' + f.x + ' ' + f.y + ' ' + s.zelle + ' ' + s.zelle + '" overflow="hidden"><defs><clipPath id="' + id + '"><rect x="' + f.x + '" y="' + f.y + '" width="' + s.zelle + '" height="' + s.zelle + '"/></clipPath></defs><image clip-path="url(#' + id + ')" href="' + s.atlas + '" width="' + s.groesse + '" height="' + s.groesse + '"/></svg></svg>';
     return true;
   }
-  async function spieleSequenz(name, lauf) {
+  async function spieleSequenz(name, lauf, beiBild) {
     if (!sequenzVerfuegbar(name) || !gueltig(lauf)) return false;
     var marke = ++sequenzMarke; sequenzAktiv = name;
     try {
       for (var i = 0; i < sequenzen[name].bilder.length; i++) {
         if (!gueltig(lauf) || marke !== sequenzMarke) return false;
-        sequenzBild(name, i);
+        sequenzBild(name, i); if (beiBild) beiBild(i);
         if (!await warte(sequenzen[name].bilder[i].dauer, lauf)) return false;
       }
       return true;
@@ -319,6 +321,24 @@ function bossKarte(b, kontext) {
     if (bossKampfAbbrechen === abbrechen) bossKampfAbbrechen = null;
   }
   async function finale(lauf) {
+    if (sequenzVerfuegbar('niederlage')) {
+      phase('finale'); status.textContent = 'Ein letzter großer Grunzer …';
+      var ok = await spieleSequenz('niederlage', lauf, function (i) {
+        if (i === 1) {
+          status.textContent = 'Nur ein kleines Pff …';
+          var pff = el('span', { class: 'boss-pff', text: 'Pff', 'aria-hidden': 'true' }); platz.appendChild(pff);
+          bewegen(pff, [{ opacity: 0, transform: 'translateY(4px) scale(.6)' }, { opacity: 1, transform: 'translateY(-4px) scale(1)', offset: .4 }, { opacity: 0, transform: 'translateY(-16px) scale(.9)' }], { duration: 650 }, lauf);
+          schnipsel(true, lauf);
+        }
+        if (i === 2) bewegen(bild, [{ transform: 'translateY(0)' }, { transform: 'translateY(14px)' }], { duration: 380, easing: 'ease-out' }, lauf);
+        if (i === 3) {
+          bild.setAttribute('data-boss-pose', 'ko'); status.textContent = 'K.O.!';
+          var ko = el('div', { class: 'boss-ko', text: 'K.O.!', 'aria-hidden': 'true' }); platz.appendChild(ko);
+          bewegen(ko, [{ opacity: 0, transform: 'scale(1.4) rotate(-8deg)' }, { opacity: 1, transform: 'scale(1) rotate(-8deg)' }], { duration: 240 }, lauf);
+        }
+      });
+      if (ok) setzeBossPose('ko'); return ok;
+    }
     phase("finale"); status.textContent = "K.O.!";
     var eigen = !!(b.reaktion && b.reaktion.ko);
     if (eigen) { setzeBossPose("ko"); schnipsel(true, lauf); }
