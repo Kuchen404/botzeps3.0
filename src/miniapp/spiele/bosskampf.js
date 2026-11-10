@@ -1,9 +1,9 @@
 /* Boss-Inszenierung: dieselben Spielstände und gewählten Figuren, kräftigere Bewegung. */
-var bossKampfAbbrechen = null;
+var bossKampfAbbrechen = null, bossKampfDarstellung = null;
 var bossAuftrittGezeigt = {};
-document.addEventListener("visibilitychange", function () { if (document.hidden && bossKampfAbbrechen) bossKampfAbbrechen(); });
+document.addEventListener("visibilitychange", function () { if (document.hidden) { if (bossKampfAbbrechen) bossKampfAbbrechen(); } else if (bossKampfDarstellung) bossKampfDarstellung(); });
 var bossBewegungsWahl = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)");
-if (bossBewegungsWahl && bossBewegungsWahl.addEventListener) bossBewegungsWahl.addEventListener("change", function (e) { if (e.matches && bossKampfAbbrechen) bossKampfAbbrechen(); });
+if (bossBewegungsWahl && bossBewegungsWahl.addEventListener) bossBewegungsWahl.addEventListener("change", function (e) { if (e.matches) { if (bossKampfAbbrechen) bossKampfAbbrechen(); } if (bossKampfDarstellung) bossKampfDarstellung(); });
 
 // Sequenzen sind optional. Jede Karte kann auf die bisherigen Posen zurückfallen.
 var bossSequenzCache = new Map(), bossSequenzBereit = new Set(), bossSequenzZaehler = 0;
@@ -130,18 +130,18 @@ function bossKarte(b, kontext) {
   ]);
   var info = el("div", { class: "bossinfo" });
   var nochmal = el("button", { class: "knopf leise", text: "↻ Nochmal kämpfen", onclick: function () { spiele(true); } });
-  var skip = el("button", { class: "knopf leise", text: "Überspringen", onclick: abbrechen });
+  var skip = el("button", { class: "knopf leise", text: "Überspringen", onclick: function () { abbrechen(); starteRuhe(); } });
   var steuerung = el("div", { class: "boss-steuerung" }, [skip, nochmal]);
   var titel = (b.aktiv ? "🐉 Boss-Woche " : "🐉 Boss aus Woche ") + b.woche;
   var karteElement = karte(titel, [el("div", { class: "gross", style: "font-size:20px", text: b.name }), arena, info, steuerung]);
   var auftrittSchluessel = JSON.stringify([kontext || "", b.name, b.woche, b.stufe]);
-  var durchlauf = 0, animationen = new Set(), wartende = new Map(), angreifer = null, quelle = null;
+  var durchlauf = 0, animationen = new Set(), wartende = new Map(), angreifer = null, quelle = null, ruheAktiv = false, ruheMarke = 0, ruheIndex = 0, ruheBlick = 0;
   var schluessel = JSON.stringify([kontext || "", b.name, b.woche, b.stufe, b.schaden, b.besiegt, b.kaempfer.map(function (k) { return [k.name, k.schaden]; })]);
   function bewegung() { return BEWEGUNG && !(bossBewegungsWahl && bossBewegungsWahl.matches); }
   function gueltig(lauf) { return lauf === durchlauf && arena.isConnected && !document.hidden && bewegung(); }
   function phase(name) { arena.setAttribute("data-kampfphase", name); }
   function reinigen() {
-    sequenzMarke++; sequenzAktiv = null;
+    ruheMarke++; ruheAktiv = false; sequenzMarke++; sequenzAktiv = null;
     animationen.forEach(function (a) { a.cancel(); }); animationen.clear();
     wartende.forEach(function (resolve, id) { clearTimeout(id); resolve(false); }); wartende.clear();
     if (angreifer) angreifer.remove(); angreifer = null;
@@ -186,6 +186,20 @@ function bossKarte(b, kontext) {
       }
       return true;
     } finally { if (marke === sequenzMarke) sequenzAktiv = null; }
+  }
+  async function starteRuhe() {
+    if (ruheAktiv || !sequenzen.ruheLinks || !b.aktiv || b.besiegt || !gueltig(durchlauf)) return;
+    var marke = ++ruheMarke, lauf = durchlauf; ruheAktiv = true; bossKampfAbbrechen = abbrechen;
+    try {
+      while (marke === ruheMarke && gueltig(lauf)) {
+        if (!await warte([6000, 7000, 8000][ruheIndex % 3], lauf) || marke !== ruheMarke) return;
+        var art = ruheIndex++ % 3, name = art === 1 ? 'schnueffeln' : art === 2 ? 'einnicken' : 'ruheLinks';
+        if (art === 0 && b.kaempfer.length) { var ziel = reihe.children[ruheBlick++ % b.kaempfer.length], p = ziel.getBoundingClientRect(), q = bild.getBoundingClientRect(); name = p.left + p.width / 2 < q.left + q.width / 2 ? 'ruheLinks' : 'ruheRechts'; }
+        if (!sequenzVerfuegbar(name)) continue;
+        phase('ruhe'); if (!await spieleSequenz(name, lauf) || marke !== ruheMarke) return;
+        setzeBossPose('bereit'); phase('ende');
+      }
+    } finally { if (marke === ruheMarke) { ruheAktiv = false; if (bossKampfAbbrechen === abbrechen) bossKampfAbbrechen = null; } }
   }
   function schnipsel(final, lauf, anzahlTreffer) {
     if (!b.reaktion) return;
@@ -261,7 +275,7 @@ function bossKarte(b, kontext) {
     rest.style.width = prozent + "%"; spur.style.width = prozent + "%";
     lpText.textContent = zahl(Math.max(0, b.lebenspunkte - schaden), 0) + " / " + zahl(b.lebenspunkte, 0) + " LP";
   }
-  function endstand(animiert) {
+  function endstand(animiert, beleben) {
     setzeLp(b.schaden, !animiert);
     setzeBossPose(b.besiegt ? "ko" : "bereit");
     platz.querySelectorAll(".stempel").forEach(function (e) { e.remove(); });
@@ -283,6 +297,7 @@ function bossKarte(b, kontext) {
     status.textContent = b.besiegt ? "K.O. – gemeinsam erledigt!" : !b.aktiv ? "Der Boss hat überlebt." : "Aktueller Kampfstand";
     phase("ende"); skip.hidden = true; nochmal.hidden = !bewegung();
     nochmal.textContent = b.kaempfer.length ? "↻ Nochmal kämpfen" : "↻ Auftritt ansehen";
+    if (beleben) starteRuhe();
   }
   function abbrechen() {
     if (arena.isConnected) { bossGezeigt[schluessel] = true; bossAuftrittGezeigt[auftrittSchluessel] = true; }
@@ -308,7 +323,7 @@ function bossKarte(b, kontext) {
   async function spiele(erzwingen) {
     durchlauf++; reinigen();
     var lauf = durchlauf;
-    if (!bewegung() || document.hidden || (bossGezeigt[schluessel] && !erzwingen)) { endstand(false); return; }
+    if (!bewegung() || document.hidden || (bossGezeigt[schluessel] && !erzwingen)) { endstand(false, true); return; }
     bossKampfAbbrechen = abbrechen;
     skip.hidden = false; nochmal.hidden = true;
     setzeBossPose("bereit");
@@ -380,13 +395,14 @@ function bossKarte(b, kontext) {
     } finally {
       if (lauf === durchlauf) {
         reinigen();
-        if (arena.isConnected) endstand(fertig);
-        if (bossKampfAbbrechen === abbrechen) bossKampfAbbrechen = null;
+        if (arena.isConnected) endstand(fertig, true);
+        if (bossKampfAbbrechen === abbrechen && !ruheAktiv) bossKampfAbbrechen = null;
       }
     }
   }
   // Kein 0-LP-Zwischenstand beim Öffnen mit reduzierter Bewegung oder leerem Team.
   endstand(false);
+  bossKampfDarstellung = function () { if (arena.isConnected) { durchlauf++; reinigen(); endstand(false, true); } };
   requestAnimationFrame(function () { if (arena.isConnected) spiele(false); });
   return karteElement;
 }
