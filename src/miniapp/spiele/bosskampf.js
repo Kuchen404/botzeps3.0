@@ -75,6 +75,11 @@ function bossSchweinTreffer(schaden, lebenspunkte) {
   return Math.max(0, schaden) / Math.max(1, lebenspunkte) >= .1 ? 'trefferGross' : 'trefferKlein';
 }
 
+function bossSchweinZustand(schaden, lebenspunkte) {
+  var rest = Math.max(0, lebenspunkte - Math.max(0, schaden)) / Math.max(1, lebenspunkte);
+  return rest <= .25 ? 'nervoes' : rest <= .6 ? 'knurrend' : 'selbstsicher';
+}
+
 function bossKarte(b, kontext) {
   if (bossKampfAbbrechen) bossKampfAbbrechen();
   var lpText = el("div", { class: "text" });
@@ -139,7 +144,7 @@ function bossKarte(b, kontext) {
   var titel = (b.aktiv ? "🐉 Boss-Woche " : "🐉 Boss aus Woche ") + b.woche;
   var karteElement = karte(titel, [el("div", { class: "gross", style: "font-size:20px", text: b.name }), arena, info, steuerung]);
   var auftrittSchluessel = JSON.stringify([kontext || "", b.name, b.woche, b.stufe]);
-  var durchlauf = 0, animationen = new Set(), wartende = new Map(), angreifer = null, quelle = null, ruheAktiv = false, ruheMarke = 0, ruheIndex = 0, ruheBlick = 0;
+  var durchlauf = 0, animationen = new Set(), wartende = new Map(), angreifer = null, quelle = null, ruheAktiv = false, ruheMarke = 0, ruheIndex = 0, ruheBlick = 0, gezeigterSchaden = b.schaden;
   var schluessel = JSON.stringify([kontext || "", b.name, b.woche, b.stufe, b.schaden, b.besiegt, b.kaempfer.map(function (k) { return [k.name, k.schaden]; })]);
   function bewegung() { return BEWEGUNG && !(bossBewegungsWahl && bossBewegungsWahl.matches); }
   function gueltig(lauf) { return lauf === durchlauf && arena.isConnected && !document.hidden && bewegung(); }
@@ -167,6 +172,7 @@ function bossKarte(b, kontext) {
   }
   function setzeBossPose(pose) {
     erwarteteBossPose = pose;
+    if (pose === 'bereit') { var zustand = bossSchweinZustand(gezeigterSchaden, b.lebenspunkte), sequenz = zustand === 'nervoes' ? 'zustandNervoes' : zustand === 'knurrend' ? 'zustandKnurren' : 'zustandSelbstsicher'; if (sequenzVerfuegbar(sequenz)) { sequenzBild(sequenz, 0); return; } }
     var svg = pose !== "bereit" && reaktionGeladen && b.reaktion && b.reaktion[pose];
     bild.setAttribute("data-boss-pose", svg ? pose : "bereit");
     if (b.bild) bild.innerHTML = svg || b.bild;
@@ -199,6 +205,9 @@ function bossKarte(b, kontext) {
         if (!await warte([6000, 7000, 8000][ruheIndex % 3], lauf) || marke !== ruheMarke) return;
         var art = ruheIndex++ % 3, name = art === 1 ? 'schnueffeln' : art === 2 ? 'einnicken' : 'ruheLinks';
         if (art === 0 && b.kaempfer.length) { var ziel = reihe.children[ruheBlick++ % b.kaempfer.length], p = ziel.getBoundingClientRect(), q = bild.getBoundingClientRect(); name = p.left + p.width / 2 < q.left + q.width / 2 ? 'ruheLinks' : 'ruheRechts'; }
+        var zustand = bossSchweinZustand(gezeigterSchaden, b.lebenspunkte);
+        if (zustand === 'nervoes' && sequenzen.zustandNervoes) name = 'zustandNervoes';
+        else if (zustand === 'knurrend' && art === 2 && sequenzen.zustandKnurren) name = 'zustandKnurren';
         if (!sequenzVerfuegbar(name)) continue;
         phase('ruhe'); if (!await spieleSequenz(name, lauf) || marke !== ruheMarke) return;
         setzeBossPose('bereit'); phase('ende');
@@ -274,6 +283,7 @@ function bossKarte(b, kontext) {
     return true;
   }
   function setzeLp(schaden, sofort) {
+    gezeigterSchaden = schaden; if (sequenzen.zustandSelbstsicher) arena.setAttribute('data-schwein-zustand', bossSchweinZustand(schaden, b.lebenspunkte));
     var prozent = Math.max(0, Math.min(100, (b.lebenspunkte - schaden) / Math.max(1, b.lebenspunkte) * 100));
     arena.classList.toggle("boss-lp-sofort", !!sofort);
     rest.style.width = prozent + "%"; spur.style.width = prozent + "%";
@@ -330,11 +340,11 @@ function bossKarte(b, kontext) {
     if (!bewegung() || document.hidden || (bossGezeigt[schluessel] && !erzwingen)) { endstand(false, true); return; }
     bossKampfAbbrechen = abbrechen;
     skip.hidden = false; nochmal.hidden = true;
-    setzeBossPose("bereit");
+    setzeLp(0, true); setzeBossPose("bereit");
     platz.classList.remove("tot"); platz.querySelectorAll(".stempel").forEach(function (e) { e.remove(); });
     reihe.querySelectorAll(".boss-team-jubel").forEach(function (e) { e.classList.remove("boss-team-jubel"); });
     Array.prototype.forEach.call(reihe.children, function (z) { if (z._k) stellePose(z, "bereit"); });
-    info.replaceChildren(); setzeLp(0, true); arena.classList.add("boss-laeuft");
+    info.replaceChildren(); arena.classList.add("boss-laeuft");
     var summe = 0, fertig = false;
     try {
       if ((!bossAuftrittGezeigt[auftrittSchluessel] || erzwingen) && !await auftritt(lauf)) return;
@@ -406,6 +416,7 @@ function bossKarte(b, kontext) {
       }
     }
   }
+  sequenzLaden.then(function () { if (arena.isConnected && !sequenzAktiv && arena.getAttribute('data-kampfphase') === 'ende') setzeBossPose(b.besiegt ? 'ko' : 'bereit'); });
   // Kein 0-LP-Zwischenstand beim Öffnen mit reduzierter Bewegung oder leerem Team.
   endstand(false);
   bossKampfDarstellung = function () { if (arena.isConnected) { durchlauf++; reinigen(); endstand(false, true); } };

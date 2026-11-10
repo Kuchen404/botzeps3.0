@@ -4,13 +4,14 @@ import { describe, expect, it } from "vitest";
 
 // Dieselben Funktionen wie im ausgelieferten Controller, ohne eine zweite Berechnung.
 const funktionen = runInNewContext(
-  readFileSync(new URL("./spiele/bosskampf.js", import.meta.url), "utf8") + ";({ bossAuftrittProfil, bossTrefferWucht, bossSchweinTreffer })",
+  readFileSync(new URL("./spiele/bosskampf.js", import.meta.url), "utf8") + ";({ bossAuftrittProfil, bossTrefferWucht, bossSchweinTreffer, bossSchweinZustand })",
   { document: { addEventListener() {} }, window: {} },
 ) as {
   bossAuftrittProfil: (motiv: string, stufe: number) => {
     motiv: string; start: { transform: string; opacity: number }[]; ende: { transform: string; opacity: number }[];
     dauer: number; erholung: number; wucht: number;
   };
+  bossSchweinZustand: (schaden: number, lp: number) => string;
   bossSchweinTreffer: (schaden: number, lp: number) => string;
   bossTrefferWucht: (schaden: number, lp: number) => Record<string, number>;
 };
@@ -64,4 +65,8 @@ describe("Boss-Auftritt und Trefferwucht", () => {
 
 it('trennt kleine und große Schweinehund-Treffer exakt bei zehn Prozent der maximalen LP',()=>{
   expect(funktionen.bossSchweinTreffer(99.9,1000)).toBe('trefferKlein');expect(funktionen.bossSchweinTreffer(100,1000)).toBe('trefferGross');expect(funktionen.bossSchweinTreffer(2000,1000)).toBe('trefferGross');expect(funktionen.bossSchweinTreffer(-10,1000)).toBe('trefferKlein');
+});
+
+it('zeigt die drei Schweinehund-Zustände an den exakten verbleibenden LP-Grenzen',()=>{
+  expect(funktionen.bossSchweinZustand(399.9,1000)).toBe('selbstsicher');expect(funktionen.bossSchweinZustand(400,1000)).toBe('knurrend');expect(funktionen.bossSchweinZustand(749.9,1000)).toBe('knurrend');expect(funktionen.bossSchweinZustand(750,1000)).toBe('nervoes');expect(funktionen.bossSchweinZustand(2000,1000)).toBe('nervoes');expect(funktionen.bossSchweinZustand(-100,1000)).toBe('selbstsicher');
 });
