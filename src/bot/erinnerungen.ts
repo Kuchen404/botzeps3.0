@@ -26,7 +26,7 @@ export function erinnerungsModul(db: Db): Composer<Context> {
     };
     await ctx.reply(
       z.erinnerungen
-        ? `Erinnerungen sind an, täglich um ${z.erinnerung_uhrzeit} privat, wenn du ${ERINNERUNG.tageOhneTraining} Tage nicht trainiert oder ${ERINNERUNG.tageOhneMessung} Tage nicht gemessen hast, und in der Kalibrierwoche.\nÄndern: /erinnerungen 18:30 oder /erinnerungen aus`
+        ? `Erinnerungen sind an, täglich um ${z.erinnerung_uhrzeit} privat, wenn du ${ERINNERUNG.tageOhneTraining} Tage nicht trainiert oder ${ERINNERUNG.tageOhneMessung} Tage nicht gemessen hast, wenn deine Tagesserie heute reißt, und in der Kalibrierwoche.\nÄndern: /erinnerungen 18:30 oder /erinnerungen aus`
         : "Erinnerungen sind aus. Selber schuld. Wieder an mit /erinnerungen an",
     );
   });

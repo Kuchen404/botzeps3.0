@@ -19,8 +19,8 @@ import { pruefeSchritte } from "../scoring/fleiss.js";
 import { type TeilnehmerStand, seasonEnde, wocheVon } from "../scoring/season.js";
 import { type Boss, bosseDerSeason } from "../db/season-repo.js";
 import { bossAnzeigename, bossEmoji, bossKampf, bossSchadenVon } from "../scoring/boss.js";
-import { erfolgeDesNutzers, lebenslangeLast, ruhmeshalle } from "../db/erfolg-repo.js";
-import { ERFOLG_ARTEN, istGeheim, istSchande, sichtbar } from "../scoring/erfolge.js";
+import { alleTrainings, erfolgeDesNutzers, lebenslangeLast, ruhmeshalle } from "../db/erfolg-repo.js";
+import { ERFOLG_ARTEN, aktuelleTagesserie, istGeheim, istSchande, laengsteTagesserie, sichtbar } from "../scoring/erfolge.js";
 import { RAENGE, naechsterRang, rangFuer } from "../scoring/raenge.js";
 import { laternen } from "../db/laterne-repo.js";
 import { animationFuerApp } from "../minispiel/animation.js";
@@ -166,6 +166,9 @@ function minispielJson(db: Db, s: Parameters<typeof minispielFuerApp>[1], tag: s
 
 function ich(db: Db, nutzerId: number, telegramId: number) {
   const tag = heute(gruppenZeitzone());
+  // Trainingstage in Folge über alle Seasons; ein Tag ohne Training bricht sie
+  const trainingsTage = alleTrainings(db, nutzerId).map((t) => t.datum);
+  const tagesserie = { ...aktuelleTagesserie(trainingsTage, tag), rekord: laengsteTagesserie(trainingsTage.filter((d) => d <= tag)) };
   const seasons = [];
   for (const g of gruppenDesNutzers(db, nutzerId)) {
     const s = relevanteSeason(db, g.id, tag);
@@ -201,6 +204,7 @@ function ich(db: Db, nutzerId: number, telegramId: number) {
         wochenziel: s.wochenziel_last,
         zielErreicht: w?.zielErreicht ?? false,
         serie: w?.serie ?? 0,
+        tagesserie,
         // Wie oft in dieser Season, wenn man die Rote Laterne gerade trägt
         laterne: laterne.traeger.includes(st.id) ? (laterne.anzahl.get(st.id) ?? 1) : null,
         kalibrierMessungen: st.kalibrierMessungen,
@@ -280,6 +284,7 @@ function ruhm(db: Db, nutzerId: number) {
         }),
         hoechsteWochenlast: r.hoechsteWochenlast,
         laengsteEinheit: r.laengsteEinheit,
+        laengsteTagesserie: r.laengsteTagesserie,
       };
     }),
   };

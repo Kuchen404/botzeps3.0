@@ -148,6 +148,26 @@ export function laengsteTagesserie(daten: readonly IsoDatum[]): number {
   return beste;
 }
 
+/** Ab dieser Länge ist eine Tagesserie der Rede wert (Erinnerung, Sonderpreis). */
+export const TAGESSERIE_AB = 3;
+
+/**
+ * Laufende Tagesserie am Tag `heute`. Ein Tag ohne Training bricht sie, der heutige aber erst
+ * um Mitternacht: Wer gestern trainiert hat und heute noch nicht, hat die Serie noch
+ * (`heuteOffen`), muss sie aber heute retten.
+ */
+export function aktuelleTagesserie(daten: readonly IsoDatum[], heute: IsoDatum): { laenge: number; heuteOffen: boolean } {
+  const tage = new Set(daten.filter((d) => d <= heute));
+  const heuteOffen = !tage.has(heute);
+  let tag = heuteOffen ? plusTage(heute, -1) : heute;
+  let laenge = 0;
+  while (tage.has(tag)) {
+    laenge++;
+    tag = plusTage(tag, -1);
+  }
+  return { laenge, heuteOffen: heuteOffen && laenge > 0 };
+}
+
 /** Erfolge, die sich aus allen Trainings eines Nutzers ergeben. */
 export function trainingsErfolge(trainings: readonly ErfolgTraining[]): ErfolgArt[] {
   if (trainings.length === 0) return [];

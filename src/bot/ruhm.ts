@@ -53,6 +53,9 @@ export function ruhmeshalleText(gruppe: string, r: Ruhmeshalle): string {
     const e = r.laengsteEinheit;
     rekorde.push(`Längste Einheit: ${e.name}, ${e.minuten} min ${e.sportart}`);
   }
+  if (r.laengsteTagesserie) {
+    rekorde.push(`Längste Tagesserie: ${r.laengsteTagesserie.namen.join(", ")}, ${r.laengsteTagesserie.tage} Tage am Stück`);
+  }
   if (rekorde.length) zeilen.push("", "Rekorde:", ...rekorde);
   if (zeilen.length === 1) zeilen.push("", "Noch leer. Trainiert halt mal was.");
   return zeilen.join("\n");

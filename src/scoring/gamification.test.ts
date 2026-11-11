@@ -4,6 +4,7 @@ import {
   BOSS_ERFOLGE,
   ERFOLGE,
   ERFOLG_ARTEN,
+  aktuelleTagesserie,
   bossSiegErfolge,
   erfolgText,
   folgeErfolge,
@@ -40,6 +41,16 @@ describe("Erfolge", () => {
     expect(laengsteTagesserie([])).toBe(0);
     expect(laengsteTagesserie(["2026-10-01", "2026-10-02", "2026-10-02", "2026-10-04"])).toBe(2);
     expect(laengsteTagesserie(["2026-09-29", "2026-09-30", "2026-10-01"])).toBe(3);
+  });
+
+  it("laufende Tagesserie: heute bricht erst um Mitternacht", () => {
+    const tage = ["2026-11-07", "2026-11-08", "2026-11-09", "2026-11-10"];
+    expect(aktuelleTagesserie(tage, "2026-11-10")).toEqual({ laenge: 4, heuteOffen: false });
+    expect(aktuelleTagesserie(tage, "2026-11-11")).toEqual({ laenge: 4, heuteOffen: true });
+    expect(aktuelleTagesserie(tage, "2026-11-12")).toEqual({ laenge: 0, heuteOffen: false });
+    // Ein Ruhetag bricht die Serie, mehrere Einheiten am Tag zählen einmal, Zukunft zählt nicht
+    expect(aktuelleTagesserie(["2026-11-05", "2026-11-07", "2026-11-08", "2026-11-08", "2026-11-10"], "2026-11-08")).toEqual({ laenge: 2, heuteOffen: false });
+    expect(aktuelleTagesserie([], "2026-11-08")).toEqual({ laenge: 0, heuteOffen: false });
   });
 
   it("aus Trainings", () => {

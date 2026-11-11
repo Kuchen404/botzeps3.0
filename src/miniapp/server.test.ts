@@ -136,6 +136,7 @@ describe("Mini App", () => {
       expect(s).toMatchObject({ name: "Herbst", gruppe: "Pumper", laeuft: true, woche: 1, anzahl: 2 });
       expect(s.ich).toMatchObject({ platz: 1, gesamt: 110, fleiss: 10, fortschritt: 100, wochenLast: 450, zielErreicht: true });
       expect(s.ich.fettKg).toEqual({ start: 27, aktuell: 24.3 });
+      expect(s.ich.tagesserie).toMatchObject({ laenge: expect.any(Number), heuteOffen: expect.any(Boolean), rekord: expect.any(Number) });
       expect(s.rangliste).toEqual([
         { platz: 1, name: "Kevin", gesamt: 110, ich: true, laterne: false, marke: null },
         { platz: 2, name: "Peter", gesamt: 0.7, ich: false, laterne: false, marke: null },
