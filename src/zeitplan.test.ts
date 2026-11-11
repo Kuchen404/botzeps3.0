@@ -311,6 +311,19 @@ describe("Erinnerungen", () => {
     expect(peter.text).toContain("Seit 4 Tagen nicht auf der Waage");
   });
 
+  it("warnt, wenn eine Tagesserie ab 3 Tagen heute reißt", async () => {
+    const { bot, gesendet, lauf } = await aufbau();
+    for (const d of ["2026-10-13", "2026-10-14", "2026-10-15"]) {
+      tag(d);
+      await bot.handleUpdate(befehl("/sport 30 Yoga", GRUPPE, PETER));
+    }
+    const peter = () => gesendet.filter((g) => g.chatId === PETER.id).map((g) => g.text);
+    await lauf("2026-10-15T17:00:30Z"); // heute schon trainiert: nichts zu retten
+    expect(peter().join("\n")).not.toContain("Serie");
+    await lauf("2026-10-16T17:00:30Z");
+    expect(peter().at(-1)).toContain("Deine 3-Tage-Serie ⚡ reißt heute um Mitternacht");
+  });
+
   it("verfällt nach 2 Stunden und lässt sich abschalten", async () => {
     const { bot, privat, lauf } = await aufbau();
     await lauf("2026-10-08T19:30:00Z"); // 21:30 Berlin, 2,5 h zu spät

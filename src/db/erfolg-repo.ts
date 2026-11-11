@@ -1,5 +1,5 @@
 import type { Db } from "./index.js";
-import { type ErfolgArt, type ErfolgTraining, ERFOLGE } from "../scoring/erfolge.js";
+import { type ErfolgArt, type ErfolgTraining, ERFOLGE, TAGESSERIE_AB, laengsteTagesserie } from "../scoring/erfolge.js";
 import { type Faktor, gesamtLast } from "../scoring/fleiss.js";
 
 /** Alle Trainings eines Nutzers über alle Gruppen, optional ohne ein bestimmtes. */
@@ -38,6 +38,8 @@ export interface Ruhmeshalle {
   mitglieder: { nutzerId: number; name: string; last: number; erfolge: number }[];
   hoechsteWochenlast: { name: string; last: number; season: string; woche: number } | null;
   laengsteEinheit: { name: string; minuten: number; sportart: string } | null;
+  /** Meiste Trainingstage am Stück über alle Seasons (ab 3 Tagen). */
+  laengsteTagesserie: { namen: string[]; tage: number } | null;
 }
 
 export function ruhmeshalle(db: Db, gruppeId: number): Ruhmeshalle {
@@ -85,10 +87,15 @@ export function ruhmeshalle(db: Db, gruppeId: number): Ruhmeshalle {
     )
     .get(gruppeId) as { name: string; minuten: number; sportart: string } | undefined;
 
+  const serien = mitglieder.map((m) => ({ name: m.name, tage: laengsteTagesserie(alleTrainings(db, m.nutzerId).map((t) => t.datum)) }));
+  const besteSerie = Math.max(0, ...serien.map((x) => x.tage));
+
   return {
     sieger,
     mitglieder,
     hoechsteWochenlast: woche ? { ...woche, woche: woche.woche + 1 } : null,
     laengsteEinheit: einheit ?? null,
+    laengsteTagesserie:
+      besteSerie >= TAGESSERIE_AB ? { namen: serien.filter((x) => x.tage === besteSerie).map((x) => x.name).sort(), tage: besteSerie } : null,
   };
 }
