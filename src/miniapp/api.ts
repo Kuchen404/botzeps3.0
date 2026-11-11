@@ -20,7 +20,7 @@ import { type TeilnehmerStand, seasonEnde, wocheVon } from "../scoring/season.js
 import { type Boss, bosseDerSeason } from "../db/season-repo.js";
 import { bossAnzeigename, bossEmoji, bossKampf, bossSchadenVon } from "../scoring/boss.js";
 import { erfolgeDesNutzers, lebenslangeLast, ruhmeshalle } from "../db/erfolg-repo.js";
-import { ERFOLGE, ERFOLG_ARTEN } from "../scoring/erfolge.js";
+import { ERFOLG_ARTEN, istGeheim, istSchande, sichtbar } from "../scoring/erfolge.js";
 import { RAENGE, naechsterRang, rangFuer } from "../scoring/raenge.js";
 import { laternen } from "../db/laterne-repo.js";
 import { animationFuerApp } from "../minispiel/animation.js";
@@ -262,7 +262,12 @@ function ruhm(db: Db, nutzerId: number) {
       naechster: naechster ? { name: naechster.rang.name, emoji: naechster.rang.emoji, ab: naechster.rang.ab, fehlen: naechster.fehlen } : null,
     },
     raenge: RAENGE,
-    erfolge: ERFOLG_ARTEN.map((art) => ({ art, ...ERFOLGE[art], erreichtAm: am.get(art) ?? null })),
+    // Geheime Erfolge kommen erst nach dem Freischalten mit Name und Art raus, sonst nur als „???“
+    erfolge: ERFOLG_ARTEN.map((art) => {
+      const erreichtAm = am.get(art) ?? null;
+      const verdeckt = !erreichtAm && istGeheim(art);
+      return { art: verdeckt ? null : art, ...sichtbar(art, !!erreichtAm), geheim: istGeheim(art), schande: !verdeckt && istSchande(art), erreichtAm };
+    }),
     gruppen: gruppenDesNutzers(db, nutzerId).map((g) => {
       const r = ruhmeshalle(db, g.id);
       return {

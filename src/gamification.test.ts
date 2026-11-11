@@ -74,6 +74,13 @@ describe("Gamification", () => {
     expect(letzterText()).toContain("noch 460 von 1.000 Lebenspunkten"); // 120 min × 4,5
     await bot.handleUpdate(befehl("/sport 120 Joggen", GRUPPE, PETER));
     expect(letzterText()).toContain("💀");
+    // Beide prügeln mit, Peter setzt den Gnadenstoß; gleich viel Schaden, also sind beide Schlachter
+    expect(letzterText()).toContain("Freigeschaltet:");
+    expect(letzterText()).toContain("🏆 Drachentöter (beim Sieg gegen einen Boss mitgeprügelt): Peter, Kevin");
+    expect(letzterText()).toContain("🏆 Metzgermeister (den inneren Schweinehund zu Mett verarbeitet): Peter, Kevin");
+    expect(letzterText()).toContain("🏆 Gnadenstoß (dem Boss den letzten Schlag verpasst): Peter");
+    expect(letzterText()).toContain("🏆 Schlachter (beim Fall eines Bosses den meisten Schaden gemacht): Peter, Kevin");
+    expect(letzterText()).not.toContain("Steroid");
 
     await bot.handleUpdate(befehl("/stand", PRIVAT));
     expect(letzterText()).toContain("Boss-Bonus: +5 Punkte");
@@ -107,6 +114,9 @@ describe("Gamification", () => {
     await bot.handleUpdate(befehl("/erfolge", PRIVAT));
     expect(letzterText()).toContain("✅ Erster Schweißtropfen");
     expect(letzterText()).toContain("🔒 Champion");
+    // Geheime Erfolge tauchen nur als Anzahl auf
+    expect(letzterText()).toMatch(/❓ Dazu \d+ geheime Erfolge rund um Bosse und Minispiele/);
+    expect(letzterText()).not.toMatch(/Unbeißbar|Metzgermeister|Zombie|\?\?\?/);
     expect(letzterText()).toContain("Rang: 🛋 Couchkartoffel (540 Lastpunkte insgesamt, noch 960 bis 🥬 Lauch)");
     await bot.handleUpdate(befehl("/ruhmeshalle"));
     expect(letzterText()).toContain("Kevin: 540 Lastpunkte");
@@ -195,6 +205,7 @@ describe("Gamification", () => {
     expect(letzterText()).toContain("noch 880 von 1.000 Lebenspunkten"); // Yoga ×1: 120 Schaden
     await bot.handleUpdate(befehl("/sport 120 Spazierengehen"));
     expect(letzterText()).toContain("🛡 Abgeprallt! Spazierengehen kitzelt");
+    expect(letzterText()).toContain("💩 Wattebausch");
     expect(letzterText()).toContain("noch 850 von 1.000 Lebenspunkten"); // ×0,5 halbiert: 30 statt 60
   });
   it("Schwäche des Bosses: eine zufällige Sportart macht doppelten Schaden", async () => {
@@ -205,6 +216,7 @@ describe("Gamification", () => {
     tag("2026-10-20");
     await bot.handleUpdate(befehl("/sport 120 Joggen"));
     expect(letzterText()).toContain("💥 Volltreffer! Joggen ist die Schwäche");
+    expect(letzterText()).toContain("🏆 Wunder Punkt");
     expect(letzterText()).toContain("💀"); // 2 × 540 Schaden reicht für 1.000 Lebenspunkte
     await bot.handleUpdate(befehl("/stand", PRIVAT));
     expect(letzterText()).toContain("Boss-Bonus: +5 Punkte");

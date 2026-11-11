@@ -3,11 +3,14 @@ import { bombenTrainings, bombenVerlauf } from "./bombenverlauf.js";
 import type { Db } from "../db/index.js";
 import { type SeasonZeile, seasonNachId } from "../db/season-repo.js";
 import { gruppeNachId } from "../db/repo.js";
-import { legeMinispielFest, minispielZeile, setzeMinispielDaten, setzeMinispielPin, spielWoche, spielerDerSeason, wochenberichtGesendet } from "../db/minispiel-repo.js";
+import { legeMinispielFest, mitgespielteMinispiele, minispielZeile, setzeMinispielDaten, setzeMinispielPin, spielWoche, spielerDerSeason, wochenberichtGesendet } from "../db/minispiel-repo.js";
 import { berechneStand } from "../bericht/stand.js";
 import { lokalesDatum, plusTage, tageZwischen, zeitpunktIn } from "../scoring/datum.js";
 import { wocheVon } from "../scoring/season.js";
 import { log } from "../log.js";
+import { vergebeErfolgeAn } from "../db/erfolg-repo.js";
+import { freischaltZeilen } from "../scoring/erfolge.js";
+import { minispielErfolge, spielkind } from "./erfolge.js";
 import {
   BASISLAGER_ANTEIL,
   BOT_ID,
@@ -138,7 +141,17 @@ export async function loeseMinispielAuf(db: Db, senden: Senden, s: SeasonZeile, 
   const zeile = minispielZeile(db, s.id, woche);
   if (!zeile?.daten) return;
   const w = spielWoche(s, woche);
-  await senden(chatId, minispielErgebnis(zeile.daten, spielerDerSeason(db, s, plusTage(w.start, 6)), w));
+  const sonntag = plusTage(w.start, 6);
+  const spieler = spielerDerSeason(db, s, sonntag);
+  const ergebnis = minispielErgebnis(zeile.daten, spieler, w);
+  // Erfolge gehen auch bei einem Fehler beim Senden nicht verloren; gemeldet werden sie mit dem Ergebnis
+  let erfolgZeilen: string[] = [];
+  try {
+    erfolgZeilen = minispielErfolgZeilen(db, zeile.daten, spieler, w, sonntag);
+  } catch (err) {
+    log.error("Erfolge zum Minispiel nicht vergeben", err);
+  }
+  await senden(chatId, erfolgZeilen.length ? `${ergebnis}\n\n${erfolgZeilen.join("\n")}` : ergebnis);
   if (zeile.pin === null) return;
   setzeMinispielPin(db, s.id, woche, null);
   try {
@@ -146,6 +159,18 @@ export async function loeseMinispielAuf(db: Db, senden: Senden, s: SeasonZeile, 
   } catch (err) {
     log.warn(`Minispiel-Ankündigung ${zeile.pin} nicht abgepinnt`, err);
   }
+}
+
+/** Vergibt die Erfolge eines aufgelösten Minispiels (samt Spielkind) und gibt die Meldezeilen zurück. */
+function minispielErfolgZeilen(db: Db, d: MinispielDaten, spieler: readonly Spieler[], w: SpielWoche, tag: string): string[] {
+  const je = minispielErfolge(d, spieler, w);
+  for (const id of d.spieler) {
+    const kind = spielkind(mitgespielteMinispiele(db, Number(id)));
+    if (kind.length) je.set(id, [...(je.get(id) ?? []), ...kind]);
+  }
+  const namen = new Map(spieler.map((sp) => [Number(sp.id), sp.name]));
+  const neu = vergebeErfolgeAn(db, new Map([...je].map(([id, arten]) => [Number(id), arten])), tag);
+  return freischaltZeilen([...neu].map(([nutzer, arten]) => ({ name: namen.get(nutzer) ?? "?", arten })));
 }
 
 /** Das laufende Minispiel am Tag `tag`, mit Spielern und Woche, oder null. */

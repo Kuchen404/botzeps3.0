@@ -1,9 +1,9 @@
 import type { Db } from "../db/index.js";
 import { aktuelleSeason, bosseDerSeason, einstellungen, ladeTeilnehmer } from "../db/season-repo.js";
-import { alleTrainings, lebenslangeLast, vergebeErfolge } from "../db/erfolg-repo.js";
-import { RESISTENZ_FAKTOR, SCHWAECHE_FAKTOR, bossAnzeigename, bossKampf, lebensbalken } from "../scoring/boss.js";
+import { alleTrainings, lebenslangeLast, vergebeErfolge, vergebeErfolgeAn } from "../db/erfolg-repo.js";
+import { RESISTENZ_FAKTOR, SCHWAECHE_FAKTOR, bossAnzeigename, bossKampf, bossSchadenVon, lebensbalken } from "../scoring/boss.js";
 import { BOSS_BLUTET } from "../boss/texte.js";
-import { erfolgText, trainingsErfolge, wochenErfolge, type ErfolgArt } from "../scoring/erfolge.js";
+import { bossSiegErfolge, freischaltZeilen, trainingsErfolge, wochenErfolge, type ErfolgArt } from "../scoring/erfolge.js";
 import { rangIndex, rangText, RAENGE } from "../scoring/raenge.js";
 import { type Teilnehmer, type TeilnehmerStand, seasonEnde, seasonStand, wocheVon } from "../scoring/season.js";
 import { fuelle, waehleSpruch } from "../texte/sprueche.js";
@@ -55,6 +55,8 @@ export function meldungenNachTraining(db: Db, trainingId: number, tag: string, z
   if (!t) return [];
   const zeilen: string[] = [];
   const erfolge: ErfolgArt[] = trainingsErfolge(alleTrainings(db, t.nutzer));
+  /** Neue Erfolge der anderen, die beim Bosssieg mitgeprügelt haben */
+  const mitgepruegelt: { name: string; arten: ErfolgArt[] }[] = [];
 
   const s = aktuelleSeason(db, t.gruppe, tag);
   const id = String(t.nutzer);
@@ -81,15 +83,26 @@ export function meldungenNachTraining(db: Db, trainingId: number, tag: string, z
       if (kVorher.besiegt) continue;
       if (boss.schwaeche === t.sportartId) {
         zeilen.push(`💥 Volltreffer! ${t.sportartName} ist die Schwäche von ${name}: ${SCHWAECHE_FAKTOR}× Schaden.`);
+        erfolge.push("boss_volltreffer");
       } else if (boss.resistenz === t.sportartId) {
         zeilen.push(`🛡 Abgeprallt! ${t.sportartName} kitzelt ${name} nur: ${String(RESISTENZ_FAKTOR).replace(".", ",")}× Schaden.`);
+        erfolge.push("boss_abgeprallt");
       }
       if (kNachher.besiegt) {
         zeilen.push(fuelle(waehleSpruch("boss_besiegt", undefined, zufall), { name: t.name, boss: name }));
-        for (const b of kNachher.beteiligte) {
-          if (b !== id) vergebeErfolge(db, Number(b), ["bossbezwinger"], tag);
-        }
-        erfolge.push("bossbezwinger");
+        erfolge.push(...bossSiegErfolge(boss), "boss_gnadenstoss");
+        // Schlachter: wer beim Fall den meisten Schaden hatte (bei Gleichstand alle)
+        const schaden = new Map(nachher.map((st) => [st.id, bossSchadenVon(boss, st)]));
+        const meister = Math.max(...kNachher.beteiligte.map((b) => schaden.get(b) ?? 0));
+        const schlachter = new Set(kNachher.beteiligte.filter((b) => (schaden.get(b) ?? 0) === meister));
+        if (schlachter.has(id)) erfolge.push("boss_schlachter");
+        const andere = new Map(
+          kNachher.beteiligte
+            .filter((b) => b !== id)
+            .map((b): [number, ErfolgArt[]] => [Number(b), [...bossSiegErfolge(boss), ...(schlachter.has(b) ? (["boss_schlachter"] as const) : [])]]),
+        );
+        const namen = new Map(nachher.map((st) => [Number(st.id), st.name]));
+        mitgepruegelt.push(...[...vergebeErfolgeAn(db, andere, tag)].map(([nutzer, arten]) => ({ name: namen.get(nutzer) ?? "?", arten })));
       } else {
         const uebrig = kNachher.lebenspunkte - kNachher.schaden;
         zeilen.push(`🐉 ${name}: ${lebensbalken(kNachher)} noch ${z(uebrig)} von ${z(kNachher.lebenspunkte)} Lebenspunkten`);
@@ -115,7 +128,7 @@ export function meldungenNachTraining(db: Db, trainingId: number, tag: string, z
   }
 
   const neu = vergebeErfolge(db, t.nutzer, erfolge, tag);
-  if (neu.length) zeilen.push(`${t.name} schaltet frei:`, ...neu.map(erfolgText));
+  zeilen.push(...freischaltZeilen([{ name: t.name, arten: neu }, ...mitgepruegelt]));
   return zeilen;
 }
 

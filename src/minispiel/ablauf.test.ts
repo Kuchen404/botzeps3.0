@@ -79,7 +79,12 @@ describe("Minispiel im Zeitplan", () => {
     await lauf("2026-11-08T19:00:30Z");
     expect(gruppe().at(-2)).toContain("Finale „Herbst“");
     expect(gruppe().at(-1)).toBe(
-      "💥 BUMM! Die Bombe ist bei Peter hochgegangen, letztes Training am 14.10. Wir kratzen die Reste mit dem Spachtel von der Wand.",
+      [
+        "💥 BUMM! Die Bombe ist bei Peter hochgegangen, letztes Training am 14.10. Wir kratzen die Reste mit dem Spachtel von der Wand.",
+        "",
+        "Peter schaltet frei:",
+        "💩 Konfetti (von der Tickenden Bombe zerfetzt worden)",
+      ].join("\n"),
     );
     expect(geloest.at(-1)).toBe(gepinnt.at(-1));
   });

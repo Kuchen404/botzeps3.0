@@ -2,7 +2,7 @@ import type { Db } from "./db/index.js";
 import { type SeasonZeile, bossPin, bosseDerSeason, kuendigeBossAn, ladeTeilnehmer, seasonNachId, setzeBossPin } from "./db/season-repo.js";
 import { alleTrainings, vergebeErfolge } from "./db/erfolg-repo.js";
 import { BOSS_ANKUENDIGUNG, BOSS_NAMEN, BOSS_STUFEN, type BossStufe, STUFEN, bossAnzeigename, bossKampf, bossLebenspunkte, bossWoche, lebensbalken, RESISTENZ_FAKTOR, SCHWAECHE_FAKTOR, SCHWAECHE_MIN_FAKTOR } from "./scoring/boss.js";
-import { type ErfolgArt, finaleErfolge, trainingsErfolge, wochenErfolge } from "./scoring/erfolge.js";
+import { type ErfolgArt, bossSiegErfolge, finaleErfolge, laternenErfolge, trainingsErfolge, wochenErfolge } from "./scoring/erfolge.js";
 import { fuelle } from "./texte/sprueche.js";
 import { BOSS_NERVOES, bossBeben, bossTeaser, bossTexte } from "./boss/texte.js";
 import { steckbriefSvg } from "./boss/plakat.js";
@@ -280,10 +280,13 @@ async function berichte(db: Db, senden: Sender, t: TerminZeile, zeitzone: string
   const kaempfe = bosseDerSeason(db, s)
     .filter((b) => b.woche <= woche)
     .map((b) => ({ name: bossAnzeigename(b.name, b.stufe), kampf: bossKampf(b, staende) }));
-  const bossSieger = new Set(kaempfe.filter((k) => k.kampf.besiegt).flatMap((k) => k.kampf.beteiligte));
-  // Erfolge werden hier nur noch nachgetragen (z. B. nach geänderten Trainings);
-  // gemeldet werden sie beim Trainingspost, im Bericht nur noch im Finale
-  const erfolge = neueErfolge(db, s, staende, bossSieger, stichtag, art === "finale");
+  // Zusätzliche Erfolge je Teilnehmer: alle besiegten Bosse bis hierher, dazu unten die Rote Laterne
+  const zusatzErfolge = new Map<string, ErfolgArt[]>();
+  for (const b of bosseDerSeason(db, s).filter((b) => b.woche <= woche)) {
+    const kampf = bossKampf(b, staende);
+    if (!kampf.besiegt) continue;
+    for (const id of kampf.beteiligte) zusatzErfolge.set(id, [...(zusatzErfolge.get(id) ?? []), ...bossSiegErfolge(b)]);
+  }
 
   // Rote Laterne dieser Woche; der Zähler kommt aus den früheren Berichten
   const bisher = laternen(db, s, woche);
@@ -296,6 +299,10 @@ async function berichte(db: Db, senden: Sender, t: TerminZeile, zeitzone: string
     const st = staende.find((x) => x.id === id)!;
     return { id, name: st.name, last: wochenLast(st), anzahl: (bisher.anzahl.get(id) ?? 0) + 1 };
   });
+  for (const l of laterne) zusatzErfolge.set(l.id, [...(zusatzErfolge.get(l.id) ?? []), ...laternenErfolge(l.anzahl)]);
+  // Erfolge werden hier nur noch nachgetragen (z. B. nach geänderten Trainings);
+  // gemeldet werden sie beim Trainingspost, im Bericht nur noch im Finale
+  const erfolge = neueErfolge(db, s, staende, zusatzErfolge, stichtag, art === "finale");
 
   let text: string;
   const vorlagen = new Map<string, string>();
@@ -515,7 +522,8 @@ function neueErfolge(
   db: Db,
   s: SeasonZeile,
   staende: readonly { id: string; name: string; wochen: Parameters<typeof wochenErfolge>[0]; platz: number }[],
-  bossSieger: ReadonlySet<string>,
+  /** Zusätzliche Erfolge je Teilnehmer aus Bosskämpfen und Roter Laterne */
+  zusaetzlich: ReadonlyMap<string, readonly ErfolgArt[]>,
   tag: string,
   istFinale: boolean,
 ): { name: string; arten: ErfolgArt[] }[] {
@@ -524,7 +532,7 @@ function neueErfolge(
       const arten: ErfolgArt[] = [
         ...trainingsErfolge(alleTrainings(db, Number(st.id))),
         ...wochenErfolge(st.wochen, s.wochenziel_last),
-        ...(bossSieger.has(st.id) ? (["bossbezwinger"] as const) : []),
+        ...(zusaetzlich.get(st.id) ?? []),
         ...(istFinale ? finaleErfolge(st.platz) : []),
       ];
       return { name: st.name, arten: vergebeErfolge(db, Number(st.id), arten, tag) };

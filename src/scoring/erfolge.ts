@@ -1,30 +1,131 @@
 import { type IsoDatum, plusTage } from "./datum.js";
 import { FLEISS, type Faktor, type Wochenwertung } from "./fleiss.js";
 
-/** Einmalige Erfolge über alle Seasons, alle automatisch aus Trainings und Wertung geprüft. */
+interface ErfolgDef {
+  titel: string;
+  beschreibung: string;
+  /** Verrät Bosse oder Minispiele: bis zum Freischalten unkenntlich. */
+  geheim?: boolean;
+  /** Schand-Erfolg: gibt's für Versagen, mit 💩 statt Pokal. */
+  schande?: boolean;
+}
+
+/**
+ * Einmalige Erfolge über alle Seasons, alle automatisch aus Trainings, Wertung, Bossen und Minispielen geprüft.
+ * Die Reihenfolge ist die Anzeige-Reihenfolge in /erfolge und der Mini App.
+ */
 export const ERFOLGE = {
   erste_einheit: { titel: "Erster Schweißtropfen", beschreibung: "die erste Einheit eingetragen" },
   minuten_1000: { titel: "Tausendsassa", beschreibung: "1.000 Minuten Sport" },
   minuten_6000: { titel: "Hundert-Stunden-Hengst", beschreibung: "100 Stunden Sport" },
+  minuten_30000: { titel: "Lebenslänglich", beschreibung: "500 Stunden Sport, das Sofa hat dich vergessen" },
   einheit_120: { titel: "Ausdauerbestie", beschreibung: "eine Einheit von mindestens 2 Stunden" },
+  einheit_240: { titel: "Wahnsinn mit Methode", beschreibung: "eine Einheit von mindestens 4 Stunden" },
   sportarten_5: { titel: "Gemischtwarenladen", beschreibung: "5 verschiedene Sportarten" },
+  sportarten_10: { titel: "Wühltisch", beschreibung: "10 verschiedene Sportarten, entscheide dich mal" },
   tage_7: { titel: "Durchgezogen", beschreibung: "7 Tage am Stück trainiert" },
   tage_14: { titel: "Besessen", beschreibung: "14 Tage am Stück trainiert" },
   wochenziel: { titel: "Pflicht erfüllt", beschreibung: "zum ersten Mal das Wochenziel geschafft" },
   deckel: { titel: "Übererfüllt", beschreibung: "150 % des Wochenziels in einer Woche" },
   serie_5: { titel: "Eiserne Disziplin", beschreibung: "5 Wochen in Folge das Wochenziel" },
   serie_10: { titel: "Unkaputtbar", beschreibung: "10 Wochen in Folge das Wochenziel" },
-  bossbezwinger: { titel: "Drachentöter", beschreibung: "beim Sieg gegen einen Boss mitgeprügelt" },
+  laterne: { titel: "Schlusslicht", beschreibung: "zum ersten Mal die Rote Laterne kassiert", schande: true },
+  laterne_3: { titel: "Dauerleuchte", beschreibung: "dreimal die Rote Laterne in einer Season", schande: true },
   podest: { titel: "Treppchen", beschreibung: "eine Season auf Platz 1 bis 3 beendet" },
   champion: { titel: "Champion", beschreibung: "eine Season gewonnen" },
-} as const satisfies Record<string, { titel: string; beschreibung: string }>;
+
+  // Bosse
+  bossbezwinger: { titel: "Drachentöter", beschreibung: "beim Sieg gegen einen Boss mitgeprügelt" },
+  boss_gnadenstoss: { titel: "Gnadenstoß", beschreibung: "dem Boss den letzten Schlag verpasst" },
+  boss_schlachter: { titel: "Schlachter", beschreibung: "beim Fall eines Bosses den meisten Schaden gemacht" },
+  boss_volltreffer: { titel: "Wunder Punkt", beschreibung: "mit seiner Schwäche voll in die Fresse des Bosses", geheim: true },
+  boss_abgeprallt: { titel: "Wattebausch", beschreibung: "mit der Resistenz-Sportart am Boss abgeprallt", geheim: true, schande: true },
+  boss_aufgepumpt: { titel: "Steroid-Schlächter", beschreibung: "den aufgepumpten Boss trotz Spritzenkur umgehauen", geheim: true },
+  boss_schweinehund: { titel: "Metzgermeister", beschreibung: "den inneren Schweinehund zu Mett verarbeitet", geheim: true },
+  boss_doener: { titel: "Dönerbezwinger", beschreibung: "den Dönerteller XXL weggeprügelt, ohne zu kotzen", geheim: true },
+  boss_sofa: { titel: "Sperrmüll", beschreibung: "das Sofa der Verdammnis zu Kleinholz verarbeitet", geheim: true },
+  boss_bierbauch: { titel: "Königsmörder", beschreibung: "König Bierbauch vom Thron gekegelt", geheim: true },
+  boss_chips: { titel: "Krümelmonster", beschreibung: "die Chipstüte des Grauens zerknüllt", geheim: true },
+  boss_lieferdienst: { titel: "Annahme verweigert", beschreibung: "den Lieferdienst-Lord vom Roller getreten", geheim: true },
+  boss_gemuetlich: { titel: "Faultierschreck", beschreibung: "Graf Gemütlich aus der Hängematte getreten", geheim: true },
+  bossjaeger: { titel: "Bossjäger", beschreibung: "3 verschiedene Bosse erlegt" },
+
+  // Minispiele
+  zombie_ueberlebt: { titel: "Unbeißbar", beschreibung: "die Zombie-Woche als Mensch überlebt", geheim: true },
+  zombie_gebissen: { titel: "Hirn ab", beschreibung: "in der Zombie-Woche gebissen worden", geheim: true, schande: true },
+  bombe_bumm: { titel: "Konfetti", beschreibung: "von der Tickenden Bombe zerfetzt worden", geheim: true, schande: true },
+  kopfgeld_jaeger: { titel: "Kopfgeldjäger", beschreibung: "den Gejagten der Woche zur Strecke gebracht", geheim: true },
+  kopfgeld_unfassbar: { titel: "Unfassbar", beschreibung: "als Gejagter von keinem eingeholt", geheim: true },
+  gipfel_erster: { titel: "Erstbesteiger", beschreibung: "als Erster die Fahne in den Gipfel gerammt", geheim: true },
+  gipfel_basislager: { titel: "Teetrinker", beschreibung: "beim Gipfelsturm im Basislager versackt", geheim: true, schande: true },
+  tauziehen_sieg: { titel: "Zugpferd", beschreibung: "das Tauziehen gewonnen", geheim: true },
+  tauziehen_schlamm: { titel: "Schlammsau", beschreibung: "beim Tauziehen im Schlamm gelandet", geheim: true, schande: true },
+  tresor_geknackt: { titel: "Panzerknacker", beschreibung: "den Tresor mitgeknackt", geheim: true },
+  tresor_huhn: { titel: "Hühnchen", beschreibung: "beim Tresor keinen Finger gerührt", geheim: true, schande: true },
+  duell_sieg: { titel: "Revolverheld", beschreibung: "ein Losduell gewonnen", geheim: true },
+  duell_bot: { titel: "Vom Toaster verprügelt", beschreibung: "im Losduell gegen den Bot verloren", geheim: true, schande: true },
+  spielkind: { titel: "Spielkind", beschreibung: "bei allen 7 Minispielen mitgemacht" },
+} as const satisfies Record<string, ErfolgDef>;
 
 export type ErfolgArt = keyof typeof ERFOLGE;
 
 export const ERFOLG_ARTEN = Object.keys(ERFOLGE) as ErfolgArt[];
 
+const def = (art: ErfolgArt): ErfolgDef => ERFOLGE[art];
+
+/** Platzhalter für geheime Erfolge, die noch keiner freigeschaltet hat. */
+export const GEHEIM = { titel: "???", beschreibung: "Geheimer Erfolg, mehr wird nicht verraten" } as const;
+
+export function istGeheim(art: ErfolgArt): boolean {
+  return def(art).geheim === true;
+}
+
+export function istSchande(art: ErfolgArt): boolean {
+  return def(art).schande === true;
+}
+
+/** Titel und Beschreibung, wie sie jemand sehen darf: geheime erst nach dem Freischalten. */
+export function sichtbar(art: ErfolgArt, erreicht: boolean): { titel: string; beschreibung: string } {
+  if (!erreicht && istGeheim(art)) return GEHEIM;
+  return { titel: ERFOLGE[art].titel, beschreibung: ERFOLGE[art].beschreibung };
+}
+
+/** Erfolg je Boss; unbekannte Namen (z. B. Bosse aus Tests) haben keinen eigenen. */
+export const BOSS_ERFOLGE: Readonly<Record<string, ErfolgArt>> = {
+  "Der innere Schweinehund": "boss_schweinehund",
+  "Der Dönerteller XXL": "boss_doener",
+  "Das Sofa der Verdammnis": "boss_sofa",
+  "König Bierbauch": "boss_bierbauch",
+  "Die Chipstüte des Grauens": "boss_chips",
+  "Der Lieferdienst-Lord": "boss_lieferdienst",
+  "Graf Gemütlich": "boss_gemuetlich",
+};
+
+/** So viele verschiedene Bosse braucht der Bossjäger. */
+export const BOSSJAEGER_BOSSE = 3;
+
+/** Erfolge für alle, die beim Sieg über einen Boss Schaden gemacht haben. */
+export function bossSiegErfolge(boss: { name: string; stufe: number }): ErfolgArt[] {
+  const eigener = BOSS_ERFOLGE[boss.name];
+  return ["bossbezwinger", ...(eigener ? [eigener] : []), ...(boss.stufe === 2 ? (["boss_aufgepumpt"] as const) : [])];
+}
+
+/** Erfolge, die sich aus anderen Erfolgen ergeben (z. B. der Bossjäger aus den einzelnen Bossen). */
+export function folgeErfolge(erreicht: Iterable<ErfolgArt>): ErfolgArt[] {
+  const bosse = new Set(Object.values(BOSS_ERFOLGE));
+  let anzahl = 0;
+  for (const art of new Set(erreicht)) if (bosse.has(art)) anzahl++;
+  return anzahl >= BOSSJAEGER_BOSSE ? ["bossjaeger"] : [];
+}
+
+/** Erfolge aus der Roten Laterne einer Woche; `anzahl` zählt die Laternen dieser Season samt dieser. */
+export function laternenErfolge(anzahl: number): ErfolgArt[] {
+  if (anzahl <= 0) return [];
+  return anzahl >= 3 ? ["laterne", "laterne_3"] : ["laterne"];
+}
+
 export function erfolgText(art: ErfolgArt): string {
-  return `🏆 ${ERFOLGE[art].titel} (${ERFOLGE[art].beschreibung})`;
+  return `${istSchande(art) ? "💩" : "🏆"} ${ERFOLGE[art].titel} (${ERFOLGE[art].beschreibung})`;
 }
 
 export interface ErfolgTraining {
@@ -54,8 +155,13 @@ export function trainingsErfolge(trainings: readonly ErfolgTraining[]): ErfolgAr
   const minuten = trainings.reduce((s, t) => s + t.minuten, 0);
   if (minuten >= 1_000) erfolge.push("minuten_1000");
   if (minuten >= 6_000) erfolge.push("minuten_6000");
-  if (trainings.some((t) => t.minuten >= 120)) erfolge.push("einheit_120");
-  if (new Set(trainings.map((t) => t.sportart.toLowerCase())).size >= 5) erfolge.push("sportarten_5");
+  if (minuten >= 30_000) erfolge.push("minuten_30000");
+  const laengste = Math.max(...trainings.map((t) => t.minuten));
+  if (laengste >= 120) erfolge.push("einheit_120");
+  if (laengste >= 240) erfolge.push("einheit_240");
+  const sportarten = new Set(trainings.map((t) => t.sportart.toLowerCase())).size;
+  if (sportarten >= 5) erfolge.push("sportarten_5");
+  if (sportarten >= 10) erfolge.push("sportarten_10");
   const serie = laengsteTagesserie(trainings.map((t) => t.datum));
   if (serie >= 7) erfolge.push("tage_7");
   if (serie >= 14) erfolge.push("tage_14");
@@ -77,4 +183,17 @@ export function wochenErfolge(wochen: readonly Wochenwertung[], wochenziel: numb
 export function finaleErfolge(platz: number): ErfolgArt[] {
   if (platz === 1) return ["champion", "podest"];
   return platz <= 3 ? ["podest"] : [];
+}
+
+/**
+ * Meldezeilen für neu freigeschaltete Erfolge. Bei einer Person wie gehabt „X schaltet frei:“,
+ * bei mehreren eine Zeile je Erfolg mit allen Namen, damit ein Bosssieg die Gruppe nicht zuspammt.
+ */
+export function freischaltZeilen(neu: readonly { name: string; arten: readonly ErfolgArt[] }[]): string[] {
+  const mit = neu.filter((e) => e.arten.length > 0);
+  if (mit.length === 0) return [];
+  if (mit.length === 1) return [`${mit[0]!.name} schaltet frei:`, ...mit[0]!.arten.map(erfolgText)];
+  const proArt = new Map<ErfolgArt, string[]>();
+  for (const e of mit) for (const art of e.arten) proArt.set(art, [...(proArt.get(art) ?? []), e.name]);
+  return ["Freigeschaltet:", ...[...proArt].map(([art, namen]) => `${erfolgText(art)}: ${namen.join(", ")}`)];
 }

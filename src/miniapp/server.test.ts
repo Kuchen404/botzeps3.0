@@ -1,4 +1,5 @@
 import type { AddressInfo } from "node:net";
+import { ERFOLG_ARTEN } from "../scoring/erfolge.js";
 import { afterEach, describe, expect, it } from "vitest";
 import { SEITEN_VERSION, erstelleServer } from "../server.js";
 import { uhr } from "../bot/kontext.js";
@@ -467,7 +468,12 @@ describe("Mini App", () => {
       expect(r.json.rang.last).toBeGreaterThan(0);
       expect(r.json.rang.naechster.fehlen).toBe(1500 - r.json.rang.last);
       expect(r.json.raenge).toHaveLength(7);
-      expect(r.json.erfolge).toHaveLength(14);
+      expect(r.json.erfolge).toHaveLength(ERFOLG_ARTEN.length);
+      // Geheime Erfolge verraten vor dem Freischalten weder Art noch Titel noch Beschreibung
+      const geheim = (r.json.erfolge as { art: string | null; titel: string; geheim: boolean }[]).filter((e) => e.geheim);
+      expect(geheim.length).toBeGreaterThan(10);
+      expect(geheim.every((e) => e.art === null && e.titel === "???")).toBe(true);
+      expect(JSON.stringify(r.json.erfolge)).not.toMatch(/Zombie|Schweinehund|Tresor|Gipfel|Duell|aufgepumpt|zombie_|boss_schweinehund|boss_volltreffer/);
       expect(r.json.erfolge.find((e: { art: string }) => e.art === "erste_einheit")).toMatchObject({
         titel: "Erster Schweißtropfen",
         erreichtAm: "2026-10-14",

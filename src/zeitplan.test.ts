@@ -144,6 +144,13 @@ describe("Zeitplan", () => {
     const finale = berichte().at(-1)!;
     expect(finale).toContain("Letzte Rote Laterne: Peter (3× diese Season)");
     expect(finale).toContain("Laternenkönig der Season: Peter mit 3 Roten Laternen");
+    // Schand-Erfolge: still beim ersten Mal, im Finale mit gemeldet
+    expect(finale).toContain("Peter: 💩 Dauerleuchte (dreimal die Rote Laterne in einer Season)");
+    const peter = t.db.prepare("SELECT art, erreicht_am FROM erfolg WHERE nutzer = (SELECT id FROM nutzer WHERE name = 'Peter') AND art LIKE 'laterne%' ORDER BY art").all();
+    expect(peter).toEqual([
+      { art: "laterne", erreicht_am: "2026-10-18" },
+      { art: "laterne_3", erreicht_am: "2026-11-01" },
+    ]);
   });
 
   it("Faktor-Minimalisten: Spruch beim 3. Kuschel-Eintrag der Woche und im Wochenbericht", async () => {
