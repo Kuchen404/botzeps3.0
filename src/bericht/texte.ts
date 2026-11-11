@@ -1,7 +1,7 @@
 import { type TeamStand, type TeilnehmerStand, TEAM_BONUS_PRO_WOCHE } from "../scoring/season.js";
 import { type Kategorie, fuelle, platzKategorie, waehleSpruch } from "../texte/sprueche.js";
 import type { BossKampf } from "../scoring/boss.js";
-import { type ErfolgArt, erfolgText } from "../scoring/erfolge.js";
+import { type ErfolgArt, TAGESSERIE_AB, erfolgText } from "../scoring/erfolge.js";
 
 export interface BerichtZusatz {
   /** Bosse, deren Woche dieser Bericht abschließt */
@@ -197,6 +197,8 @@ export interface Extras {
   minuten: number;
   messungen: number;
   sportarten: number;
+  /** Längste Folge von Trainingstagen in dieser Season. */
+  tagesserie?: number;
 }
 
 export interface Sonderpreis {
@@ -220,6 +222,10 @@ export function sonderpreise(staende: readonly TeilnehmerStand[], extras: Readon
   vergib("bizeps", "Der 30er-Bizeps", (st) => st.fortschritt?.muskelAufbauPct ?? null, (w) => `+${z(w)} % Muskel`);
   vergib("maschine", "Die Maschine", (st) => st.wochen.reduce((s, w) => s + w.last, 0), (w) => `${z(w)} Lastpunkte`);
   vergib("dauerbrenner", "Der Dauerbrenner", (st) => Math.max(0, ...st.wochen.map((w) => w.serie)), (w) => (w === 1 ? "1 Woche" : `${w} Wochen in Folge`));
+  vergib("uhrwerk", "Das Uhrwerk", (st) => {
+    const t = ex(st)?.tagesserie ?? 0;
+    return t >= TAGESSERIE_AB ? t : null;
+  }, (w) => `${w} Tage am Stück trainiert`);
   vergib("statistiker", "Der Statistiker", (st) => ex(st)?.messungen ?? null, (w) => `${w} Messungen`);
   vergib("allrounder", "Der Allrounder", (st) => ex(st)?.sportarten ?? null, (w) => `${w} Sportarten`);
   return preise;

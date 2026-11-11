@@ -232,6 +232,16 @@ function zahl(x, stellen) { return x == null ? "–" : x.toLocaleString("de-DE",
 function datum(d) { var t = d.split("-"); return t[2] + "." + t[1] + "."; }
 function karte(titel, kinder) { return el("div", { class: "karte" }, [titel ? el("h2", { text: titel }) : null].concat(kinder)); }
 function zeile(links, rechts, klasse) { return el("div", { class: "zeile" + (klasse ? " " + klasse : "") }, [el("span", { text: links }), el("span", { text: rechts })]); }
+// Trainingstage in Folge: ab 2 Tagen mit Rekord, sonst nur der Rekord, wenn es einen gibt
+function tagesserieHinweis(t) {
+  if (!t) return null;
+  if (t.laenge >= 2) {
+    var text = "Tagesserie: " + t.laenge + " Tage ⚡" + (t.laenge >= t.rekord ? " (dein Rekord)" : " (Rekord " + t.rekord + ")");
+    if (t.heuteOffen) text += ". Heute noch trainieren, sonst reißt sie um Mitternacht.";
+    return el("div", { class: "hint", text: text });
+  }
+  return t.rekord >= 3 ? el("div", { class: "hint", text: "Längste Tagesserie: " + t.rekord + " Tage ⚡" }) : null;
+}
 
 /** Liniendiagramm mit Antippen: zeigt die Werte am nächsten Punkt. */
 /** `achse` (optional): Beschriftung je x-Punkt, null = Zwischenpunkt ohne Beschriftung und Punkt. */
@@ -430,6 +440,7 @@ function standTab(s) {
       el("div", { text: ich.wochenLast + " von " + ich.wochenziel + " Lastpunkten" + (ich.zielErreicht ? " ✅" : "") }),
       el("div", { class: "balken" }, [el("div", { style: "width:" + anteil + "%" })]),
       ich.serie >= 2 ? el("div", { class: "hint", text: "Serie: " + ich.serie + " Wochen 🔥" }) : null,
+      tagesserieHinweis(ich.tagesserie),
       ich.laterne ? el("p", { text: "🏮 Du trägst die Rote Laterne" + (ich.laterne > 1 ? " (schon " + ich.laterne + "× diese Season)" : "") + ". Weg ist sie erst, wenn diese Woche jemand fauler ist als du." }) : null
     ]));
   }
@@ -514,6 +525,7 @@ function halleTab() {
   var rek = [];
   if (g.hoechsteWochenlast) { var w = g.hoechsteWochenlast; rek.push(zeile("Höchste Wochenlast", w.name + ", " + zahl(w.last, 0) + " (" + w.season + ", Woche " + w.woche + ")")); }
   if (g.laengsteEinheit) { var e = g.laengsteEinheit; rek.push(zeile("Längste Einheit", e.name + ", " + e.minuten + " min " + e.sportart)); }
+  if (g.laengsteTagesserie) { var ts = g.laengsteTagesserie; rek.push(zeile("Längste Tagesserie", ts.namen.join(", ") + ", " + ts.tage + " Tage ⚡")); }
   if (rek.length) kinder.push(karte("Rekorde", rek));
 
   if (g.mitglieder.length) {

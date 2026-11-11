@@ -2,7 +2,7 @@ import type { Db } from "./db/index.js";
 import { type SeasonZeile, bossPin, bosseDerSeason, kuendigeBossAn, ladeTeilnehmer, seasonNachId, setzeBossPin } from "./db/season-repo.js";
 import { alleTrainings, vergebeErfolge } from "./db/erfolg-repo.js";
 import { BOSS_ANKUENDIGUNG, BOSS_NAMEN, BOSS_STUFEN, type BossStufe, STUFEN, bossAnzeigename, bossKampf, bossLebenspunkte, bossWoche, lebensbalken, RESISTENZ_FAKTOR, SCHWAECHE_FAKTOR, SCHWAECHE_MIN_FAKTOR } from "./scoring/boss.js";
-import { type ErfolgArt, finaleErfolge, trainingsErfolge, wochenErfolge } from "./scoring/erfolge.js";
+import { type ErfolgArt, TAGESSERIE_AB, aktuelleTagesserie, finaleErfolge, laengsteTagesserie, trainingsErfolge, wochenErfolge } from "./scoring/erfolge.js";
 import { fuelle } from "./texte/sprueche.js";
 import { BOSS_NERVOES, bossBeben, bossTeaser, bossTexte } from "./boss/texte.js";
 import { steckbriefSvg } from "./boss/plakat.js";
@@ -547,6 +547,9 @@ function extras(db: Db, s: SeasonZeile): Map<string, Extras> {
   const messungen = db.prepare(
     "SELECT COUNT(DISTINCT datum) AS n FROM messung WHERE nutzer = ? AND geloescht_am IS NULL AND datum BETWEEN ? AND ?",
   );
+  const tage = db.prepare(
+    "SELECT DISTINCT datum FROM training WHERE nutzer = ? AND geloescht_am IS NULL AND datum BETWEEN ? AND ?",
+  );
   return new Map(
     zeilen.map((z) => {
       const fenster = kalibrierFenster(s, z.beitritt);
@@ -556,6 +559,7 @@ function extras(db: Db, s: SeasonZeile): Map<string, Extras> {
           minuten: z.minuten,
           sportarten: z.sportarten,
           messungen: (messungen.get(z.nutzer, fenster.von, ende) as { n: number }).n,
+          tagesserie: laengsteTagesserie((tage.all(z.nutzer, z.beitritt > s.start ? z.beitritt : s.start, ende) as { datum: string }[]).map((t) => t.datum)),
         },
       ];
     }),
@@ -652,6 +656,11 @@ export function erinnerungsText(
         ? `Seit ${seitTraining} Tagen kein Training. Die Couch hat schon deine Körperform angenommen. /sport`
         : "Noch kein einziges Training in dieser Season. Wird Zeit. /sport",
     );
+  }
+  // Laufende Tagesserie retten: gestern trainiert, heute noch nicht
+  const serie = aktuelleTagesserie(alleTrainings(db, nutzerId).map((t) => t.datum), heute);
+  if (serie.heuteOffen && serie.laenge >= TAGESSERIE_AB) {
+    meckern.push(`Deine ${serie.laenge}-Tage-Serie ⚡ reißt heute um Mitternacht. Willst du das wirklich verkacken? /sport`);
   }
   const messung = letztes("messung");
   const seitMessung = messung ? tageZwischen(messung, heute) : Infinity;
