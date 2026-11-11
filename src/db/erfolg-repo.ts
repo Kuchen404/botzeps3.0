@@ -1,5 +1,5 @@
 import type { Db } from "./index.js";
-import { type ErfolgArt, type ErfolgTraining, ERFOLGE, TAGESSERIE_AB, laengsteTagesserie } from "../scoring/erfolge.js";
+import { type ErfolgArt, type ErfolgTraining, ERFOLGE, TAGESSERIE_AB, folgeErfolge, laengsteTagesserie } from "../scoring/erfolge.js";
 import { type Faktor, gesamtLast } from "../scoring/fleiss.js";
 
 /** Alle Trainings eines Nutzers über alle Gruppen, optional ohne ein bestimmtes. */
@@ -18,10 +18,29 @@ export function lebenslangeLast(db: Db, nutzerId: number, ohneTraining?: number)
   return gesamtLast(alleTrainings(db, nutzerId, ohneTraining));
 }
 
-/** Vergibt Erfolge und gibt die zurück, die der Nutzer bisher noch nicht hatte. */
+/**
+ * Vergibt Erfolge samt der daraus folgenden (z. B. Bossjäger) und gibt die zurück,
+ * die der Nutzer bisher noch nicht hatte.
+ */
 export function vergebeErfolge(db: Db, nutzerId: number, arten: readonly ErfolgArt[], datum: string): ErfolgArt[] {
   const neu = db.prepare("INSERT OR IGNORE INTO erfolg (nutzer, art, erreicht_am) VALUES (?, ?, ?)");
-  return db.transaction(() => arten.filter((art) => neu.run(nutzerId, art, datum).changes > 0))();
+  const bisher = db.prepare("SELECT art FROM erfolg WHERE nutzer = ?");
+  return db.transaction(() => {
+    const frisch = arten.filter((art) => neu.run(nutzerId, art, datum).changes > 0);
+    if (!frisch.length) return frisch;
+    const alle = (bisher.all(nutzerId) as { art: string }[]).map((z) => z.art as ErfolgArt);
+    return [...frisch, ...folgeErfolge(alle).filter((art) => neu.run(nutzerId, art, datum).changes > 0)];
+  })();
+}
+
+/** Vergibt Erfolge an mehrere und gibt die neuen je Nutzer zurück (nur die mit etwas Neuem). */
+export function vergebeErfolgeAn(db: Db, je: ReadonlyMap<number, readonly ErfolgArt[]>, datum: string): Map<number, ErfolgArt[]> {
+  const ergebnis = new Map<number, ErfolgArt[]>();
+  for (const [nutzer, arten] of je) {
+    const neu = vergebeErfolge(db, nutzer, arten, datum);
+    if (neu.length) ergebnis.set(nutzer, neu);
+  }
+  return ergebnis;
 }
 
 export function erfolgeDesNutzers(db: Db, nutzerId: number): { art: ErfolgArt; erreicht_am: string }[] {

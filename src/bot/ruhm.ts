@@ -2,7 +2,7 @@ import { Composer, type Context } from "grammy";
 import type { Db } from "../db/index.js";
 import { gruppeNachId, gruppenDesNutzers, speichereNutzer } from "../db/repo.js";
 import { type Ruhmeshalle, erfolgeDesNutzers, lebenslangeLast, ruhmeshalle } from "../db/erfolg-repo.js";
-import { ERFOLGE, ERFOLG_ARTEN } from "../scoring/erfolge.js";
+import { ERFOLGE, ERFOLG_ARTEN, istGeheim, istSchande } from "../scoring/erfolge.js";
 import { naechsterRang, rangFuer, rangText } from "../scoring/raenge.js";
 import { anzeigename, datumDe, gruppenId, zahlDe } from "./kontext.js";
 
@@ -17,12 +17,19 @@ export function rangZeile(last: number): string {
 
 export function erfolgeText(name: string, last: number, erreicht: readonly { art: string; erreicht_am: string }[]): string {
   const am = new Map(erreicht.map((e) => [e.art, e.erreicht_am]));
-  const zeilen = ERFOLG_ARTEN.map((art) => {
+  const zeilen: string[] = [];
+  let geheim = 0;
+  for (const art of ERFOLG_ARTEN) {
     const datum = am.get(art);
     const { titel, beschreibung } = ERFOLGE[art];
-    return datum ? `✅ ${titel}: ${beschreibung} (${datumDe(datum)})` : `🔒 ${titel}: ${beschreibung}`;
-  });
-  return [`🏆 Erfolge von ${name}: ${am.size} von ${ERFOLG_ARTEN.length}`, rangZeile(last), "", ...zeilen].join("\n");
+    if (datum) zeilen.push(`${istSchande(art) ? "💩" : "✅"} ${titel}: ${beschreibung} (${datumDe(datum)})`);
+    else if (istGeheim(art)) geheim++;
+    else zeilen.push(`🔒 ${titel}: ${beschreibung}`);
+  }
+  // Geheime verraten nichts, nicht mal einzeln als „???“
+  if (geheim) zeilen.push(`❓ Dazu ${geheim} geheime${geheim === 1 ? "r" : ""} Erfolg${geheim === 1 ? "" : "e"} rund um Bosse und Minispiele. Mehr wird nicht verraten.`);
+  const anzahl = ERFOLG_ARTEN.filter((art) => am.has(art)).length;
+  return [`🏆 Erfolge von ${name}: ${anzahl} von ${ERFOLG_ARTEN.length}`, rangZeile(last), "", ...zeilen].join("\n");
 }
 
 export function ruhmeshalleText(gruppe: string, r: Ruhmeshalle): string {

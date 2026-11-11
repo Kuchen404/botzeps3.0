@@ -62,3 +62,14 @@ export function spielerDerSeason(db: Db, s: Pick<SeasonZeile, "id" | "start">, b
     trainings: trainings.all(t.id, t.beitritt > s.start ? t.beitritt : s.start, bis) as Spieler["trainings"][number][],
   }));
 }
+
+/** Arten aller angekündigten Minispiele (über alle Seasons), bei denen der Nutzer mitgespielt hat. */
+export function mitgespielteMinispiele(db: Db, nutzerId: number): MinispielArt[] {
+  const zeilen = db
+    .prepare(
+      `SELECT DISTINCT m.art FROM minispiel m, json_each(m.daten, '$.spieler') j
+       WHERE m.daten IS NOT NULL AND j.value = ?`,
+    )
+    .all(String(nutzerId)) as { art: MinispielArt }[];
+  return zeilen.map((z) => z.art);
+}

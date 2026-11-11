@@ -1,6 +1,22 @@
 import { describe, expect, it } from "vitest";
 import { bossAnzeigename, bossKampf, bossLebenspunkte, bossWoche, lebensbalken } from "./boss.js";
-import { aktuelleTagesserie, laengsteTagesserie, trainingsErfolge, wochenErfolge, finaleErfolge } from "./erfolge.js";
+import {
+  BOSS_ERFOLGE,
+  ERFOLGE,
+  ERFOLG_ARTEN,
+  aktuelleTagesserie,
+  bossSiegErfolge,
+  erfolgText,
+  folgeErfolge,
+  freischaltZeilen,
+  laengsteTagesserie,
+  laternenErfolge,
+  sichtbar,
+  trainingsErfolge,
+  wochenErfolge,
+  finaleErfolge,
+} from "./erfolge.js";
+import { BOSS_NAMEN } from "./boss.js";
 import { naechsterRang, rangFuer, rangIndex } from "./raenge.js";
 import { STANDARD_SEASON, seasonStand, type Teilnehmer } from "./season.js";
 import { werteWochen } from "./fleiss.js";
@@ -49,6 +65,66 @@ describe("Erfolge", () => {
     expect(finaleErfolge(1)).toEqual(["champion", "podest"]);
     expect(finaleErfolge(3)).toEqual(["podest"]);
     expect(finaleErfolge(4)).toEqual([]);
+  });
+});
+
+describe("Neue Erfolge", () => {
+  it("lange Einheiten, viele Stunden, viele Sportarten", () => {
+    const viel = Array.from({ length: 10 }, (_, i) => ({ datum: `2026-10-${10 + i}`, minuten: 3_000, faktor: 2 as const, sportart: `S${i}` }));
+    expect(trainingsErfolge(viel)).toEqual(
+      expect.arrayContaining(["minuten_30000", "einheit_120", "einheit_240", "sportarten_5", "sportarten_10"]),
+    );
+    const wenig = [{ datum: "2026-10-01", minuten: 239, faktor: 2 as const, sportart: "Joggen" }];
+    expect(trainingsErfolge(wenig)).toEqual(["erste_einheit", "einheit_120"]);
+  });
+
+  it("jeder Boss hat seinen eigenen geheimen Erfolg, aufgepumpt gibt's extra", () => {
+    for (const name of BOSS_NAMEN) expect(ERFOLGE[BOSS_ERFOLGE[name]!]).toMatchObject({ geheim: true });
+    expect(bossSiegErfolge({ name: "Der innere Schweinehund", stufe: 1 })).toEqual(["bossbezwinger", "boss_schweinehund"]);
+    expect(bossSiegErfolge({ name: "König Bierbauch", stufe: 2 })).toEqual(["bossbezwinger", "boss_bierbauch", "boss_aufgepumpt"]);
+    expect(bossSiegErfolge({ name: "Testdrache", stufe: 1 })).toEqual(["bossbezwinger"]);
+  });
+
+  it("Bossjäger ab drei verschiedenen Bossen", () => {
+    expect(folgeErfolge(["boss_sofa", "boss_doener", "bossbezwinger", "boss_aufgepumpt"])).toEqual([]);
+    expect(folgeErfolge(["boss_sofa", "boss_doener", "boss_chips"])).toEqual(["bossjaeger"]);
+  });
+
+  it("Rote Laterne: erste und dritte in einer Season", () => {
+    expect(laternenErfolge(0)).toEqual([]);
+    expect(laternenErfolge(2)).toEqual(["laterne"]);
+    expect(laternenErfolge(3)).toEqual(["laterne", "laterne_3"]);
+  });
+
+  it("geheime bleiben bis zum Freischalten unkenntlich, Schande gibt's mit 💩", () => {
+    expect(sichtbar("zombie_ueberlebt", false)).toEqual({ titel: "???", beschreibung: "Geheimer Erfolg, mehr wird nicht verraten" });
+    expect(sichtbar("zombie_ueberlebt", true).titel).toBe("Unbeißbar");
+    expect(sichtbar("champion", false).titel).toBe("Champion");
+    expect(erfolgText("tresor_huhn")).toBe("💩 Hühnchen (beim Tresor keinen Finger gerührt)");
+    expect(erfolgText("champion")).toMatch(/^🏆 Champion/);
+    // Nicht-geheime Erfolge verraten keine Bosse und Minispiele
+    for (const art of ERFOLG_ARTEN) {
+      const e: { titel: string; beschreibung: string; geheim?: boolean } = ERFOLGE[art];
+      if (!e.geheim) expect(`${e.titel} ${e.beschreibung}`).not.toMatch(/Zombie|Bombe|Kopfgeld|Gipfel|Tauziehen|Tresor|Duell|aufgepumpt|Schwäche|Resistenz/);
+    }
+  });
+
+  it("Freischalt-Meldung: einzeln wie gehabt, mehrere je Erfolg mit Namen", () => {
+    expect(freischaltZeilen([{ name: "Kevin", arten: [] }])).toEqual([]);
+    expect(freischaltZeilen([{ name: "Kevin", arten: ["champion"] }, { name: "Peter", arten: [] }])).toEqual([
+      "Kevin schaltet frei:",
+      "🏆 Champion (eine Season gewonnen)",
+    ]);
+    expect(
+      freischaltZeilen([
+        { name: "Kevin", arten: ["bossbezwinger", "boss_gnadenstoss"] },
+        { name: "Peter", arten: ["bossbezwinger"] },
+      ]),
+    ).toEqual([
+      "Freigeschaltet:",
+      "🏆 Drachentöter (beim Sieg gegen einen Boss mitgeprügelt): Kevin, Peter",
+      "🏆 Gnadenstoß (dem Boss den letzten Schlag verpasst): Kevin",
+    ]);
   });
 });
 
