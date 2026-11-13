@@ -1,5 +1,5 @@
 import type { Db } from "./index.js";
-import { type ErfolgArt, type ErfolgTraining, ERFOLGE, TAGESSERIE_AB, folgeErfolge, laengsteTagesserie } from "../scoring/erfolge.js";
+import { type ErfolgArt, type ErfolgTraining, ERFOLGE, TAGESSERIE_AB, TRAININGS_ERFOLGE, folgeErfolge, laengsteTagesserie, trainingsErfolge } from "../scoring/erfolge.js";
 import { type Faktor, gesamtLast } from "../scoring/fleiss.js";
 
 /** Alle Trainings eines Nutzers über alle Gruppen, optional ohne ein bestimmtes. */
@@ -31,6 +31,17 @@ export function vergebeErfolge(db: Db, nutzerId: number, arten: readonly ErfolgA
     const alle = (bisher.all(nutzerId) as { art: string }[]).map((z) => z.art as ErfolgArt);
     return [...frisch, ...folgeErfolge(alle).filter((art) => neu.run(nutzerId, art, datum).changes > 0)];
   })();
+}
+
+/**
+ * Nimmt Trainings-Erfolge wieder weg, die die übrigen Trainings nicht mehr hergeben
+ * (nach Löschen, Kürzen oder Umstellen eines Eintrags). Gibt die entzogenen zurück.
+ */
+export function pruefeTrainingsErfolgeNach(db: Db, nutzerId: number): ErfolgArt[] {
+  const verdient = new Set(trainingsErfolge(alleTrainings(db, nutzerId)));
+  const weg = TRAININGS_ERFOLGE.filter((art) => !verdient.has(art));
+  const loesche = db.prepare("DELETE FROM erfolg WHERE nutzer = ? AND art = ?");
+  return weg.filter((art) => loesche.run(nutzerId, art).changes > 0);
 }
 
 /** Vergibt Erfolge an mehrere und gibt die neuen je Nutzer zurück (nur die mit etwas Neuem). */

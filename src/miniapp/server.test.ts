@@ -343,6 +343,39 @@ describe("Mini App", () => {
     }
   });
 
+  it("Trainings-Erfolge: nachträglich markiert, beim Löschen und Kürzen wieder weg", async () => {
+    const { server, holen, bot, db, letzterText } = await aufbau();
+    const erfolge = () =>
+      (db.prepare("SELECT art FROM erfolg e JOIN nutzer n ON n.id = e.nutzer WHERE n.telegram_id = ?").all(KEVIN.id) as { art: string }[]).map((z) => z.art);
+    try {
+      // Frisch verdient: ohne Zusatz
+      await bot.handleUpdate(befehl("/sport 240 Joggen"));
+      expect(letzterText()).toContain("🏆 Wahnsinn mit Methode (eine Einheit von mindestens 4 Stunden)\n");
+      expect(letzterText()).not.toContain("nachträglich");
+      const lang = (await holen("/api/eintraege")).json.eintraege.find((e: { art: string; minuten?: number }) => e.art === "t" && e.minuten === 240);
+
+      // Eintrag gelöscht: Erfolg weg, der Rest bleibt
+      expect((await holen("/api/eintrag/loeschen", KEVIN, { art: "t", id: lang.id })).status).toBe(200);
+      expect(erfolge()).not.toContain("einheit_240");
+      expect(erfolge()).not.toContain("einheit_120");
+      expect(erfolge()).toContain("erste_einheit");
+
+      // Alter Eintrag, dessen Erfolg es damals noch nicht gab: kommt beim nächsten Training mit Zusatz
+      const alt = (await holen("/api/eintraege")).json.eintraege.find((e: { art: string }) => e.art === "t");
+      db.prepare("UPDATE training SET minuten = 240 WHERE id = ?").run(alt.id);
+      await bot.handleUpdate(befehl("/sport 15 Joggen"));
+      expect(letzterText()).toContain("🏆 Wahnsinn mit Methode (eine Einheit von mindestens 4 Stunden) – nachträglich");
+      expect(letzterText()).toContain("🏆 Ausdauerbestie (eine Einheit von mindestens 2 Stunden) – nachträglich");
+
+      // Gekürzt: nur der 4-Stunden-Erfolg fällt weg
+      expect((await holen("/api/eintrag/dauer", KEVIN, { id: alt.id, minuten: 120 })).status).toBe(200);
+      expect(erfolge()).not.toContain("einheit_240");
+      expect(erfolge()).toContain("einheit_120");
+    } finally {
+      server.close();
+    }
+  });
+
   it("Training eintragen: in der eigenen Gruppe gepostet, fremde Sportart abgelehnt", async () => {
     const { server, holen, posts, db } = await aufbau();
     try {

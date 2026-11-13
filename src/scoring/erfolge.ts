@@ -124,8 +124,8 @@ export function laternenErfolge(anzahl: number): ErfolgArt[] {
   return anzahl >= 3 ? ["laterne", "laterne_3"] : ["laterne"];
 }
 
-export function erfolgText(art: ErfolgArt): string {
-  return `${istSchande(art) ? "💩" : "🏆"} ${ERFOLGE[art].titel} (${ERFOLGE[art].beschreibung})`;
+export function erfolgText(art: ErfolgArt, nachtraeglich = false): string {
+  return `${istSchande(art) ? "💩" : "🏆"} ${ERFOLGE[art].titel} (${ERFOLGE[art].beschreibung})${nachtraeglich ? " – nachträglich" : ""}`;
 }
 
 export interface ErfolgTraining {
@@ -168,6 +168,20 @@ export function aktuelleTagesserie(daten: readonly IsoDatum[], heute: IsoDatum):
   return { laenge, heuteOffen: heuteOffen && laenge > 0 };
 }
 
+/** Alle Erfolge, die `trainingsErfolge` vergeben kann. Nur diese fallen weg, wenn ihr Eintrag gelöscht oder gekürzt wird. */
+export const TRAININGS_ERFOLGE: readonly ErfolgArt[] = [
+  "erste_einheit",
+  "minuten_1000",
+  "minuten_6000",
+  "minuten_30000",
+  "einheit_120",
+  "einheit_240",
+  "sportarten_5",
+  "sportarten_10",
+  "tage_7",
+  "tage_14",
+];
+
 /** Erfolge, die sich aus allen Trainings eines Nutzers ergeben. */
 export function trainingsErfolge(trainings: readonly ErfolgTraining[]): ErfolgArt[] {
   if (trainings.length === 0) return [];
@@ -209,10 +223,14 @@ export function finaleErfolge(platz: number): ErfolgArt[] {
  * Meldezeilen für neu freigeschaltete Erfolge. Bei einer Person wie gehabt „X schaltet frei:“,
  * bei mehreren eine Zeile je Erfolg mit allen Namen, damit ein Bosssieg die Gruppe nicht zuspammt.
  */
-export function freischaltZeilen(neu: readonly { name: string; arten: readonly ErfolgArt[] }[]): string[] {
+export function freischaltZeilen(
+  neu: readonly { name: string; arten: readonly ErfolgArt[] }[],
+  /** Erfolge der ersten Person, die sie schon vor diesem Training verdient hatte (z. B. neu eingeführte) */
+  nachtraeglich: ReadonlySet<ErfolgArt> = new Set(),
+): string[] {
   const mit = neu.filter((e) => e.arten.length > 0);
   if (mit.length === 0) return [];
-  if (mit.length === 1) return [`${mit[0]!.name} schaltet frei:`, ...mit[0]!.arten.map(erfolgText)];
+  if (mit.length === 1) return [`${mit[0]!.name} schaltet frei:`, ...mit[0]!.arten.map((art) => erfolgText(art, neu[0] === mit[0] && nachtraeglich.has(art)))];
   const proArt = new Map<ErfolgArt, string[]>();
   for (const e of mit) for (const art of e.arten) proArt.set(art, [...(proArt.get(art) ?? []), e.name]);
   return ["Freigeschaltet:", ...[...proArt].map(([art, namen]) => `${erfolgText(art)}: ${namen.join(", ")}`)];

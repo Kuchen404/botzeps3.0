@@ -1,6 +1,7 @@
 import type { Db } from "./index.js";
 import { schwesterName } from "../domain/sportarten.js";
 import { schrittFaktor } from "../scoring/fleiss.js";
+import { pruefeTrainingsErfolgeNach } from "./erfolg-repo.js";
 
 export interface Eintrag {
   art: "t" | "m";
@@ -111,6 +112,7 @@ export function loescheEintrag(db: Db, e: Eintrag, nutzerId: number, zeitpunkt: 
   db.transaction(() => {
     db.prepare(`UPDATE ${tabelle} SET geloescht_am = ? WHERE id = ? AND nutzer = ?`).run(zeitpunkt, e.id, nutzerId);
     protokolliere(db, tabelle, e.id, nutzerId, "geloescht", e, null);
+    if (e.art === "t") pruefeTrainingsErfolgeNach(db, nutzerId);
   })();
 }
 
@@ -120,6 +122,7 @@ export function aendereTrainingsdauer(db: Db, e: Eintrag, nutzerId: number, minu
     // Mit Schritten hängt der Faktor am Tempo, also an der Dauer
     if (e.schritte) db.prepare("UPDATE training SET faktor = ? WHERE id = ? AND nutzer = ?").run(schrittFaktor(minuten, e.schritte), e.id, nutzerId);
     protokolliere(db, "training", e.id, nutzerId, "geaendert", { minuten: e.minuten }, { minuten });
+    pruefeTrainingsErfolgeNach(db, nutzerId);
   })();
 }
 
@@ -133,6 +136,7 @@ export function wechsleVariante(db: Db, e: Eintrag, nutzerId: number): { name: s
     if (!schwester) return undefined;
     db.prepare("UPDATE training SET sportart = ?, faktor = ?, variante_offen = 0 WHERE id = ? AND nutzer = ?").run(schwester.id, schwester.faktor, e.id, nutzerId);
     protokolliere(db, "training", e.id, nutzerId, "geaendert", { sportart: e.sportart }, { sportart: schwester.name });
+    pruefeTrainingsErfolgeNach(db, nutzerId);
     return { name: schwester.name, faktor: schwester.faktor };
   })();
 }

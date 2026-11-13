@@ -55,6 +55,8 @@ export function meldungenNachTraining(db: Db, trainingId: number, tag: string, z
   if (!t) return [];
   const zeilen: string[] = [];
   const erfolge: ErfolgArt[] = trainingsErfolge(alleTrainings(db, t.nutzer));
+  /** Was schon ohne dieses Training verdient war, aber erst jetzt geprüft wird (z. B. neu eingeführte Erfolge) */
+  const schonVorher = new Set<ErfolgArt>(trainingsErfolge(alleTrainings(db, t.nutzer, trainingId)));
   /** Neue Erfolge der anderen, die beim Bosssieg mitgeprügelt haben */
   const mitgepruegelt: { name: string; arten: ErfolgArt[] }[] = [];
 
@@ -119,6 +121,7 @@ export function meldungenNachTraining(db: Db, trainingId: number, tag: string, z
       zeilen.push(fuelle(waehleSpruch("lauwarm", undefined, zufall), { name: t.name, sportart: t.sportartName }));
     }
     erfolge.push(...wochenErfolge(ich.wochen, s.wochenziel_last));
+    for (const art of wochenErfolge(vorher.find((st) => st.id === id)!.wochen, s.wochenziel_last)) schonVorher.add(art);
   }
 
   const lastJetzt = lebenslangeLast(db, t.nutzer);
@@ -128,7 +131,7 @@ export function meldungenNachTraining(db: Db, trainingId: number, tag: string, z
   }
 
   const neu = vergebeErfolge(db, t.nutzer, erfolge, tag);
-  zeilen.push(...freischaltZeilen([{ name: t.name, arten: neu }, ...mitgepruegelt]));
+  zeilen.push(...freischaltZeilen([{ name: t.name, arten: neu }, ...mitgepruegelt], schonVorher));
   return zeilen;
 }
 
