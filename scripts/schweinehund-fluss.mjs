@@ -1,0 +1,10 @@
+// Nach npm run build: node scripts/schweinehund-fluss.mjs
+// Einmalige Entwicklungshilfe: Python mit OpenCV; keine zusätzliche App-Abhängigkeit.
+import{schweinehundSequenzen}from'../dist/boss/schweinehund-animationen.js';
+import{mkdtempSync,writeFileSync,readFileSync,rmSync}from'node:fs';import{tmpdir}from'node:os';import{join}from'node:path';import{execFileSync}from'node:child_process';import{gzipSync}from'node:zlib';
+const sequenzen=schweinehundSequenzen(),bilder={},paare=new Set(),key=(s,f)=>s.atlas.match(/schweinehund1-([a-z]+)-/)[1]+':'+(f.x/256+f.y/256*2),paar=(a,b)=>{if(a!==b)paare.add([a,b].sort().join('|'));};
+for(const s of Object.values(sequenzen)){for(const f of s.bilder)bilder[key(s,f)]={datei:new URL('../src/boss/medien/'+s.atlas.split('/').at(-1),import.meta.url).pathname,x:f.x,y:f.y,ankerX:f.ankerX};for(let i=1;i<s.bilder.length;i++)paar(key(s,s.bilder[i-1]),key(s,s.bilder[i]));}
+const start=name=>key(sequenzen[name],sequenzen[name].bilder[0]),ende=name=>key(sequenzen[name],sequenzen[name].bilder.at(-1));
+paar(start('zustandSelbstsicher'),start('auftritt'));paar(ende('trefferFinal'),start('niederlage'));
+for(const zustand of ['zustandSelbstsicher','zustandKnurren','zustandNervoes'])for(const name of ['ruheLinks','ruheRechts','schnueffeln','einnicken','trefferKlein','trefferGross','auftritt']){if(!/treffer|auftritt/.test(name))paar(start(zustand),start(name));paar(ende(name),start(zustand));}
+const temp=mkdtempSync(join(tmpdir(),'schweinfluss-'));try{const eingabe=join(temp,'in.json'),ausgabe=join(temp,'out.json');writeFileSync(eingabe,JSON.stringify({bilder,paare:[...paare]}));execFileSync(process.env.PYTHON||'python3',[new URL('./schweinehund-fluss.py',import.meta.url).pathname,eingabe,ausgabe],{stdio:'inherit'});const text='// Kleine Bewegungsfelder der bestehenden PNGs. Regeneration: scripts/schweinehund-fluss.mjs\nvar bossSchweinFlussDaten = '+readFileSync(ausgabe,'utf8')+';\n';writeFileSync(new URL('../src/miniapp/spiele/boss-schweinehund-fluss.js',import.meta.url),text);console.log([...paare].length+' Übergänge · '+gzipSync(text).length+' Bytes gzip');}finally{rmSync(temp,{recursive:true,force:true});}

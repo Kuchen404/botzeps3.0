@@ -6,11 +6,11 @@ var bossBewegungsWahl = window.matchMedia && window.matchMedia("(prefers-reduced
 if (bossBewegungsWahl && bossBewegungsWahl.addEventListener) bossBewegungsWahl.addEventListener("change", function (e) { if (e.matches) { if (bossKampfAbbrechen) bossKampfAbbrechen(); } if (bossKampfDarstellung) bossKampfDarstellung(); });
 
 // Sequenzen sind optional. Jede Karte kann auf die bisherigen Posen zurückfallen.
-var bossSequenzCache = new Map(), bossSequenzBereit = new Set(), bossSequenzZaehler = 0;
+var bossSequenzCache = new Map(), bossSequenzBereit = new Set(), bossSequenzBilder = new Map(), bossSequenzZaehler = 0;
 function bossSequenzenLaden(sequenzen) {
   return Promise.all(Array.from(new Set(Object.values(sequenzen).map(function (s) { return s.atlas; }))).map(function (url) {
     if (!bossSequenzCache.has(url)) bossSequenzCache.set(url, new Promise(function (ok) {
-      var bild = new Image(); bild.onload = function () { bossSequenzBereit.add(url); ok(true); }; bild.onerror = function () { bossSequenzCache.delete(url); ok(false); }; bild.src = url;
+      var bild = new Image(); bild.onload = function () { bossSequenzBereit.add(url); bossSequenzBilder.set(url, bild); ok(true); }; bild.onerror = function () { bossSequenzCache.delete(url); ok(false); }; bild.src = url;
     }));
     return bossSequenzCache.get(url);
   }));
@@ -81,7 +81,7 @@ function bossSchweinZustand(schaden, lebenspunkte) {
 }
 
 function bossKarte(b, kontext) {
-  if (bossKampfAbbrechen) bossKampfAbbrechen();
+  if (bossKampfDarstellung && bossKampfDarstellung.entfernen) bossKampfDarstellung.entfernen(); else if (bossKampfAbbrechen) bossKampfAbbrechen();
   var lpText = el("div", { class: "text" });
   var spur = el("div", { class: "boss-lp-spur" });
   var rest = el("div", { class: "rest" });
@@ -90,7 +90,7 @@ function bossKarte(b, kontext) {
   var illustriert = !!bild.querySelector(".boss-illustriert");
   var auftrittProfil = bossAuftrittProfil(b.reaktion && b.reaktion.motiv, b.stufe);
   if (illustriert) bild.classList.add("neu");
-  var reaktionGeladen = false, erwarteteBossPose = "bereit", sequenzAktiv = null, sequenzMarke = 0;
+  var reaktionGeladen = false, erwarteteBossPose = "bereit", sequenzAktiv = null, sequenzMarke = 0, rig = null, rigBelebt = false, rigWucht = 1, rigSofort = true;
   var sequenzen = b.name === "Der innere Schweinehund" && b.stufe === 1 && b.reaktion && b.reaktion.sequenzen || {};
   var sequenzLaden = bossSequenzenLaden(sequenzen);
   // Früh laden; auf langsamen Verbindungen bleibt die neutrale Figur bis dahin sichtbar.
@@ -98,7 +98,7 @@ function bossKarte(b, kontext) {
     var vorladen = new Image();
     vorladen.onload = function () {
       reaktionGeladen = true;
-      if (arena && arena.isConnected && !sequenzAktiv && !bild.querySelector('.boss-sequenzpose')) setzeBossPose(erwarteteBossPose);
+      if (arena && arena.isConnected && !sequenzAktiv && !bild.querySelector('.boss-sequenzpose,.boss-schwein-netz')) setzeBossPose(erwarteteBossPose);
     };
     vorladen.src = b.reaktion.atlas;
   }
@@ -150,13 +150,14 @@ function bossKarte(b, kontext) {
   function gueltig(lauf) { return lauf === durchlauf && arena.isConnected && !document.hidden && bewegung(); }
   function phase(name) { arena.setAttribute("data-kampfphase", name); }
   function reinigen() {
+    rigBelebt = false; rigSofort = true; if (rig) rig.stop();
     ruheMarke++; ruheAktiv = false; sequenzMarke++; sequenzAktiv = null;
     animationen.forEach(function (a) { a.cancel(); }); animationen.clear();
     wartende.forEach(function (resolve, id) { clearTimeout(id); resolve(false); }); wartende.clear();
     if (angreifer) angreifer.remove(); angreifer = null;
     if (quelle) quelle.style.visibility = ""; quelle = null;
     arena.classList.remove("boss-hitstop", "boss-laeuft");
-    arena.querySelectorAll(".zahl, .trefferfunken, .boss-ring, .boss-staub, .boss-ko, .boss-schnipsel, .boss-auftritt, .boss-pff").forEach(function (e) { e.remove(); });
+    arena.querySelectorAll(".zahl, .trefferfunken, .boss-ring, .boss-staub, .boss-ko, .boss-schnipsel, .boss-auftritt, .boss-pff, .boss-bodenwelle").forEach(function (e) { e.remove(); });
   }
   function warte(ms, lauf) {
     return new Promise(function (resolve) {
@@ -173,17 +174,20 @@ function bossKarte(b, kontext) {
   function setzeBossPose(pose) {
     erwarteteBossPose = pose;
     if (pose === 'ko' && sequenzVerfuegbar('niederlage')) { sequenzBild('niederlage', sequenzen.niederlage.bilder.length - 1); bild.setAttribute('data-boss-pose', 'ko'); return; }
-    if (pose === 'bereit') { var zustand = bossSchweinZustand(gezeigterSchaden, b.lebenspunkte), sequenz = zustand === 'nervoes' ? 'zustandNervoes' : zustand === 'knurrend' ? 'zustandKnurren' : 'zustandSelbstsicher'; if (sequenzVerfuegbar(sequenz)) { sequenzBild(sequenz, 0); return; } }
+    if (pose === 'bereit') { var zustand = bossSchweinZustand(gezeigterSchaden, b.lebenspunkte), sequenz = zustand === 'nervoes' ? 'zustandNervoes' : zustand === 'knurrend' ? 'zustandKnurren' : 'zustandSelbstsicher'; if (sequenzVerfuegbar(sequenz)) { sequenzBild(sequenz, 0); if (rig) rig.bewegung(sequenz, 4300, 1); return; } }
+    if (rig) rig.stop();
     bild.removeAttribute('data-boss-sequenz');
     var svg = pose !== "bereit" && reaktionGeladen && b.reaktion && b.reaktion[pose];
     bild.setAttribute("data-boss-pose", svg ? pose : "bereit");
     if (b.bild) bild.innerHTML = svg || b.bild;
   }
   function sequenzVerfuegbar(name) { var s = sequenzen[name]; return !!(s && s.bilder && s.bilder.length && bossSequenzBereit.has(s.atlas)); }
-  function sequenzBild(name, index) {
+  function sequenzBild(name, index, sofort) {
     var s = sequenzen[name], f = s && s.bilder[index]; if (!f || !sequenzVerfuegbar(name)) return false;
+    if (!rig && typeof bossSchweinRig === 'function') rig = bossSchweinRig(bild, bossSequenzBilder, function () { return rigBelebt && arena.isConnected && !document.hidden && bewegung(); });
     var id = 'bosssequenz' + (++bossSequenzZaehler);
     bild.setAttribute('data-boss-pose', name + '-' + index); bild.setAttribute('data-boss-sequenz', name + '-' + index);
+    if (rig) { rig.pose(s, f, name, index, !!sofort || rigSofort || !rigBelebt || !bewegung()); rigSofort = false; return true; }
     bild.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="boss-illustriert boss-reaktionspose boss-sequenzpose" viewBox="-30 -20 300 280"><svg x="0" y="0" width="240" height="240" viewBox="' + f.x + ' ' + f.y + ' ' + s.zelle + ' ' + s.zelle + '" overflow="hidden"><defs><clipPath id="' + id + '"><rect x="' + f.x + '" y="' + f.y + '" width="' + s.zelle + '" height="' + s.zelle + '"/></clipPath></defs><image clip-path="url(#' + id + ')" href="' + s.atlas + '" width="' + s.groesse + '" height="' + s.groesse + '"/></svg></svg>';
     return true;
   }
@@ -193,7 +197,7 @@ function bossKarte(b, kontext) {
     try {
       for (var i = 0; i < sequenzen[name].bilder.length; i++) {
         if (!gueltig(lauf) || marke !== sequenzMarke) return false;
-        sequenzBild(name, i); if (beiBild) beiBild(i);
+        sequenzBild(name, i); if (i === 0 && rig) rig.bewegung(name, sequenzen[name].bilder.reduce(function (n, f) { return n + f.dauer; }, 0), rigWucht); if (beiBild) beiBild(i);
         if (!await warte(sequenzen[name].bilder[i].dauer, lauf)) return false;
       }
       return true;
@@ -201,7 +205,7 @@ function bossKarte(b, kontext) {
   }
   async function starteRuhe() {
     if (ruheAktiv || !sequenzen.ruheLinks || !b.aktiv || b.besiegt || !gueltig(durchlauf)) return;
-    var marke = ++ruheMarke, lauf = durchlauf; ruheAktiv = true; bossKampfAbbrechen = abbrechen;
+    var marke = ++ruheMarke, lauf = durchlauf; ruheAktiv = true; rigBelebt = true; if (rig) rig.start(); bossKampfAbbrechen = abbrechen;
     try {
       while (marke === ruheMarke && gueltig(lauf)) {
         if (!await warte([6000, 7000, 8000][ruheIndex % 3], lauf) || marke !== ruheMarke) return;
@@ -292,6 +296,7 @@ function bossKarte(b, kontext) {
     lpText.textContent = zahl(Math.max(0, b.lebenspunkte - schaden), 0) + " / " + zahl(b.lebenspunkte, 0) + " LP";
   }
   function endstand(animiert, beleben) {
+    rigBelebt = !!beleben && b.aktiv && !b.besiegt && bewegung() && !document.hidden;
     setzeLp(b.schaden, !animiert);
     setzeBossPose(b.besiegt ? "ko" : "bereit");
     platz.querySelectorAll(".stempel").forEach(function (e) { e.remove(); });
@@ -313,6 +318,7 @@ function bossKarte(b, kontext) {
     status.textContent = b.besiegt ? "K.O. – gemeinsam erledigt!" : !b.aktiv ? "Der Boss hat überlebt." : "Aktueller Kampfstand";
     phase("ende"); skip.hidden = true; nochmal.hidden = !bewegung();
     nochmal.textContent = b.kaempfer.length ? "↻ Nochmal kämpfen" : "↻ Auftritt ansehen";
+    if (rig && !rigBelebt) rig.statisch();
     if (beleben) starteRuhe();
   }
   function abbrechen() {
@@ -358,7 +364,7 @@ function bossKarte(b, kontext) {
     durchlauf++; reinigen();
     var lauf = durchlauf;
     if (!bewegung() || document.hidden || (bossGezeigt[schluessel] && !erzwingen)) { endstand(false, true); return; }
-    bossKampfAbbrechen = abbrechen;
+    bossKampfAbbrechen = abbrechen; rigBelebt = true; phase('laden'); status.textContent = 'Die Arena wird vorbereitet …';
     skip.hidden = false; nochmal.hidden = true;
     setzeLp(0, true); setzeBossPose("bereit");
     platz.classList.remove("tot"); platz.querySelectorAll(".stempel").forEach(function (e) { e.remove(); });
@@ -372,7 +378,9 @@ function bossKarte(b, kontext) {
       for (var n = 0; n < folge.length; n++) {
         if (!gueltig(lauf)) return;
         var zelle = reihe.children[folge[n]], k = zelle._k;
-        var wucht = bossTrefferWucht(k.schaden, b.lebenspunkte);
+        var wucht = bossTrefferWucht(k.schaden, b.lebenspunkte), schwein = !!sequenzen.auftritt;
+        rigWucht = 1 + Math.min(1, Math.max(0,k.schaden) / Math.max(1,b.lebenspunkte) * 4);
+        if (schwein) { wucht.rueckstoss *= 1.3; wucht.kamera = Math.min(6, wucht.kamera * 1.2); wucht.pause = Math.min(130, wucht.pause + 15); wucht.ring *= 1.15; }
         quelle = zelle.querySelector(".figur, .avatar");
         var ziel = figurBild(k.figur, "bereit") || el("div", { class: "avatar", style: "background:" + farbe(k.name), text: initialen(k.name) });
         angreifer = el("div", { class: "boss-angreifer" + (k.ich ? " boss-angreifer-ich" : ""), "aria-hidden": "true" }, [ziel]);
@@ -388,13 +396,13 @@ function bossKarte(b, kontext) {
         phase("vorsturm");
         if (!await bewegen(angreifer, [{ transform: ursprung }, { transform: "translate(-8px,0) scale(1)" }], { duration: 380, easing: "cubic-bezier(.15,.7,.3,1)" }, lauf)) return;
         phase("ausholen");
-        if (!await bewegen(angreifer, [{ transform: "translate(-8px,0) rotate(0deg)" }, { transform: "translate(-22px,4px) rotate(-9deg) scale(.98,1.03)" }], { duration: 220, easing: "ease-in" }, lauf)) return;
+        if (!await bewegen(angreifer, [{ transform: "translate(-8px,0) rotate(0deg)" }, { transform: "translate(-22px,4px) rotate(-9deg) scale(.98,1.03)" }], { duration: schwein ? 255 : 220, easing: "ease-in" }, lauf)) return;
         stellePose(angreifer, "schlag"); phase("schlag");
-        if (!await bewegen(angreifer, [{ transform: "translate(-22px,4px) rotate(-9deg)" }, { transform: "translate(28px,-24px) rotate(5deg) scale(1.08)" }], { duration: 115, easing: "ease-in" }, lauf)) return;
+        if (!await bewegen(angreifer, [{ transform: "translate(-22px,4px) rotate(-9deg)" }, { transform: "translate(28px,-24px) rotate(5deg) scale(1.08)" }], { duration: schwein ? 90 : 115, easing: "ease-in" }, lauf)) return;
         summe += k.schaden;
         var toedlich = b.besiegt && summe >= b.lebenspunkte;
         var trefferArt = toedlich ? 'trefferFinal' : bossSchweinTreffer(k.schaden, b.lebenspunkte);
-        if (sequenzVerfuegbar(trefferArt)) sequenzBild(trefferArt, 0); else setzeBossPose('treffer');
+        if (sequenzVerfuegbar(trefferArt)) sequenzBild(trefferArt, 0, true); else setzeBossPose('treffer');
         setzeLp(summe, false); phase("trefferpause"); arena.classList.add("boss-hitstop");
         var funken = el("div", { class: "trefferfunken", "aria-hidden": "true" });
         var ring = el("div", { class: "boss-ring", "aria-hidden": "true" });
@@ -403,6 +411,10 @@ function bossKarte(b, kontext) {
         ring.style.width = ring.style.height = wucht.ring + "px";
         schaden.style.fontSize = wucht.schrift + "px";
         platz.appendChild(funken); platz.appendChild(ring); platz.appendChild(schaden);
+        if (schwein && k.schaden / Math.max(1,b.lebenspunkte) >= .1) {
+          var bodenwelle = el('div', { class: 'boss-bodenwelle', 'aria-hidden': 'true' }); platz.appendChild(bodenwelle);
+          bewegen(bodenwelle, [{ opacity: .8, transform: 'translateX(-50%) scale(.4)' }, { opacity: 0, transform: 'translateX(-50%) scale(1.8)' }], { duration: 360 }, lauf).then(function (e) { e.remove(); }.bind(null, bodenwelle));
+        }
         // Der Kontakt hält kurz still, bevor Rückstoß und Kameraruck einsetzen.
         if (!await warte(wucht.pause + (toedlich ? 30 : 0), lauf)) return;
         arena.classList.remove("boss-hitstop"); phase("rueckstoss");
@@ -436,10 +448,11 @@ function bossKarte(b, kontext) {
       }
     }
   }
-  sequenzLaden.then(function () { if (arena.isConnected && !sequenzAktiv && arena.getAttribute('data-kampfphase') === 'ende') setzeBossPose(b.besiegt ? 'ko' : 'bereit'); });
+  Array.from(new Set(Object.values(sequenzen).map(function (s) { return s.atlas; }))).forEach(function (url) { bossSequenzCache.get(url).then(function () { if (arena.isConnected && !sequenzAktiv && arena.getAttribute('data-kampfphase') === 'ende') setzeBossPose(b.besiegt ? 'ko' : 'bereit'); }); });
   // Kein 0-LP-Zwischenstand beim Öffnen mit reduzierter Bewegung oder leerem Team.
   endstand(false);
   bossKampfDarstellung = function () { if (arena.isConnected) { durchlauf++; reinigen(); endstand(false, true); } };
+  bossKampfDarstellung.entfernen = function () { durchlauf++; reinigen(); if (rig) { rig.destroy(); rig = null; } if (bossKampfAbbrechen === abbrechen) bossKampfAbbrechen = null; };
   requestAnimationFrame(function () { if (arena.isConnected) spiele(false); });
   return karteElement;
 }

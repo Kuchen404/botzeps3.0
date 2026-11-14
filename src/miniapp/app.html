@@ -840,7 +840,7 @@ function zeichne() {
   duellDarstellung = null;
   if (tresorAbbrechen) tresorAbbrechen();
   tresorDarstellung = null;
-  if (bossKampfAbbrechen) bossKampfAbbrechen(); bossKampfDarstellung = null;
+  if (bossKampfDarstellung && bossKampfDarstellung.entfernen) bossKampfDarstellung.entfernen(); else if (bossKampfAbbrechen) bossKampfAbbrechen(); bossKampfDarstellung = null;
   if (kopfgeldAbbrechen) kopfgeldAbbrechen();
   if (gipfelAbbrechen) gipfelAbbrechen();
   gipfelDarstellung = null;

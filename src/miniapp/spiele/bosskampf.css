@@ -76,3 +76,5 @@
 .boss-splitter-fell { width: 16px; height: 11px; background: #bb793b; clip-path: polygon(0 60%,14% 12%,36% 30%,47% 0,64% 25%,84% 5%,100% 65%,62% 100%,27% 85%); }
 .boss-splitter-knopf { width: 10px; height: 10px; border: 2px solid #9d6b19; border-radius: 50%; background: radial-gradient(circle,#9d6b19 0 1px,#ffe07c 2px); }
 .boss-pff { position:absolute;top:32%;left:60%;z-index:6;padding:3px 7px;border:1px solid #c4ae86;border-radius:50%;background:#fff2d9;color:#594134;font:900 16px/1.1 Georgia,serif;pointer-events:none; }
+.boss-arcade .bossbild > .boss-schwein-netz{display:block;width:224px;height:218px;max-width:100%;object-fit:contain;pointer-events:none}.boss-bodenwelle{position:absolute;left:50%;top:215px;width:135px;height:24px;border:2px solid #ffe4a5;border-radius:50%;box-shadow:0 0 8px #ffc96566;pointer-events:none;z-index:3}
+@media(max-width:350px){.boss-arcade .bossbild>.boss-schwein-netz{width:206px;height:208px}}
