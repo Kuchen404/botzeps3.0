@@ -364,7 +364,7 @@ function bossKarte(b, kontext) {
     durchlauf++; reinigen();
     var lauf = durchlauf;
     if (!bewegung() || document.hidden || (bossGezeigt[schluessel] && !erzwingen)) { endstand(false, true); return; }
-    bossKampfAbbrechen = abbrechen; rigBelebt = true;
+    bossKampfAbbrechen = abbrechen; rigBelebt = true; phase('laden'); status.textContent = 'Die Arena wird vorbereitet …';
     skip.hidden = false; nochmal.hidden = true;
     setzeLp(0, true); setzeBossPose("bereit");
     platz.classList.remove("tot"); platz.querySelectorAll(".stempel").forEach(function (e) { e.remove(); });

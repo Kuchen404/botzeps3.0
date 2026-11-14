@@ -60,7 +60,8 @@ function bossSchweinRig(element, bilder, darfLaufen) {
       var fs = shader(gl.FRAGMENT_SHADER, 'precision mediump float;varying vec2 uv;uniform sampler2D bild;uniform float alpha;void main(){gl_FragColor=texture2D(bild,uv)*alpha;}');
       programm = gl.createProgram(); gl.attachShader(programm, vs); gl.attachShader(programm, fs); gl.linkProgram(programm); gl.deleteShader(vs); gl.deleteShader(fs); if (!gl.getProgramParameter(programm, gl.LINK_STATUS)) throw Error('Programm');
       gl.useProgram(programm); buffer = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buffer); var ort = gl.getAttribLocation(programm, 'punkt'); gl.enableVertexAttribArray(ort); gl.vertexAttribPointer(ort, 4, gl.FLOAT, false, 0, 0);
-      gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true); gl.viewport(0, 0, canvas.width, canvas.height);
+      // Gewichtete vormultiplizierte Posen ergeben zusammen volle Deckkraft.
+      gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE); gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true); gl.viewport(0, 0, canvas.width, canvas.height);
     }
   } catch (_) { gl = null; }
   function ersatz() { var neu = document.createElement('canvas'); neu.className = canvas.className; neu.width = canvas.width; neu.height = canvas.height; neu.setAttribute('aria-hidden', 'true'); if (canvas.parentNode) canvas.replaceWith(neu); canvas = neu; ctx = canvas.getContext('2d'); }
@@ -92,7 +93,7 @@ function bossSchweinRig(element, bilder, darfLaufen) {
     if (tot || !aktuell) return;
     var p = animiert ? bossSchweinBewegung(sequenz, zeit - start, (zeit - sequenzStart) / dauer, wucht) : {};
     if (element.closest('.boss-hitstop')) p = {};
-    if (gl) { gl.clearColor(0,0,0,0); gl.clear(gl.COLOR_BUFFER_BIT); } else { ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,300,280); }
+    if (gl) { gl.clearColor(0,0,0,0); gl.clear(gl.COLOR_BUFFER_BIT); } else { ctx.setTransform(dpr,0,0,dpr,0,0);ctx.globalCompositeOperation='lighter';ctx.clearRect(0,0,300,280); }
     var anteil = animiert && vorher ? Math.max(0,Math.min(1,(zeit-wechsel)/uebergang)) : 1;anteil=anteil*anteil*(3-2*anteil);
     if (anteil < 1) zeichne(vorher,1-anteil,p,fluss&&fluss[0],anteil); else vorher=null;
     zeichne(aktuell,anteil,p,fluss&&fluss[1],1-anteil); var modus=gl?'webgl':'canvas2d';if(canvas.getAttribute('data-renderer')!==modus)canvas.setAttribute('data-renderer',modus);
