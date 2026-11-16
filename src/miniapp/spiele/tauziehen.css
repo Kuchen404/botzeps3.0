@@ -6,8 +6,7 @@
 .ms-tauziehen .tz-mud { position:absolute; left:16%; top:290px; width:68%; height:37px; border:2px solid #634a35; border-radius:50%; background:radial-gradient(ellipse,#9f693c,#49311f); box-shadow:inset 0 4px 6px #251d18,0 3px 0 #d6a45b55; z-index:1; border-color:#664428; }
 .ms-tauziehen .tz-mud::before,.ms-tauziehen .tz-mud::after { content:""; position:absolute; top:12px; left:18%; width:21%; height:6px; border:1px solid #d2aa7c; border-radius:50%; transform:rotate(-8deg); }
 .ms-tauziehen .tz-mud::after { left:64%; top:24px; width:15%; }
-.ms-tauziehen .tz-seil { position:absolute; top:219px; left:-15%; width:130%; height:8px; z-index:3; visibility:visible; }
-.ms-tauziehen[data-tauphase="stolpern"] .tz-seil,.ms-tauziehen[data-tauphase="seilriss"] .tz-seil,.ms-tauziehen[data-ergebnis] .tz-seil { z-index:1; }
+.ms-tauziehen .tz-seil { position:absolute; top:219px; left:12%; width:76%; height:8px; z-index:3; visibility:visible; }
 .ms-tauziehen .tz-seilhaelfte { position:absolute; top:0; width:50%; height:8px; border:1px solid #79562f; border-radius:5px; background:repeating-linear-gradient(115deg,#b78042 0 4px,#ffdf98 4px 7px); box-shadow:0 2px #32483b33; }
 .ms-tauziehen .tz-seilhaelfte.links { left:0; transform-origin:0 50%; }
 .ms-tauziehen .tz-seilhaelfte.rechts { right:0; transform-origin:100% 50%; }
@@ -58,8 +57,6 @@
 .ms-tauziehen .tz-team.rechts .tz-anzahl { left:8px; right:auto; }
 .ms-tauziehen .tz-hat-seil .tz-seil { visibility:hidden; }
 .ms-tauziehen .tz-hat-seil .tz-seil-kurve { display:block; }
-.ms-tauziehen[data-tauphase="finale"] .tz-seil-kurve,.ms-tauziehen[data-tauphase="stolpern"] .tz-seil-kurve,.ms-tauziehen[data-tauphase="seilriss"] .tz-seil-kurve,.ms-tauziehen[data-tauphase="schlamm"] .tz-seil-kurve,.ms-tauziehen[data-ergebnis] .tz-seil-kurve { display:none; }
-.ms-tauziehen[data-tauphase="finale"] .tz-seil,.ms-tauziehen[data-tauphase="stolpern"] .tz-seil,.ms-tauziehen[data-tauphase="seilriss"] .tz-seil,.ms-tauziehen[data-tauphase="schlamm"] .tz-seil,.ms-tauziehen[data-ergebnis] .tz-seil { visibility:visible; }
 @media (max-width:350px) {
   .ms-tauziehen .tz-person,.ms-tauziehen .tz-person .ms-avatar { width:68px; }
   .ms-tauziehen .tz-name { max-width:48px; font-size:8px; padding-inline:4px; }
@@ -72,3 +69,26 @@
 @media (prefers-reduced-motion:reduce) {
   .ms-tauziehen *, .ms-tauziehen *::before,.ms-tauziehen *::after { animation:none!important; transition:none!important; scroll-behavior:auto!important; }
 }
+
+/* Ganze Teams in kleinen Gruppen, mit natürlichem Seitenverhältnis und freien Gesichtern. */
+.ms-tauziehen .tz-crew { inset:0; width:100%; height:100%; pointer-events:none; }
+.ms-tauziehen .tz-crew.links,.ms-tauziehen .tz-crew.rechts { left:0; right:0; }
+.ms-tauziehen .tz-person { bottom:auto; width:80px; height:120px; }
+.ms-tauziehen .tz-person .ms-avatar { width:100%; height:100%; }
+.ms-tauziehen .tz-name { max-width:var(--tz-label,70px); font-size:8px; padding:3px 4px; border-color:#75bad98c; }
+.ms-tauziehen .tz-crew.rechts .tz-name { border-color:#ef97738c; }
+.ms-tauziehen .tz-person[data-ich="true"] .tz-name { border-color:#f7ce73; }
+.ms-tauziehen .tz-seil { left:12%; width:76%; }
+.ms-tauziehen .tz-seil-kurve { top:0; height:360px; }
+.ms-tauziehen .tz-hat-seil .tz-seil-kurve { display:block; }
+.ms-tauziehen .tz-hat-seil .tz-seil { visibility:hidden; }
+.ms-tauziehen[data-seil-los] .tz-seil-kurve,.ms-tauziehen[data-seil-los] .tz-seil { z-index:1; }
+.ms-tauziehen[data-fuehrung="links"] .tz-team.links { box-shadow:0 0 12px #65d2ef40,inset 0 0 14px #78e3ff0a; }
+.ms-tauziehen[data-fuehrung="rechts"] .tz-team.rechts { box-shadow:0 0 12px #ffa77340,inset 0 0 14px #ff995a0a; }
+.ms-tauziehen[data-wucht="finale"] .tz-licht { background:radial-gradient(ellipse at 50% 70%,#ffdfa12b,transparent 70%); }
+.ms-tauziehen .tz-spur { width:25px; height:5px; margin-left:-12px; border-radius:50%; border-top:2px solid #573824; border-bottom:1px solid #dca367; z-index:1; transform-origin:50% 50%; }
+.ms-tauziehen .tz-welle { width:58px; height:17px; border:3px solid #d9984d; border-radius:50%; box-shadow:0 2px #553721,inset 0 2px #553721; z-index:4; }
+.ms-tauziehen .tz-boden { position:absolute; left:6%; right:6%; top:271px; height:8px; background:radial-gradient(ellipse,#33261e35,transparent 70%); z-index:1; }
+.ms-tauziehen .tz-schmutz { height:28px; }
+
+.ms-tauziehen .tz-name { top:calc(100% + 3px + var(--tz-label-y,0px)); }

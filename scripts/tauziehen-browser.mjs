@@ -34,6 +34,9 @@ try {
     const hashes=await p.evaluate(()=>new Promise(ok=>{const a=[];function sample(){a.push(document.querySelector('.tz-koerper')?.toDataURL());if(a.length===5)ok(a);else setTimeout(sample,60);}sample();}));
     assert(new Set(hashes).size>1,'kontinuierliche Avatar-Zwischenbilder');
     assert.equal(await p.locator('[data-ergebnis]').count(),0,'kein vorzeitiger Sieg');
+    assert.equal(await p.locator('.tz-person').count(),5,'Kleine Teams sind vollständig sichtbar');
+    const ende=await p.locator('.tz-seil-kurve').evaluate(e=>({w:e.closest('.tz-arena').clientWidth,p:JSON.parse(e.dataset.enden)}));
+    assert(ende.p.every(p=>p[0]>8 && p[0]<ende.w-8),'Keine abgeschnittenen Seilenden');
     const grenzen=await p.locator('.tz-person').evaluateAll(es=>es.map(e=>{const a=e.closest('.tz-arena').getBoundingClientRect(),b=e.getBoundingClientRect();return {links:b.left-a.left,rechts:a.right-b.right};}));
     assert(grenzen.every(g=>g.links>=0 && g.rechts>=0),'Figuren bleiben auf der Bühne');
     await p.locator('.ms-tauziehen').screenshot({path:ausgabe+'/ziehen-'+width+'.png'});
@@ -41,6 +44,8 @@ try {
     assert.equal(await p.locator('.tz-average').allTextContents().then(v=>v.join('/')),'93,33/120');
     for(const mode of ['rechts','links','gleich','nullgleich','korrektur','start','gross','leer']){
       await modus(p,mode);await skip(p);await still(p);
+      const seilEnden=await p.locator('.tz-seil-kurve').evaluate(e=>({w:e.closest('.tz-arena').clientWidth,p:JSON.parse(e.dataset.enden||'[]')}));
+      for(const ende of seilEnden.p){assert(ende[0]>=8 && ende[0]<=seilEnden.w-8,'Seilenden bleiben sichtbar');assert(ende[1]>=0 && ende[1]<350);}
       const ergebnis=await p.locator('.ms-tauziehen').getAttribute('data-ergebnis');
       assert.equal(ergebnis,({rechts:'rechts',links:'links',gleich:'unentschieden',nullgleich:'unentschieden'})[mode]||null);
       if(mode==='gross')assert.equal(await p.locator('.tz-person[data-ich="true"]').count(),1);
@@ -59,15 +64,18 @@ try {
   const p=await context.newPage();await instrument(p);await p.goto(basis);await p.locator('.ms-tauziehen').scrollIntoViewIfNeeded();await phase(p,'ende');await still(p);
   assert((await p.evaluate(()=>window.tauPhasen)).includes('fuehrungswechsel'));
   await modus(p,'rechts');await phase(p,'stolpern');
-  assert.equal(await p.locator('.tz-geriggt').count(),0,'Jubel/K.O. sind nicht vom Rig verdeckt');
-  assert.equal(await p.locator('.tz-seil-kurve').isVisible(),false);assert.equal(await p.locator('.tz-seil').evaluate(e=>getComputedStyle(e).visibility),'visible');
+  assert.equal(await p.locator('.tz-person').count(),5);
+  assert((await p.locator('.tz-geriggt').count())>0,'Ziehen-Pose bleibt bis nach dem Rutschen erhalten');
+  assert.equal(await p.locator('.tz-seil-kurve').isVisible(),true);
+  await phase(p,'rutschen');await p.locator('.ms-tauziehen').screenshot({path:ausgabe+'/rutschen.png'});
+  await phase(p,'schlamm');assert.equal(await p.locator('.tz-geriggt').count(),0,'Jubel/K.O. bleiben sichtbar');
   await p.locator('.ms-tauziehen').screenshot({path:ausgabe+'/finale.png'});await phase(p,'ende');await still(p);
   await modus(p,'gleich');await phase(p,'seilriss');await phase(p,'ende');await still(p);
   // Fehlende Medien: Initialen, Namensschilder und CSS-Ersatzbühne.
   await p.evaluate(()=>{const a=structuredClone(window.tauziehenVorschau);a.id+='-kaputt';a.abgeschlossen=false;a.tauziehenArena='/kaputt.png';a.figuren={};document.getElementById('demo').replaceChildren(MINISPIEL_SZENEN.tauziehen(a));});await skip(p);
-  assert.equal(await p.locator('.ms-avatar-ersatz').count(),4);assert.equal(await p.locator('.tz-name').count(),4);
+  assert.equal(await p.locator('.ms-avatar-ersatz').count(),5);assert.equal(await p.locator('.tz-name').count(),5);
   await p.evaluate(()=>{const a=structuredClone(window.tauziehenVorschau);a.id+='-atlas-kaputt';a.abgeschlossen=false;for(const posen of Object.values(a.figuren))for(const k of Object.keys(posen))posen[k]=posen[k].replace(/href="[^"]+"/g,'href="/kaputt.png"');document.getElementById('demo').replaceChildren(MINISPIEL_SZENEN.tauziehen(a));});await skip(p);
-  await p.waitForFunction(()=>document.querySelectorAll('.ms-avatar-ersatz').length===4);await still(p);
+  await p.waitForFunction(()=>document.querySelectorAll('.ms-avatar-ersatz').length===5);await still(p);
   await p.evaluate(()=>{const a=structuredClone(window.tauziehenVorschau);a.id+='-ohne-canvas';a.abgeschlossen=false;window.tauOhneCanvas=true;document.getElementById('demo').replaceChildren(MINISPIEL_SZENEN.tauziehen(a));});await skip(p);await still(p);assert.equal(await p.locator('.tz-seil').evaluate(e=>getComputedStyle(e).visibility),'visible');await p.evaluate(()=>{window.tauOhneCanvas=false;});
   await modus(p,'live');await phase(p,'ziehen');await p.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,get:()=>true});document.dispatchEvent(new Event('visibilitychange'));});await phase(p,'ende');await still(p);
   await p.evaluate(()=>{delete document.hidden;});await modus(p,'live');await phase(p,'ziehen');await p.evaluate(()=>{document.querySelector('.ms-tauziehen').remove();});await p.waitForTimeout(650);assert.equal(await p.evaluate(()=>window.tauRaf.size),0);

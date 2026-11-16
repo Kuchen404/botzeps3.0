@@ -6,11 +6,14 @@ import { runInNewContext } from "node:vm";
 import { describe, expect, it } from "vitest";
 
 interface Stand { schnitt: number[]; zug?: number }
-const { tauziehenLage, tauziehenAusschlag, tauziehenWechsel, tauziehenSichtbar, tauziehenFortsetzung, tauziehenSignaturen, tauziehenSeilPunkte, tauziehenKoerperZeile } = runInNewContext(
-  readFileSync(new URL("../miniapp/spiele/tauziehen.js", import.meta.url), "utf8") + ";({ tauziehenLage, tauziehenAusschlag, tauziehenWechsel, tauziehenSichtbar, tauziehenFortsetzung, tauziehenSignaturen, tauziehenSeilPunkte, tauziehenKoerperZeile })",
+const { tauziehenLage, tauziehenAusschlag, tauziehenWechsel, tauziehenSichtbar, tauziehenFortsetzung, tauziehenSignaturen, tauziehenSeilPunkte, tauziehenKoerperZeile, tauziehenAufstellung, tauziehenLandung, tauziehenSeilMarke } = runInNewContext(
+  readFileSync(new URL("../miniapp/spiele/tauziehen.js", import.meta.url), "utf8") + ";({ tauziehenLage, tauziehenAusschlag, tauziehenWechsel, tauziehenSichtbar, tauziehenFortsetzung, tauziehenSignaturen, tauziehenSeilPunkte, tauziehenKoerperZeile, tauziehenAufstellung, tauziehenLandung, tauziehenSeilMarke })",
   { window: { addEventListener() {} }, document: { addEventListener() {} } },
 ) as {
-  tauziehenSeilPunkte: (breite: number, versatz: number, senke: number, impuls: number, zeit: number) => number[][];
+  tauziehenSeilPunkte: (breite: number, versatz: number, senke: number, impuls: number, zeit: number, griffe?: {x:number;y:number;seite:number}[]) => number[][];
+  tauziehenSeilMarke: (p:number[][],x:number) => number[];
+  tauziehenAufstellung: (b:number,n:number) => {x:number;w:number;h:number;label:number}[];
+  tauziehenLandung: (b:number,s:number,p:number,n:number,g:boolean) => {x:number;fuss:number};
   tauziehenKoerperZeile: (y: number, neigung: number, beuge: number) => {x: number; y: number};
   tauziehenLage: (s: Stand) => { schnitt: number[]; zug: number; seite: number | null };
   tauziehenAusschlag: (n: number) => number;
@@ -65,16 +68,17 @@ describe("Tauziehen-Inszenierung", () => {
   it("hält Seilenden fest und verlegt die freie Welle mit dem tatsächlichen Knoten", () => {
     for (const breite of [256, 326, 448]) for (const versatz of [-.13 * breite, 0, .13 * breite]) {
       const punkte = tauziehenSeilPunkte(breite, versatz, 18, 7, 100);
-      expect(punkte[0]).toEqual([0, 18]);
-      expect(punkte.at(-1)![0]).toBe(breite);
-      expect(punkte.at(-1)![1]).toBeCloseTo(18);
+      expect(punkte[0]![0]).toBeGreaterThanOrEqual(8);
+      expect(punkte.at(-1)![0]).toBeLessThanOrEqual(breite-8);
+      expect(punkte[0]![1]).toBeGreaterThan(228);
       expect(punkte.every(p => p.every(Number.isFinite))).toBe(true);
-      expect(punkte.some(p => p[1]! > 25)).toBe(true);
+      expect(punkte.some(p => p[1]! > 245)).toBe(true);
     }
     expect(tauziehenSeilPunkte(0, 0, 0, 0, 0)).toEqual([]);
     const a = tauziehenSeilPunkte(320, 0, 0, 4, 0);
     expect(a).not.toEqual(tauziehenSeilPunkte(320, 0, 0, 4, 60));
-    expect(tauziehenSeilPunkte(320, 0, 0, 0, 0).every(p => p[1] === 18)).toBe(true);
+    const ruhig=tauziehenSeilPunkte(320,0,0,0,0);
+    expect(ruhig.slice(2,-2).every(p=>p[1]===228)).toBe(true);
   });
   it("verformt Oberkörper kontinuierlich, ohne die Füße vom Boden zu heben", () => {
     for (const neigung of [-5, 5, 18]) {
@@ -94,6 +98,27 @@ describe("Tauziehen-Inszenierung", () => {
     expect([b.readUInt32BE(16),b.readUInt32BE(20)]).toEqual([480,480]);
     expect(figurMedium('tauziehen-fremd.png')).toBe(null);
     expect(figurMedium('../tauziehen-medien.ts')).toBe(null);
+  });
+
+  it("bindet das sichtbare Seil an alle Hände und hält Fransen vom Rand fern",()=>{
+    const griffe=[{x:50,y:230,seite:0},{x:100,y:227,seite:0},{x:205,y:226,seite:1},{x:260,y:229,seite:1}];
+    const punkte=tauziehenSeilPunkte(320,30,18,7,40,griffe);
+    for(const g of griffe)expect(punkte.some(p=>p[0]===g.x&&p[1]===g.y)).toBe(true);
+    const m=tauziehenSeilMarke(punkte,160);expect(m[0]).toBe(160);expect(m[1]).toBeGreaterThan(230);
+    expect(punkte.every(p=>p[0]!>=8&&p[0]!<=312)).toBe(true);
+  });
+  it("staffelt vier kleine Teams ohne verzerrte Figuren oder abgeschnittene Außenpositionen",()=>{
+    for(const breite of [254,326,414,448])for(const n of [1,2,3,4]){
+      const plan=tauziehenAufstellung(breite,n);expect(plan.length).toBe(n);
+      for(const p of plan){expect(p.h/p.w).toBeCloseTo(1.5);expect(p.x-p.w/2-breite*.025-6).toBeGreaterThan(0);expect(p.x+p.w/2+breite*.025+6).toBeLessThan(breite);}
+      for(let i=1;i<plan.length;i++)expect(plan[i]!.x).toBeGreaterThan(plan[i-1]!.x);
+    }
+    expect(tauziehenAufstellung(320,0)).toEqual([]);
+  });
+  it("verteilt Schlamm-Landungen innerhalb der Grube, auch bei Seilriss und beiden Teams",()=>{
+    for(const breite of [254,326,448])for(const gleich of [true,false])for(const seite of [0,1])for(const n of [1,2,3,4])for(let i=0;i<n;i++){
+      const p=tauziehenLandung(breite,seite,i,n,gleich);expect(p.x).toBeGreaterThanOrEqual(breite*.27);expect(p.x).toBeLessThanOrEqual(breite*.73);expect(p.fuss).toBeGreaterThanOrEqual(307);expect(p.fuss).toBeLessThanOrEqual(314);
+    }
   });
 
 });
