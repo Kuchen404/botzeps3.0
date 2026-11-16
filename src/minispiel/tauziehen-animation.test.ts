@@ -1,12 +1,17 @@
+import { createHash } from "node:crypto";
+import { figurMedium } from "../figuren/arcade.js";
+import { TAUZIEHEN_ARENA } from "../figuren/tauziehen-medien.js";
 import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
 import { describe, expect, it } from "vitest";
 
 interface Stand { schnitt: number[]; zug?: number }
-const { tauziehenLage, tauziehenAusschlag, tauziehenWechsel, tauziehenSichtbar, tauziehenFortsetzung, tauziehenSignaturen } = runInNewContext(
-  readFileSync(new URL("../miniapp/spiele/tauziehen.js", import.meta.url), "utf8") + ";({ tauziehenLage, tauziehenAusschlag, tauziehenWechsel, tauziehenSichtbar, tauziehenFortsetzung, tauziehenSignaturen })",
+const { tauziehenLage, tauziehenAusschlag, tauziehenWechsel, tauziehenSichtbar, tauziehenFortsetzung, tauziehenSignaturen, tauziehenSeilPunkte, tauziehenKoerperZeile } = runInNewContext(
+  readFileSync(new URL("../miniapp/spiele/tauziehen.js", import.meta.url), "utf8") + ";({ tauziehenLage, tauziehenAusschlag, tauziehenWechsel, tauziehenSichtbar, tauziehenFortsetzung, tauziehenSignaturen, tauziehenSeilPunkte, tauziehenKoerperZeile })",
   { window: { addEventListener() {} }, document: { addEventListener() {} } },
 ) as {
+  tauziehenSeilPunkte: (breite: number, versatz: number, senke: number, impuls: number, zeit: number) => number[][];
+  tauziehenKoerperZeile: (y: number, neigung: number, beuge: number) => {x: number; y: number};
   tauziehenLage: (s: Stand) => { schnitt: number[]; zug: number; seite: number | null };
   tauziehenAusschlag: (n: number) => number;
   tauziehenWechsel: (vorher: Stand, station: { art: string; stand: Stand }) => { korrektur: boolean; training: boolean; aktiv: number | null; wechsel: boolean; ausgleich: boolean };
@@ -57,4 +62,38 @@ describe("Tauziehen-Inszenierung", () => {
     const key = (zeitpunkt: string) => tauziehenSignaturen([{ zeitpunkt, art: "tag", stand: { schnitt: [10, 20] } }]);
     expect(key("2026-10-23T05:00:00Z")).toEqual(key("2026-10-23T05:05:00Z"));
   });
+  it("hält Seilenden fest und verlegt die freie Welle mit dem tatsächlichen Knoten", () => {
+    for (const breite of [256, 326, 448]) for (const versatz of [-.13 * breite, 0, .13 * breite]) {
+      const punkte = tauziehenSeilPunkte(breite, versatz, 18, 7, 100);
+      expect(punkte[0]).toEqual([0, 18]);
+      expect(punkte.at(-1)![0]).toBe(breite);
+      expect(punkte.at(-1)![1]).toBeCloseTo(18);
+      expect(punkte.every(p => p.every(Number.isFinite))).toBe(true);
+      expect(punkte.some(p => p[1]! > 25)).toBe(true);
+    }
+    expect(tauziehenSeilPunkte(0, 0, 0, 0, 0)).toEqual([]);
+    const a = tauziehenSeilPunkte(320, 0, 0, 4, 0);
+    expect(a).not.toEqual(tauziehenSeilPunkte(320, 0, 0, 4, 60));
+    expect(tauziehenSeilPunkte(320, 0, 0, 0, 0).every(p => p[1] === 18)).toBe(true);
+  });
+  it("verformt Oberkörper kontinuierlich, ohne die Füße vom Boden zu heben", () => {
+    for (const neigung of [-5, 5, 18]) {
+      expect(tauziehenKoerperZeile(284, neigung, 5).x).toBeCloseTo(0);
+      expect(tauziehenKoerperZeile(284, neigung, 5).y).toBe(284);
+      expect(tauziehenKoerperZeile(300, neigung, 5).x).toBeCloseTo(0);
+      expect(tauziehenKoerperZeile(300, neigung, 5).y).toBe(300);
+      expect(tauziehenKoerperZeile(80, neigung, 5).x).toBe(neigung);
+      for (let y = 0; y < 300; y++) expect(tauziehenKoerperZeile(y + 1, neigung, 5).y).toBeGreaterThan(tauziehenKoerperZeile(y, neigung, 5).y);
+    }
+    expect(tauziehenKoerperZeile(100, 5, 3)).not.toEqual(tauziehenKoerperZeile(100, 6, 3));
+  });
+  it("liefert die Arena unter 100 KiB über die feste Medien-Allowlist", () => {
+    const b = figurMedium(TAUZIEHEN_ARENA)!;
+    expect(b.length).toBeLessThan(100 * 1024);
+    expect(TAUZIEHEN_ARENA).toBe('tauziehen-arena-' + createHash('sha256').update(b).digest('hex').slice(0,12) + '.png');
+    expect([b.readUInt32BE(16),b.readUInt32BE(20)]).toEqual([480,480]);
+    expect(figurMedium('tauziehen-fremd.png')).toBe(null);
+    expect(figurMedium('../tauziehen-medien.ts')).toBe(null);
+  });
+
 });

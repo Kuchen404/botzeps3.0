@@ -3,6 +3,7 @@ import {FIGUREN, figurSvg} from '../dist/figuren/figuren.js';
 import {ATLAS_DATEIEN} from '../dist/figuren/atlanten.js';
 import {figurMedium} from '../dist/figuren/arcade.js';
 
+import {TAUZIEHEN_ARENA} from '../dist/figuren/tauziehen-medien.js';
 const nummern=[0,3,7,9,10];
 const medien=Object.fromEntries(nummern.map(nr=>[ATLAS_DATEIEN[nr],'data:image/png;base64,'+figurMedium(ATLAS_DATEIEN[nr]).toString('base64')]));
 const figuren=Object.fromEntries(nummern.map(nr=>[nr,Object.fromEntries(['bereit','ziehen','ko','jubel'].map(p=>[p,figurSvg(FIGUREN[nr],p,{id:`tv${nr}${p}`})]))]));
@@ -35,7 +36,8 @@ function render(){
   if(modus==='gleich')zug('m',120,'2026-10-23T12:00:00Z');
   if(modus==='korrektur')zug('n',0,'2026-10-23T12:00:00Z','korrektur');
  }
- const a={id:'tv'+ ++beispiel,art:'tauziehen',name:'Tauziehen',spieler,figuren,aktuell:stand(),verlauf,zeitzone:'Europe/Berlin',abgeschlossen:['rechts','links','gleich','nullgleich'].includes(modus)};
+ const a={id:'tv'+ ++beispiel,art:'tauziehen',name:'Tauziehen',tauziehenArena:'data:image/png;base64,${figurMedium(TAUZIEHEN_ARENA).toString('base64')}',spieler,figuren,aktuell:stand(),verlauf,zeitzone:'Europe/Berlin',abgeschlossen:['rechts','links','gleich','nullgleich'].includes(modus)};
+ window.tauziehenVorschau=a;
  document.getElementById('demo').replaceChildren(window.MINISPIEL_SZENEN.tauziehen(a));
 }
 document.getElementById('szenario').addEventListener('change',render);render();</script></html>`;

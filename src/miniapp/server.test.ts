@@ -6,6 +6,7 @@ import { uhr } from "../bot/kontext.js";
 import { GRUPPE, KEVIN, PETER, PRIVAT, befehl, knopf, testBot } from "../bot/testhilfe.js";
 import { signiereInitData } from "./auth.js";
 import { kuendigeBossAn } from "../db/season-repo.js";
+import { TAUZIEHEN_ARENA } from "../figuren/tauziehen-medien.js";
 import { FIGUREN, figurSvg } from "../figuren/figuren.js";
 
 const TOKEN = "test-token";
@@ -153,6 +154,23 @@ describe("Mini App", () => {
     } finally {
       server.close();
     }
+  });
+
+  it("/api/ich: Tauziehen bekommt die versionierte Arena aus derselben Medien-Allowlist", async () => {
+    const t = await aufbau();
+    try {
+      const ids = (t.db.prepare("SELECT id FROM nutzer ORDER BY id").all() as {id:number}[]).map(n=>String(n.id));
+      const daten = {art:"tauziehen",spieler:ids,teams:[{name:"Eisen",mitglieder:[ids[0]]},{name:"Pizza",mitglieder:[ids[1]]}]};
+      t.db.prepare("INSERT INTO minispiel (season, woche, art, daten) VALUES (1, 1, 'tauziehen', ?)").run(JSON.stringify(daten));
+      tag("2026-10-20");
+      const a = (await t.holen("/api/ich")).json.seasons[0].minispiel.animation;
+      expect(a.tauziehenArena).toBe("/api/figurbild/" + TAUZIEHEN_ARENA);
+      const bild = await fetch(t.basis + a.tauziehenArena);
+      expect(bild.status).toBe(200);
+      expect(bild.headers.get("content-type")).toBe("image/png");
+      expect(bild.headers.get("cache-control")).toBe("public, max-age=31536000, immutable");
+      expect(Number(bild.headers.get("content-length"))).toBeLessThan(100 * 1024);
+    } finally { t.server.close(); t.db.close(); }
   });
 
   it("/api/ich: Bombe nutzt stabile Spieler-IDs und die gewählten Season-Figuren", async () => {
