@@ -74,8 +74,12 @@ try {
   await modus(p,'gleich');await phase(p,'seilriss');await phase(p,'ende');await still(p);
   await modus(p,'elf-finale');await phase(p,'ziehen');
   assert.equal(await p.locator('.tz-person').count(),11);
-  const formen=await p.evaluate(()=>({v:document.querySelector('.tz-seil-kurve').toDataURL(),h:document.querySelector('.tz-seil-hinten').toDataURL()}));
-  await p.waitForTimeout(120);assert.notEqual(formen.v,await p.locator('.tz-seil-kurve').evaluate(e=>e.toDataURL()));
+  const formen=await p.locator('.tz-seil-kurve path').first().getAttribute('d');
+  assert.equal((formen.match(/M/g)||[]).length,1,'Ein gemeinsamer Seilpfad für beide Reihen');
+  assert.equal(await p.locator('svg.tz-seil-kurve').count(),1);
+  const seilY=[...formen.matchAll(/[ML]([-\d.]+) ([-\d.]+)/g)].map(m=>Number(m[2])).slice(2,-2);
+  assert(seilY.every(y=>y>263&&y<287),'Beide Reihen greifen auf dieselbe Seilhöhe');
+  await p.waitForTimeout(120);assert.notEqual(formen,await p.locator('.tz-seil-kurve path').first().getAttribute('d'));
   await phase(p,'rutschen');await p.locator('.ms-tauziehen').screenshot({path:ausgabe+'/elf-rutschen.png'});await phase(p,'ende');await still(p);
   assert.equal(await p.locator('.tz-person').count(),11);
   await modus(p,'elf-gleich');await phase(p,'seilriss');await phase(p,'ende');await still(p);
@@ -85,7 +89,7 @@ try {
   assert.equal(await p.locator('.ms-avatar-ersatz').count(),5);assert.equal(await p.locator('.tz-name').count(),5);
   await p.evaluate(()=>{const a=structuredClone(window.tauziehenVorschau);a.id+='-atlas-kaputt';a.abgeschlossen=false;for(const posen of Object.values(a.figuren))for(const k of Object.keys(posen))posen[k]=posen[k].replace(/href="[^"]+"/g,'href="/kaputt.png"');document.getElementById('demo').replaceChildren(MINISPIEL_SZENEN.tauziehen(a));});await skip(p);
   await p.waitForFunction(()=>document.querySelectorAll('.ms-avatar-ersatz').length===5);await still(p);
-  await p.evaluate(()=>{const a=structuredClone(window.tauziehenVorschau);a.id+='-ohne-canvas';a.abgeschlossen=false;window.tauOhneCanvas=true;document.getElementById('demo').replaceChildren(MINISPIEL_SZENEN.tauziehen(a));});await skip(p);await still(p);assert.equal(await p.locator('.tz-seil').evaluate(e=>getComputedStyle(e).visibility),'visible');await p.evaluate(()=>{window.tauOhneCanvas=false;});
+  await p.evaluate(()=>{const a=structuredClone(window.tauziehenVorschau);a.id+='-ohne-canvas';a.abgeschlossen=false;window.tauOhneCanvas=true;document.getElementById('demo').replaceChildren(MINISPIEL_SZENEN.tauziehen(a));});await skip(p);await still(p);assert.equal(await p.locator('svg.tz-seil-kurve').isVisible(),true);await p.evaluate(()=>{window.tauOhneCanvas=false;});
   await modus(p,'live');await phase(p,'ziehen');await p.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,get:()=>true});document.dispatchEvent(new Event('visibilitychange'));});await phase(p,'ende');await still(p);
   await p.evaluate(()=>{delete document.hidden;});await modus(p,'live');await phase(p,'ziehen');await p.evaluate(()=>{document.querySelector('.ms-tauziehen').remove();});await p.waitForTimeout(650);assert.equal(await p.evaluate(()=>window.tauRaf.size),0);
   const kosten=await p.evaluate(()=>window.tauZeiten.filter(n=>n>0).sort((a,b)=>a-b));

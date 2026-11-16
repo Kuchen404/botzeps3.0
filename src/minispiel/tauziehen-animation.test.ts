@@ -6,10 +6,11 @@ import { runInNewContext } from "node:vm";
 import { describe, expect, it } from "vitest";
 
 interface Stand { schnitt: number[]; zug?: number }
-const { tauziehenLage, tauziehenAusschlag, tauziehenWechsel, tauziehenSichtbar, tauziehenFortsetzung, tauziehenSignaturen, tauziehenSeilPunkte, tauziehenKoerperZeile, tauziehenAufstellung, tauziehenLandung, tauziehenSeilMarke, tauziehenSeilReihen } = runInNewContext(
-  readFileSync(new URL("../miniapp/spiele/tauziehen.js", import.meta.url), "utf8") + ";({ tauziehenLage, tauziehenAusschlag, tauziehenWechsel, tauziehenSichtbar, tauziehenFortsetzung, tauziehenSignaturen, tauziehenSeilPunkte, tauziehenKoerperZeile, tauziehenAufstellung, tauziehenLandung, tauziehenSeilMarke, tauziehenSeilReihen })",
+const { tauziehenLage, tauziehenAusschlag, tauziehenWechsel, tauziehenSichtbar, tauziehenFortsetzung, tauziehenSignaturen, tauziehenSeilPunkte, tauziehenKoerperZeile, tauziehenAufstellung, tauziehenLandung, tauziehenSeilMarke, tauziehenSeilReihen, tauziehenNetzPunkt } = runInNewContext(
+  readFileSync(new URL("../miniapp/spiele/tauziehen.js", import.meta.url), "utf8") + ";({ tauziehenLage, tauziehenAusschlag, tauziehenWechsel, tauziehenSichtbar, tauziehenFortsetzung, tauziehenSignaturen, tauziehenSeilPunkte, tauziehenKoerperZeile, tauziehenAufstellung, tauziehenLandung, tauziehenSeilMarke, tauziehenSeilReihen, tauziehenNetzPunkt })",
   { window: { addEventListener() {} }, document: { addEventListener() {} } },
 ) as {
+  tauziehenNetzPunkt: (x:number,y:number,n:number,b:number,h:boolean,g:number,d:number) => number[];
   tauziehenSeilReihen: (g:{x:number;y:number;seite:number;reihe:number}[]) => {x:number;y:number;seite:number;reihe:number}[];
   tauziehenSeilPunkte: (breite: number, versatz: number, senke: number, impuls: number, zeit: number, griffe?: {x:number;y:number;seite:number;reihe?:number}[]) => number[][];
   tauziehenSeilMarke: (p:number[][],x:number) => number[];
@@ -122,23 +123,24 @@ describe("Tauziehen-Inszenierung", () => {
     }
   });
 
-  it("zeigt fünf und sechs Teammitglieder in zwei versetzten Reihen mit Platz für Namen",()=>{
+  it("staffelt fünf und sechs Teammitglieder entlang derselben räumlichen Zuglinie",()=>{
     for(const breite of [254,326,448])for(const n of [5,6,8]){
       const p=tauziehenAufstellung(breite,n,true);expect(p.length).toBe(n);
       expect(p.filter(a=>a.reihe===0).length).toBe(Math.ceil(n/2));
       expect(p.filter(a=>a.reihe===1).length).toBe(Math.floor(n/2));
       for(const a of p){expect(a.h/a.w).toBeCloseTo(1.5);expect(a.x-a.w/2-breite*.025-6).toBeGreaterThan(0);expect(a.x+a.w/2+breite*.025+6).toBeLessThan(breite);expect(a.label).toBeGreaterThanOrEqual(30);}
-      expect(p.find(a=>a.reihe===1)!.griffY).toBeLessThan(p[0]!.griffY-40);
+      expect(p.every(a=>a.griffY===275)).toBe(true);
       expect(p.find(a=>a.reihe===1)!.w).toBeLessThan(p[0]!.w);
     }
   });
-  it("verbindet die hinteren Griffe hinter den Figuren mit dem vorderen Seilstück",()=>{
-    const g=[{x:60,y:214,seite:0,reihe:1},{x:100,y:214,seite:0,reihe:1},{x:70,y:275,seite:0,reihe:0},{x:110,y:275,seite:0,reihe:0},{x:210,y:275,seite:1,reihe:0},{x:250,y:275,seite:1,reihe:0},{x:220,y:214,seite:1,reihe:1},{x:260,y:214,seite:1,reihe:1}];
+  it("führt einen einzigen vorwärts laufenden Seilstrang durch beide Figurengruppen",()=>{
+    const g=[{x:60,y:200,seite:0,reihe:1},{x:80,y:224,seite:0,reihe:0},{x:100,y:248,seite:0,reihe:1},{x:120,y:272,seite:0,reihe:0},{x:206,y:272,seite:1,reihe:0},{x:226,y:248,seite:1,reihe:1},{x:246,y:224,seite:1,reihe:0},{x:266,y:200,seite:1,reihe:1}];
     expect(tauziehenSeilReihen([...g].reverse())).toEqual(g);
     const p=tauziehenSeilPunkte(326,0,5,0,0,g);
     for(const a of g)expect(p.some(b=>b[0]===a.x&&b[1]===a.y)).toBe(true);
-    expect(p.some(a=>a[2]===1)).toBe(true);expect(p.some(a=>a[2]===2)).toBe(true);
-    expect(tauziehenSeilMarke(p,160)[1]).toBeGreaterThanOrEqual(275);
+    for(let i=1;i<p.length;i++)expect(p[i]![0]).toBeGreaterThan(p[i-1]![0]!);
+    expect(p.every(a=>a[2]===0)).toBe(true);
+    expect(tauziehenSeilMarke(p,163)[1]).toBeGreaterThanOrEqual(272);
   });
   it("hält alle elf Spieler auch beim Finale in getrennten vorderen und hinteren Landebereichen",()=>{
     for(const n of [5,6])for(const seite of [0,1])for(const gleich of [true,false]){
@@ -147,6 +149,19 @@ describe("Tauziehen-Inszenierung", () => {
       expect(p[Math.ceil(n/2)]!.fuss).toBeLessThan(p[0]!.fuss-35);
       expect(p.every(a=>a.x>=326*.27&&a.x<=326*.73)).toBe(true);
     }
+  });
+
+  it("senkt nur die hinteren Arme zum gemeinsamen Seil, ohne Gesicht oder Füße zu verformen",()=>{
+    for(const [x,y] of [[55,178],[40,168],[46,165],[50,153],[52,167],[49,164],[51,151],[46,151],[40,158],[40,158],[51,163],[53,167]]){
+      const hand=tauziehenNetzPunkt(x!,y!,0,0,true,y!,0);
+      expect(hand[1]).toBeGreaterThan(y!+35);
+      expect(hand.every(Number.isFinite)).toBe(true);
+      expect(tauziehenNetzPunkt(145,90,0,0,true,y!,0)).toEqual([145,90]);
+      expect(tauziehenNetzPunkt(60,284,0,0,true,y!,0)).toEqual([60,284]);
+      expect(tauziehenNetzPunkt(160,300,0,0,true,y!,0)).toEqual([160,300]);
+      const top=275-hand[1]!/300*100;expect(top+hand[1]!/300*100).toBeCloseTo(275);
+    }
+    expect(tauziehenNetzPunkt(145,90,0,0,false,178,12)[1]).toBe(102);
   });
 
 });

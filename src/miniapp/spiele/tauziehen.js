@@ -43,15 +43,15 @@ function tauziehenAufstellung(breite, anzahl, zweireihen) {
   if (!anzahl || breite <= 0) return [];
   var vorne=zweireihen?Math.ceil(anzahl/2):anzahl,hinten=anzahl-vorne;
   var w=Math.min(86,breite*(vorne>3?.16:vorne>2?.205:.24));
-  var aussen=w/2+breite*.025+(zweireihen?22:17),innen=Math.max(aussen,breite*.38);
+  var aussen=w/2+breite*.025+(zweireihen?27:17),innen=Math.max(aussen,breite*.38);
   return Array.from({length:anzahl},function(_,i){
     var reihe=i<vorne?0:1,j=reihe?i-vorne:i,n=reihe?hinten:vorne;
     var schritt=vorne>1?(innen-aussen)/(vorne-1):0;
     var x=vorne===1?breite*.26:aussen+(n<vorne?(j+.5)*schritt:j*schritt);
-    if(reihe&&n===vorne)x-=Math.min(8,schritt*.28);
-    var groesse=reihe?w*.9:w;
+    if(reihe&&n===vorne)x-=Math.min(16,schritt*.5);
+    var groesse=reihe?w*.98:w;
     return {x:x,w:groesse,h:groesse*1.5,reihe:reihe,spalte:j,
-      griffY:zweireihen?(reihe?214:275):228,
+      griffY:zweireihen?275:228,
       label:n===1?80:Math.max(30,Math.min(80,schritt*(n>2||zweireihen?2:1)-3))};
   });
 }
@@ -65,40 +65,38 @@ function tauziehenLandung(breite, seite, platz, anzahl, gleich, hoehe) {
     label:n===1?80:Math.max(30,Math.min(80,(bis-von)*breite/(n-1)*(n>2?2:1)-3))};
 }
 function tauziehenSeilReihen(griffe) {
-  var sortiert=griffe.slice().sort(function(a,b){return a.x-b.x;});
-  function teil(seite,reihe){return sortiert.filter(function(g){return g.seite===seite&&(g.reihe||0)===reihe;});}
-  return teil(0,1).concat(teil(0,0),teil(1,0),teil(1,1));
+  return griffe.slice().sort(function(a,b){return a.x-b.x;});
 }
 /* Enden und alle Griffpunkte liegen innerhalb der Bühne. Nur das freie Stück
    zwischen den Teams bekommt Durchhang und die kräftige Rückstoßwelle. */
 function tauziehenSeilPunkte(breite, versatz, senke, impuls, zeit, griffe) {
   if (!(breite > 0)) return [];
   griffe=tauziehenSeilReihen(griffe&&griffe.length?griffe:[{x:breite*.2,y:228,seite:0},{x:breite*.8,y:228,seite:1}]);
-  var a=griffe[0], b=griffe[griffe.length-1], links=griffe.filter(function(g){return g.seite===0&&!g.reihe;}).pop()||a;
-  var rechts=griffe.find(function(g){return g.seite===1&&!g.reihe;})||b;
-  var punkte=[[Math.max(8,a.x-14),a.y+20,(a.reihe?2:0)],[Math.max(10,a.x-9),a.y+7,(a.reihe?2:0)]];
+  var a=griffe[0], b=griffe[griffe.length-1], links=griffe.filter(function(g){return g.seite===0;}).pop()||a;
+  var rechts=griffe.find(function(g){return g.seite===1;})||b;
+  var punkte=[[Math.max(8,a.x-14),a.y+20,0],[Math.max(10,a.x-9),a.y+7,0]];
   griffe.forEach(function(g,i){
-    if (!i) {punkte.push([g.x,g.y,g.reihe?2:0]);return;}
+    if (!i) {punkte.push([g.x,g.y,0]);return;}
     var vorher=griffe[i-1], frei=vorher===links&&g===rechts;
     for(var j=1;j<=12;j++){
       var u=j/12, gewicht=Math.pow(Math.sin(u*Math.PI),2), x=vorher.x+(g.x-vorher.x)*u;
       var y=vorher.y+(g.y-vorher.y)*(u*u*(3-2*u));
       y+=(frei?senke:senke*.04)*gewicht + impuls*Math.sin(u*Math.PI*3-zeit*.025)*gewicht*(frei?1:.1);
-      punkte.push([x,y,(g.reihe||0)!==(vorher.reihe||0)?1:g.reihe?2:0]);
+      punkte.push([x,y,0]);
     }
   });
-  punkte.push([Math.min(breite-10,b.x+9),b.y+7,b.reihe?2:0],[Math.min(breite-8,b.x+14),b.y+20,b.reihe?2:0]);
+  punkte.push([Math.min(breite-10,b.x+9),b.y+7,0],[Math.min(breite-8,b.x+14),b.y+20,0]);
   return punkte;
 }
 function tauziehenSeilMarke(punkte, x) {
   for(var i=1;i<punkte.length;i++)if(punkte[i][0]>=x){var a=punkte[i-1],b=punkte[i],u=(x-a[0])/(b[0]-a[0]||1);return [x,a[1]+(b[1]-a[1])*u];}
   return punkte.length?punkte[punkte.length-1]:[x,228];
 }
-/* Scanline-Verformung der vorhandenen Ziehen-Pose: kein neuer Atlas und kein
+/* Verformung der vorhandenen Ziehen-Pose: kein neuer Atlas und kein
    Austausch von Einzelbildern. Die letzten Fußzeilen bleiben fest am Boden. */
-function tauziehenKoerperZeile(y, neigung, beuge) {
+function tauziehenKoerperZeile(y, neigung, beuge, ducken) {
   var gewicht = Math.max(0, Math.min(1, (284 - y) / 180));
-  return { x: neigung * gewicht, y: y + beuge * Math.sin(Math.PI * Math.min(1, y / 284)) * gewicht };
+  return { x: neigung * gewicht, y: y + beuge * Math.sin(Math.PI * Math.min(1, y / 284)) * gewicht + (ducken||0)*Math.max(0,Math.min(1,(155-y)/45)) };
 }
 var tauziehenBildCache = new Map();
 function tauziehenZugBild(avatar) {
@@ -109,16 +107,44 @@ function tauziehenZugBild(avatar) {
   }
   return tauziehenBildCache.get(url);
 }
-function tauziehenKoerper(canvas, bild, neigung, beuge, links) {
-  var ctx = canvas.getContext('2d'); if (!ctx || !bild || !bild.complete || !bild.naturalWidth) return false;
-  ctx.setTransform(canvas.width / 240, 0, 0, canvas.height / 320, 0, 0); ctx.clearRect(0,0,240,320);
-  ctx.save(); ctx.translate(20, 10); if (links) { ctx.translate(200,0); ctx.scale(-1,1); }
-  for (var y = 0; y < 300; y += 10) {
-    var a = tauziehenKoerperZeile(y, neigung, beuge), b = tauziehenKoerperZeile(y + 10, neigung, beuge);
-    ctx.save(); ctx.transform(1,0,(b.x-a.x)/10,(b.y-a.y)/10,a.x,a.y);
-    ctx.drawImage(bild,200,300+y,200,10,0,0,200,10.3); ctx.restore();
+function tauziehenArmGewicht(x,y,griffY){
+  return Math.max(0,Math.min(1,(135-x)/60))*Math.max(0,Math.min(1,(y-griffY+65)/30))*Math.max(0,Math.min(1,(griffY+40-y)/25));
+}
+function tauziehenNetzPunkt(x,y,neigung,beuge,hinten,griffY,ducken){
+  if(hinten){
+    var winkel=-55*Math.PI/180*tauziehenArmGewicht(x,y,griffY),dx=x-130,dy=y-(griffY-35);
+    x=130+dx*Math.cos(winkel)-dy*Math.sin(winkel);y=griffY-35+dx*Math.sin(winkel)+dy*Math.cos(winkel);
   }
-  ctx.restore(); return true;
+  var z=tauziehenKoerperZeile(y,neigung,beuge,ducken);return [x+z.x,z.y];
+}
+var tauziehenDreiecke=[];
+(function(){
+  var xs=[0,65,110,145,200],ys=[0,110,145,175,205,235,284,300];
+  for(var j=0;j<ys.length-1;j++)for(var i=0;i<xs.length-1;i++){
+    var a=[xs[i],ys[j]],b=[xs[i+1],ys[j]],c=[xs[i],ys[j+1]],d=[xs[i+1],ys[j+1]];
+    tauziehenDreiecke.push([a,b,c],[b,d,c]);
+  }
+  function arm(t){var x=(t[0][0]+t[1][0]+t[2][0])/3,y=(t[0][1]+t[1][1]+t[2][1])/3;return x<120&&y>125&&y<220?1:0;}
+  tauziehenDreiecke.sort(function(a,b){return arm(a)-arm(b);});
+})();
+function tauziehenKoerper(canvas,bild,neigung,beuge,links,hinten,griffY,ducken){
+  var ctx=canvas.getContext('2d');if(!ctx||!bild||!bild.complete||!bild.naturalWidth)return false;
+  ctx.setTransform(canvas.width/240,0,0,canvas.height/320,0,0);ctx.clearRect(0,0,240,320);
+  ctx.save();ctx.translate(20,10);if(links){ctx.translate(200,0);ctx.scale(-1,1);}
+  if(!hinten){
+    for(var y=0;y<300;y+=10){
+      var a=tauziehenKoerperZeile(y,neigung,beuge,ducken),b=tauziehenKoerperZeile(y+10,neigung,beuge,ducken);
+      ctx.save();ctx.transform(1,0,(b.x-a.x)/10,(b.y-a.y)/10,a.x,a.y);ctx.drawImage(bild,200,300+y,200,10,0,0,200,10.3);ctx.restore();
+    }
+  }else tauziehenDreiecke.forEach(function(t){
+    var a=t[0],b=t[1],c=t[2],aa=tauziehenNetzPunkt(a[0],a[1],neigung,beuge,true,griffY,0),bb=tauziehenNetzPunkt(b[0],b[1],neigung,beuge,true,griffY,0),cc=tauziehenNetzPunkt(c[0],c[1],neigung,beuge,true,griffY,0);
+    var det=(b[0]-a[0])*(c[1]-a[1])-(c[0]-a[0])*(b[1]-a[1]);
+    var m0=((bb[0]-aa[0])*(c[1]-a[1])-(cc[0]-aa[0])*(b[1]-a[1]))/det,m2=((cc[0]-aa[0])*(b[0]-a[0])-(bb[0]-aa[0])*(c[0]-a[0]))/det;
+    var m1=((bb[1]-aa[1])*(c[1]-a[1])-(cc[1]-aa[1])*(b[1]-a[1]))/det,m3=((cc[1]-aa[1])*(b[0]-a[0])-(bb[1]-aa[1])*(c[0]-a[0]))/det;
+    ctx.save();ctx.beginPath();ctx.moveTo(aa[0],aa[1]);ctx.lineTo(bb[0],bb[1]);ctx.lineTo(cc[0],cc[1]);ctx.closePath();ctx.clip();
+    ctx.transform(m0,m1,m2,m3,aa[0]-m0*a[0]-m2*a[1],aa[1]-m1*a[0]-m3*a[1]);ctx.drawImage(bild,200,300,200,300,0,0,200,300);ctx.restore();
+  });
+  ctx.restore();return true;
 }
 
 window.MINISPIEL_SZENEN = window.MINISPIEL_SZENEN || {};
@@ -138,11 +164,12 @@ window.MINISPIEL_SZENEN.tauziehen = function (a) {
     kulisse.onload = function () { if (kulisse.naturalWidth) arena.classList.add('tz-mit-kulisse'); };
     arena.prepend(kulisse);
   }
-  var seilHinten=document.createElement('canvas');seilHinten.className='tz-seil-hinten';seilHinten.setAttribute('aria-hidden','true');arena.appendChild(seilHinten);
-  var seilCanvas = document.createElement('canvas'); seilCanvas.className = 'tz-seil-kurve'; seilCanvas.setAttribute('aria-hidden','true'); arena.appendChild(seilCanvas);
-  var seilTeile = seiten.map(function (seite) { return el("div", { class: "tz-seilhaelfte " + seite }); });
-  var knoten = el("div", { class: "tz-knoten" });
-  var seil = el("div", { class: "tz-seil" }, seilTeile.concat([knoten])); arena.appendChild(seil);
+  function svgElement(tag,attribute){var node=document.createElementNS('http://www.w3.org/2000/svg',tag);Object.keys(attribute||{}).forEach(function(k){node.setAttribute(k,attribute[k]);});return node;}
+  var seil=svgElement('svg',{'class':'tz-seil-kurve','aria-hidden':'true',preserveAspectRatio:'none'});
+  var seilStraenge=[['#241b1a',9],['#b47e46',6],['#ffe3a3',3]].map(function(stil,i){var p=svgElement('path',{fill:'none',stroke:stil[0],'stroke-width':stil[1],'stroke-linecap':'round','stroke-linejoin':'round'});if(i===2)p.setAttribute('stroke-dasharray','2 5');seil.appendChild(p);return p;});
+  var seilFransen=svgElement('path',{fill:'none',stroke:'#e5b979','stroke-width':1.5});seil.appendChild(seilFransen);
+  var knoten=svgElement('g');knoten.appendChild(svgElement('path',{d:'M-5 -5H6L8 25 1 21 -6 26Z',fill:'#df5948',stroke:'#542a23','stroke-width':2}));
+  knoten.appendChild(svgElement('path',{d:'M-3 -4H0V7H-3Z',fill:'#ffc28a'}));seil.appendChild(knoten);arena.appendChild(seil);
   var crews = seiten.map(function (seite) { var e = el("div", { class: "tz-crew " + seite, "aria-hidden": "true" }); arena.appendChild(e); return e; });
   var mehr = seiten.map(function (seite) { var e = el("div", { class: "tz-more " + seite }); arena.appendChild(e); return e; });
   var labels = [], werte = [], anzahl = [];
@@ -162,50 +189,31 @@ window.MINISPIEL_SZENEN.tauziehen = function (a) {
   function buehnenHoehe(){return arena.clientHeight||(zweiReihen?420:360);}
   var wellenStart = 0, wellenStaerke = 0, seilVersatz = 0, lockeresSeil = 0, seilBewegung = null, rigKraft = 5, spannenAb = 0;
   function kurve(zeit) {
-    var w=arena.clientWidth,h=buehnenHoehe(),boden=h*.84,ctx=seilCanvas.getContext('2d'),hinter=seilHinten.getContext('2d');if(!w)return;
+    var w=arena.clientWidth,h=buehnenHoehe(),boden=h*.84;if(!w)return;
     if(spannenAb){var rest=Math.max(0,1-(zeit-spannenAb)/300);lockeresSeil=18*rest*rest;if(!rest)spannenAb=0;}
     if(seilBewegung){var u=Math.max(0,Math.min(1,(zeit-seilBewegung.start)/seilBewegung.dauer)),e=1-Math.pow(1-u,3);seilVersatz=seilBewegung.von+(seilBewegung.nach-seilBewegung.von)*e+Math.sin(u*Math.PI*2)*(1-u)*seilBewegung.stoss;if(u===1)seilBewegung=null;}
-    var griffe=seilLos?seilLos.griffe:figurenGriffe();if(!griffe.length){seil.hidden=true;return;}seil.hidden=false;
+    var griffe=seilLos?seilLos.griffe:figurenGriffe();seil.style.display=griffe.length?'':'none';if(!griffe.length)return;
     var ab=Math.max(0,zeit-wellenStart),impuls=wellenStaerke*Math.exp(-ab/240);
     var punkte=tauziehenSeilPunkte(w,seilVersatz,lockeresSeil,impuls,ab,griffe);
-    var links=griffe.filter(function(g){return g.seite===0&&!g.reihe;}).pop()||griffe[0];
-    var rechts=griffe.find(function(g){return g.seite===1&&!g.reihe;})||griffe[griffe.length-1];
+    var links=griffe.filter(function(g){return g.seite===0;}).pop()||griffe[0];
+    var rechts=griffe.find(function(g){return g.seite===1;})||griffe[griffe.length-1];
     var mitte=(links.x+rechts.x)/2,markeX=Math.max(links.x+4,Math.min(rechts.x-4,mitte+seilVersatz*.22));
     var marke=tauziehenSeilMarke(punkte,markeX),fall=seilLos?(seilLos.start?Math.min(1,(zeit-seilLos.start)/620):1):0;
     fall=1-Math.pow(1-Math.max(0,fall),3);
     if(seilLos){
-      punkte=punkte.map(function(p){return [Math.max(9,Math.min(w-9,p[0]+(seilLos.gleich?(p[0]<mitte?-12:12):(mitte-p[0])*.06)*fall)),p[1]+(boden+Math.sin(p[0]*.06)*3-p[1])*fall,p[2]];});
+      punkte=punkte.map(function(p){return [Math.max(9,Math.min(w-9,p[0]+(seilLos.gleich?(p[0]<mitte?-12:12):(mitte-p[0])*.06)*fall)),p[1]+(boden+Math.sin(p[0]*.06)*3-p[1])*fall,0];});
       marke=[marke[0]+(seilLos.gleich?8:0)*fall,marke[1]+(boden+11-marke[1])*fall];
     }
-    seil.style.left=punkte[0][0]+'px';seil.style.width=(punkte[punkte.length-1][0]-punkte[0][0])+'px';seil.style.top=(seilLos?boden:links.y)+'px';seil.style.transform='none';
-    knoten.style.left=(markeX-punkte[0][0]-8)+'px';knoten.style.transform=seilLos?'rotate(14deg)':'none';
-    seilTeile.forEach(function(e,i){e.style.transform=seilLos&&seilLos.gleich?'translateY(8px) rotate('+(i===0?9:-9)+'deg)':'none';});
-    if(!ctx)return;
-    arena.classList.add('tz-hat-seil');
-    var dpr=Math.min(2,window.devicePixelRatio||1);
-    [seilCanvas,seilHinten].forEach(function(c){if(c.width!==Math.round(w*dpr)||c.height!==Math.round(h*dpr)){c.width=Math.round(w*dpr);c.height=Math.round(h*dpr);}});
-    [ctx,hinter].forEach(function(c){if(c){c.setTransform(dpr,0,0,dpr,0,0);c.clearRect(0,0,w,h);c.lineCap='round';}});
-    function linie(ziel,farbe,dicke,strich,tiefe){
-      ziel.beginPath();var angefangen=false;
-      for(var i=1;i<punkte.length;i++){
-        var p=punkte[i],vorher=punkte[i-1];
-        if((hinter&&(p[2]||0)!==tiefe)||(seilLos&&seilLos.gleich&&Math.abs(p[0]-mitte)<12*fall)){angefangen=false;continue;}
-        if(!angefangen)ziel.moveTo(vorher[0],vorher[1]);ziel.lineTo(p[0],p[1]);angefangen=true;
-      }
-      ziel.strokeStyle=farbe;ziel.lineWidth=dicke;ziel.setLineDash(strich||[]);ziel.stroke();
-    }
-    [[hinter,1],[ctx,2],[ctx,0]].forEach(function(paar){var c=paar[0],tiefe=paar[1];if(!c)return;
-      linie(c,'#241b1a',tiefe?7:9,[],tiefe);linie(c,tiefe?'#93663e':'#b47e46',tiefe?5:6,[],tiefe);linie(c,tiefe?'#d6b986':'#ffe3a3',tiefe?2:3,[2,5],tiefe);c.setLineDash([]);
+    var d='',anfang=true;
+    punkte.forEach(function(p){
+      if(seilLos&&seilLos.gleich&&Math.abs(p[0]-mitte)<12*fall){anfang=true;return;}
+      d+=(anfang?'M':'L')+p[0].toFixed(2)+' '+p[1].toFixed(2);anfang=false;
     });
-    [punkte[0],punkte[punkte.length-1]].forEach(function(p){
-      var c=p[2]===1&&hinter?hinter:ctx;c.strokeStyle='#e5b979';c.lineWidth=1.5;
-      for(var k=-1;k<=1;k++){c.beginPath();c.moveTo(p[0]+k*2,p[1]-2);c.lineTo(p[0]+k*3,p[1]+5);c.stroke();}
-    });
-    ctx.save();ctx.translate(marke[0],marke[1]);ctx.rotate(seilLos?fall*.7:impuls*.025);ctx.fillStyle='#df5948';ctx.strokeStyle='#542a23';ctx.lineWidth=2;
-    ctx.beginPath();ctx.moveTo(-5,-5);ctx.lineTo(6,-5);ctx.lineTo(8,25);ctx.lineTo(1,21);ctx.lineTo(-6,26);ctx.closePath();ctx.fill();ctx.stroke();
-    ctx.fillStyle='#ffc28a';ctx.fillRect(-3,-4,3,11);ctx.restore();
-    // Kleine Datenpunkte für reproduzierbare Geometrieprüfungen, keine Spielzustände.
-    seilCanvas.dataset.enden=JSON.stringify([punkte[0],punkte[punkte.length-1]]);
+    seil.setAttribute('viewBox','0 0 '+w+' '+h);seilStraenge.forEach(function(p){p.setAttribute('d',d);});
+    knoten.setAttribute('transform','translate('+marke[0]+','+marke[1]+') rotate('+(seilLos?fall*40:impuls*1.4)+')');
+    var fransen='';[punkte[0],punkte[punkte.length-1]].forEach(function(p){for(var k=-1;k<=1;k++)fransen+='M'+(p[0]+k*2)+' '+(p[1]-2)+'l'+k+' 7';});
+    seilFransen.setAttribute('d',fransen);
+    seil.dataset.enden=JSON.stringify([punkte[0],punkte[punkte.length-1]]);
   }
   function rigZeichnen(zeit,animiert){
     var ph=root.getAttribute('data-tauphase'),ziel=ph==='ausholen'?-7:ph==='ziehen'?23:ph==='finale'?29:5;
@@ -220,7 +228,14 @@ window.MINISPIEL_SZENEN.tauziehen = function (a) {
       var beuge=animiert?(ph==='ausholen'?12:5)+Math.sin(t-.5)*2:0;
       if(gegenseite&&rutschStaerke&&ph==='ziehen'){neigung-=Math.sin(t*2)*5;beuge+=5;}
       person.dataset.neigung=neigung;person.dataset.beuge=beuge;
-      if(tauziehenKoerper(canvas,bild,neigung,beuge,i===0))avatar.classList.add('tz-geriggt');
+      var hinten=person.dataset.reihe==='1',ducken=zweiReihen&&!hinten?12:0,griffY=Number(person.dataset.griffY);
+      if(tauziehenKoerper(canvas,bild,neigung,beuge,i===0,hinten,griffY,ducken)){
+        avatar.classList.add('tz-geriggt');person.dataset.ducken=ducken;
+        if(!/rutschen|schlamm/.test(ph)){
+          var g=tauziehenNetzPunkt(Number(person.dataset.griffX),griffY,0,0,hinten,griffY,0);
+          person.style.top=(Number(person.dataset.zielY)-g[1]/300*person.clientHeight)+'px';
+        }
+      }
     });});
   }
   function bildlauf(zeit) {
@@ -244,7 +259,7 @@ window.MINISPIEL_SZENEN.tauziehen = function (a) {
     wartende.forEach(function (resolve, timer) { clearTimeout(timer); resolve(false); }); wartende.clear();
     arena.querySelectorAll(".tz-effekt").forEach(function (e) { e.remove(); });
     arena.style.transform = ""; seil.removeAttribute("style"); knoten.removeAttribute("style");
-    seilTeile.forEach(function (e) { e.removeAttribute("style"); }); crews.forEach(function (e) { e.removeAttribute("style"); });
+    crews.forEach(function (e) { e.removeAttribute("style"); });
     root.removeAttribute("data-ergebnis");
   }
   function warten(ms, nr) {
@@ -283,24 +298,25 @@ window.MINISPIEL_SZENEN.tauziehen = function (a) {
     sichtbar.forEach(function(id,j){
       var sp=spieler.get(id),g=tauziehenGriffe[sp.figur]||[50,170],p=plan[j];
       var person=el('div',{class:'tz-person'+(aktiv&&aktiv.includes(id)?' tz-beitrag':''),'data-id':id,'data-ich':String(!!sp.ich),title:sp.name});
-      var x=i===0?p.x:breite-p.x,top=p.griffY-g[1]/300*p.h+(p.spalte%2?-3:0);
+      var griffHoehe=p.reihe&&pose!=='ziehen'?tauziehenNetzPunkt(g[0],g[1],0,0,true,g[1],0)[1]:g[1];
+      var x=i===0?p.x:breite-p.x,top=p.griffY-griffHoehe/300*p.h;
       person.style.left=x+'px';person.style.top=top+'px';person.style.width=p.w+'px';person.style.height=p.h+'px';
       person.style.setProperty('--tz-label',p.label+'px');person.style.setProperty('--tz-label-y',sichtbar.length>2&&p.spalte%2?'17px':'0px');person.style.zIndex=String((p.reihe?0:10)+p.spalte+1);person.dataset.reihe=p.reihe;person.dataset.spalte=p.spalte;
-      person.dataset.basisX=x;person.dataset.basisY=top;person.dataset.griffX=g[0];person.dataset.griffY=g[1];
+      person.dataset.basisX=x;person.dataset.basisY=top;person.dataset.zielY=p.griffY;person.dataset.griffX=g[0];person.dataset.griffY=g[1];
       person.appendChild(el('div',{class:'tz-body'},[minispielAvatar(a,id,pose),el('div',{class:'tz-schmutz'})]));
       var namensschild=el('div',{class:'tz-name',text:(sp.ich?'DU · ':'')+sp.name});
-      if(p.reihe)namensschild.style.top=(148+(p.spalte%2)*15-top)+'px';person.appendChild(namensschild);
+      if(p.reihe){namensschild.style.top=(-2-(p.spalte%2)*20)+'px';namensschild.style.left=(pose==='ziehen'?(i===0?'28%':'72%'):'50%');}person.appendChild(namensschild);
       crews[i].appendChild(person);medienErsatz(person.querySelector('.ms-avatar'),id);
     });
     mehr[i].hidden=ids.length<=sichtbar.length;mehr[i].textContent='+'+(ids.length-sichtbar.length)+' am Seil';
   }
-  function posen(i,pose){crews[i].querySelectorAll('.ms-avatar').forEach(function(e){e.classList.remove('tz-geriggt');minispielSetzePose(e,a,e.dataset.id,pose);medienErsatz(e,e.dataset.id);});}
+  function posen(i,pose){crews[i].querySelectorAll('.ms-avatar').forEach(function(e){e.classList.remove('tz-geriggt');minispielSetzePose(e,a,e.dataset.id,pose);medienErsatz(e,e.dataset.id);var p=e.closest('.tz-person');if(p.dataset.reihe==='1')p.querySelector('.tz-name').style.left=pose==='ziehen'?(i===0?'28%':'72%'):'50%';});}
   function figurenGriffe(){
     var rect=arena.getBoundingClientRect(),griffe=[];
     crews.forEach(function(crew,i){crew.querySelectorAll('.tz-person').forEach(function(p){
       var r=p.getBoundingClientRect(),dx=Number(p.dataset.griffX),dy=Number(p.dataset.griffY);
-      var verformt=p.querySelector('.tz-geriggt'),zeile=verformt?tauziehenKoerperZeile(dy,Number(p.dataset.neigung)||5,Number(p.dataset.beuge)||0):{x:0,y:dy};
-      var x=(dx+zeile.x)/200;griffe.push({x:r.left-rect.left+r.width*(i===0?1-x:x),y:r.top-rect.top+r.height*zeile.y/300,seite:i,reihe:Number(p.dataset.reihe)});
+      var verformt=p.querySelector('.tz-geriggt'),v=verformt?tauziehenNetzPunkt(dx,dy,Number(p.dataset.neigung)||5,Number(p.dataset.beuge)||0,p.dataset.reihe==='1',dy,Number(p.dataset.ducken)||0):[dx,dy];
+      griffe.push({x:r.left-rect.left+r.width*(i===0?1-v[0]/200:v[0]/200),y:r.top-rect.top+r.height*v[1]/300,seite:i,reihe:Number(p.dataset.reihe)});
     });});
     return griffe.sort(function(a,b){return a.x-b.x;});
   }
@@ -347,14 +363,11 @@ window.MINISPIEL_SZENEN.tauziehen = function (a) {
   async function auftritt(stand, nr) {
     phase("auftritt"); status.textContent = "Rückblick · Beide Teams treten an"; var schild = effekt("tz-banner", "ANS SEIL!"), p = position(stand);
     crews.forEach(function (crew, i) { posen(i, "bereit"); bewegen(crew, [{ transform: "translateX(" + (p.crew + (i === 0 ? -18 : 18)) + "px)", opacity: 0 }, { transform: "translateX(" + p.crew + "px)", opacity: 1 }], { duration: 380, easing: "ease-out" }, nr); });
-    var senke = arena.clientWidth * .65 * Math.sin(7 * Math.PI / 180); lockeresSeil=18;
-    seilTeile.forEach(function (e, i) { e.style.transform = "rotate(" + (i === 0 ? 7 : -7) + "deg)"; }); knoten.style.transform = "translateY(" + senke + "px)";
-    if (!await warten(400, nr)) return false;
-    spannenAb=performance.now(); wellenStart=performance.now();wellenStaerke=3;
-    phase("greifen"); posen(0, "ziehen"); posen(1, "ziehen");
-    var teile = seilTeile.map(function (e, i) { return bewegen(e, [{ transform: "rotate(" + (i === 0 ? 7 : -7) + "deg)" }, { transform: "rotate(0deg)" }], { duration: 300, easing: "ease-out" }, nr); });
-    teile.push(bewegen(knoten, [{ transform: "translateY(" + senke + "px)" }, { transform: "translateY(0)" }], { duration: 300 }, nr));
-    if (!(await Promise.all(teile)).every(Boolean)) return false;
+    lockeresSeil=18;
+    if (!await warten(400,nr))return false;
+    spannenAb=performance.now();wellenStart=performance.now();wellenStaerke=3;
+    phase('greifen');posen(0,'ziehen');posen(1,'ziehen');
+    if(!await warten(300,nr))return false;
     if (!await bewegen(schild, [{ opacity: 1 }, { opacity: 0 }], { duration: 180 }, nr)) return false;
     schild.remove(); return true;
   }

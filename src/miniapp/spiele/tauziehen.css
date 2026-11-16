@@ -6,12 +6,6 @@
 .ms-tauziehen .tz-mud { position:absolute; left:16%; top:290px; width:68%; height:37px; border:2px solid #634a35; border-radius:50%; background:radial-gradient(ellipse,#9f693c,#49311f); box-shadow:inset 0 4px 6px #251d18,0 3px 0 #d6a45b55; z-index:1; border-color:#664428; }
 .ms-tauziehen .tz-mud::before,.ms-tauziehen .tz-mud::after { content:""; position:absolute; top:12px; left:18%; width:21%; height:6px; border:1px solid #d2aa7c; border-radius:50%; transform:rotate(-8deg); }
 .ms-tauziehen .tz-mud::after { left:64%; top:24px; width:15%; }
-.ms-tauziehen .tz-seil { position:absolute; top:219px; left:12%; width:76%; height:8px; z-index:3; visibility:visible; }
-.ms-tauziehen .tz-seilhaelfte { position:absolute; top:0; width:50%; height:8px; border:1px solid #79562f; border-radius:5px; background:repeating-linear-gradient(115deg,#b78042 0 4px,#ffdf98 4px 7px); box-shadow:0 2px #32483b33; }
-.ms-tauziehen .tz-seilhaelfte.links { left:0; transform-origin:0 50%; }
-.ms-tauziehen .tz-seilhaelfte.rechts { right:0; transform-origin:100% 50%; }
-.ms-tauziehen .tz-knoten { position:absolute; left:calc(50% - 9px); top:-8px; width:18px; height:23px; background:#e36150; border:2px solid #793d31; border-radius:6px; box-shadow:inset 4px 0 #ffb283; }
-.ms-tauziehen .tz-knoten::after { content:""; position:absolute; left:5px; top:18px; width:10px; height:21px; border:1px solid #793d31; background:#e36150; clip-path:polygon(0 0,100% 0,100% 100%,50% 75%,0 100%); }
 .ms-tauziehen .tz-crew { position:absolute; top:148px; width:36%; height:135px; z-index:2; }
 .ms-tauziehen .tz-crew.links { left:8%; }
 .ms-tauziehen .tz-crew.rechts { right:8%; }
@@ -55,8 +49,6 @@
 .ms-tauziehen .tz-team.rechts .tz-average { color:#ffc392; }
 .ms-tauziehen .tz-anzahl { position:absolute; bottom:8px; right:8px; font-size:8px; }
 .ms-tauziehen .tz-team.rechts .tz-anzahl { left:8px; right:auto; }
-.ms-tauziehen .tz-hat-seil .tz-seil { visibility:hidden; }
-.ms-tauziehen .tz-hat-seil .tz-seil-kurve { display:block; }
 @media (max-width:350px) {
   .ms-tauziehen .tz-person,.ms-tauziehen .tz-person .ms-avatar { width:68px; }
   .ms-tauziehen .tz-name { max-width:48px; font-size:8px; padding-inline:4px; }
@@ -78,11 +70,7 @@
 .ms-tauziehen .tz-name { max-width:var(--tz-label,70px); font-size:8px; padding:3px 4px; border-color:#75bad98c; }
 .ms-tauziehen .tz-crew.rechts .tz-name { border-color:#ef97738c; }
 .ms-tauziehen .tz-person[data-ich="true"] .tz-name { border-color:#f7ce73; }
-.ms-tauziehen .tz-seil { left:12%; width:76%; }
 .ms-tauziehen .tz-seil-kurve { top:0; height:360px; }
-.ms-tauziehen .tz-hat-seil .tz-seil-kurve { display:block; }
-.ms-tauziehen .tz-hat-seil .tz-seil { visibility:hidden; }
-.ms-tauziehen[data-seil-los] .tz-seil-kurve,.ms-tauziehen[data-seil-los] .tz-seil { z-index:1; }
 .ms-tauziehen[data-fuehrung="links"] .tz-team.links { box-shadow:0 0 12px #65d2ef40,inset 0 0 14px #78e3ff0a; }
 .ms-tauziehen[data-fuehrung="rechts"] .tz-team.rechts { box-shadow:0 0 12px #ffa77340,inset 0 0 14px #ff995a0a; }
 .ms-tauziehen[data-wucht="finale"] .tz-licht { background:radial-gradient(ellipse at 50% 70%,#ffdfa12b,transparent 70%); }
@@ -93,11 +81,12 @@
 
 .ms-tauziehen .tz-name { top:calc(100% + 3px + var(--tz-label-y,0px)); }
 
-/* Die hintere Seilschlaufe liegt hinter den Figuren, der Zugstrang davor. */
+/* Die versetzten Figuren greifen auf derselben durchgehenden Seillinie. */
 .ms-tauziehen[data-reihen="2"] .tz-arena { height:420px; }
 .ms-tauziehen .tz-seil-kurve { height:100%; }
-.ms-tauziehen .tz-seil-hinten { display:none; position:absolute; inset:0; width:100%; height:100%; z-index:1; pointer-events:none; }
-.ms-tauziehen[data-reihen="2"] .tz-hat-seil .tz-seil-hinten { display:block; }
 .ms-tauziehen .tz-mud { top:calc(100% - 70px); }
 .ms-tauziehen .tz-boden { top:calc(100% - 89px); }
 .ms-tauziehen .tz-person[data-reihe="1"] .tz-body { filter:brightness(.9) saturate(.9) drop-shadow(0 2px 1px #1d1c22aa); }
+
+.ms-tauziehen .tz-seil-kurve { display:block; height:100%; overflow:visible; }
+.ms-tauziehen[data-seil-los] .tz-seil-kurve { z-index:1; }
