@@ -6,14 +6,15 @@ import { runInNewContext } from "node:vm";
 import { describe, expect, it } from "vitest";
 
 interface Stand { schnitt: number[]; zug?: number }
-const { tauziehenLage, tauziehenAusschlag, tauziehenWechsel, tauziehenSichtbar, tauziehenFortsetzung, tauziehenSignaturen, tauziehenSeilPunkte, tauziehenKoerperZeile, tauziehenAufstellung, tauziehenLandung, tauziehenSeilMarke } = runInNewContext(
-  readFileSync(new URL("../miniapp/spiele/tauziehen.js", import.meta.url), "utf8") + ";({ tauziehenLage, tauziehenAusschlag, tauziehenWechsel, tauziehenSichtbar, tauziehenFortsetzung, tauziehenSignaturen, tauziehenSeilPunkte, tauziehenKoerperZeile, tauziehenAufstellung, tauziehenLandung, tauziehenSeilMarke })",
+const { tauziehenLage, tauziehenAusschlag, tauziehenWechsel, tauziehenSichtbar, tauziehenFortsetzung, tauziehenSignaturen, tauziehenSeilPunkte, tauziehenKoerperZeile, tauziehenAufstellung, tauziehenLandung, tauziehenSeilMarke, tauziehenSeilReihen } = runInNewContext(
+  readFileSync(new URL("../miniapp/spiele/tauziehen.js", import.meta.url), "utf8") + ";({ tauziehenLage, tauziehenAusschlag, tauziehenWechsel, tauziehenSichtbar, tauziehenFortsetzung, tauziehenSignaturen, tauziehenSeilPunkte, tauziehenKoerperZeile, tauziehenAufstellung, tauziehenLandung, tauziehenSeilMarke, tauziehenSeilReihen })",
   { window: { addEventListener() {} }, document: { addEventListener() {} } },
 ) as {
-  tauziehenSeilPunkte: (breite: number, versatz: number, senke: number, impuls: number, zeit: number, griffe?: {x:number;y:number;seite:number}[]) => number[][];
+  tauziehenSeilReihen: (g:{x:number;y:number;seite:number;reihe:number}[]) => {x:number;y:number;seite:number;reihe:number}[];
+  tauziehenSeilPunkte: (breite: number, versatz: number, senke: number, impuls: number, zeit: number, griffe?: {x:number;y:number;seite:number;reihe?:number}[]) => number[][];
   tauziehenSeilMarke: (p:number[][],x:number) => number[];
-  tauziehenAufstellung: (b:number,n:number) => {x:number;w:number;h:number;label:number}[];
-  tauziehenLandung: (b:number,s:number,p:number,n:number,g:boolean) => {x:number;fuss:number};
+  tauziehenAufstellung: (b:number,n:number,zwei?:boolean) => {x:number;w:number;h:number;label:number;reihe:number;spalte:number;griffY:number}[];
+  tauziehenLandung: (b:number,s:number,p:number,n:number,g:boolean,h?:number) => {x:number;fuss:number};
   tauziehenKoerperZeile: (y: number, neigung: number, beuge: number) => {x: number; y: number};
   tauziehenLage: (s: Stand) => { schnitt: number[]; zug: number; seite: number | null };
   tauziehenAusschlag: (n: number) => number;
@@ -118,6 +119,33 @@ describe("Tauziehen-Inszenierung", () => {
   it("verteilt Schlamm-Landungen innerhalb der Grube, auch bei Seilriss und beiden Teams",()=>{
     for(const breite of [254,326,448])for(const gleich of [true,false])for(const seite of [0,1])for(const n of [1,2,3,4])for(let i=0;i<n;i++){
       const p=tauziehenLandung(breite,seite,i,n,gleich);expect(p.x).toBeGreaterThanOrEqual(breite*.27);expect(p.x).toBeLessThanOrEqual(breite*.73);expect(p.fuss).toBeGreaterThanOrEqual(307);expect(p.fuss).toBeLessThanOrEqual(314);
+    }
+  });
+
+  it("zeigt fünf und sechs Teammitglieder in zwei versetzten Reihen mit Platz für Namen",()=>{
+    for(const breite of [254,326,448])for(const n of [5,6,8]){
+      const p=tauziehenAufstellung(breite,n,true);expect(p.length).toBe(n);
+      expect(p.filter(a=>a.reihe===0).length).toBe(Math.ceil(n/2));
+      expect(p.filter(a=>a.reihe===1).length).toBe(Math.floor(n/2));
+      for(const a of p){expect(a.h/a.w).toBeCloseTo(1.5);expect(a.x-a.w/2-breite*.025-6).toBeGreaterThan(0);expect(a.x+a.w/2+breite*.025+6).toBeLessThan(breite);expect(a.label).toBeGreaterThanOrEqual(30);}
+      expect(p.find(a=>a.reihe===1)!.griffY).toBeLessThan(p[0]!.griffY-40);
+      expect(p.find(a=>a.reihe===1)!.w).toBeLessThan(p[0]!.w);
+    }
+  });
+  it("verbindet die hinteren Griffe hinter den Figuren mit dem vorderen Seilstück",()=>{
+    const g=[{x:60,y:214,seite:0,reihe:1},{x:100,y:214,seite:0,reihe:1},{x:70,y:275,seite:0,reihe:0},{x:110,y:275,seite:0,reihe:0},{x:210,y:275,seite:1,reihe:0},{x:250,y:275,seite:1,reihe:0},{x:220,y:214,seite:1,reihe:1},{x:260,y:214,seite:1,reihe:1}];
+    expect(tauziehenSeilReihen([...g].reverse())).toEqual(g);
+    const p=tauziehenSeilPunkte(326,0,5,0,0,g);
+    for(const a of g)expect(p.some(b=>b[0]===a.x&&b[1]===a.y)).toBe(true);
+    expect(p.some(a=>a[2]===1)).toBe(true);expect(p.some(a=>a[2]===2)).toBe(true);
+    expect(tauziehenSeilMarke(p,160)[1]).toBeGreaterThanOrEqual(275);
+  });
+  it("hält alle elf Spieler auch beim Finale in getrennten vorderen und hinteren Landebereichen",()=>{
+    for(const n of [5,6])for(const seite of [0,1])for(const gleich of [true,false]){
+      const p=Array.from({length:n},(_,i)=>tauziehenLandung(326,seite,i,n,gleich,420));
+      expect(p.every(a=>a.fuss>300&&a.fuss<380)).toBe(true);
+      expect(p[Math.ceil(n/2)]!.fuss).toBeLessThan(p[0]!.fuss-35);
+      expect(p.every(a=>a.x>=326*.27&&a.x<=326*.73)).toBe(true);
     }
   });
 

@@ -92,3 +92,12 @@
 .ms-tauziehen .tz-schmutz { height:28px; }
 
 .ms-tauziehen .tz-name { top:calc(100% + 3px + var(--tz-label-y,0px)); }
+
+/* Die hintere Seilschlaufe liegt hinter den Figuren, der Zugstrang davor. */
+.ms-tauziehen[data-reihen="2"] .tz-arena { height:420px; }
+.ms-tauziehen .tz-seil-kurve { height:100%; }
+.ms-tauziehen .tz-seil-hinten { display:none; position:absolute; inset:0; width:100%; height:100%; z-index:1; pointer-events:none; }
+.ms-tauziehen[data-reihen="2"] .tz-hat-seil .tz-seil-hinten { display:block; }
+.ms-tauziehen .tz-mud { top:calc(100% - 70px); }
+.ms-tauziehen .tz-boden { top:calc(100% - 89px); }
+.ms-tauziehen .tz-person[data-reihe="1"] .tz-body { filter:brightness(.9) saturate(.9) drop-shadow(0 2px 1px #1d1c22aa); }

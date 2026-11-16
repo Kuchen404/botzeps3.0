@@ -42,12 +42,13 @@ try {
     await p.locator('.ms-tauziehen').screenshot({path:ausgabe+'/ziehen-'+width+'.png'});
     await skip(p);await still(p);
     assert.equal(await p.locator('.tz-average').allTextContents().then(v=>v.join('/')),'93,33/120');
-    for(const mode of ['rechts','links','gleich','nullgleich','korrektur','start','gross','leer']){
+    for(const mode of ['rechts','links','gleich','nullgleich','korrektur','start','elf','elf-finale','elf-gleich','gross','leer']){
       await modus(p,mode);await skip(p);await still(p);
-      const seilEnden=await p.locator('.tz-seil-kurve').evaluate(e=>({w:e.closest('.tz-arena').clientWidth,p:JSON.parse(e.dataset.enden||'[]')}));
-      for(const ende of seilEnden.p){assert(ende[0]>=8 && ende[0]<=seilEnden.w-8,'Seilenden bleiben sichtbar');assert(ende[1]>=0 && ende[1]<350);}
+      const seilEnden=await p.locator('.tz-seil-kurve').evaluate(e=>({w:e.closest('.tz-arena').clientWidth,h:e.closest('.tz-arena').clientHeight,p:JSON.parse(e.dataset.enden||'[]')}));
+      for(const ende of seilEnden.p){assert(ende[0]>=8 && ende[0]<=seilEnden.w-8,'Seilenden bleiben sichtbar');assert(ende[1]>=0 && ende[1]<seilEnden.h-10);}
       const ergebnis=await p.locator('.ms-tauziehen').getAttribute('data-ergebnis');
-      assert.equal(ergebnis,({rechts:'rechts',links:'links',gleich:'unentschieden',nullgleich:'unentschieden'})[mode]||null);
+      assert.equal(ergebnis,({rechts:'rechts',links:'links',gleich:'unentschieden',nullgleich:'unentschieden','elf-finale':'rechts','elf-gleich':'unentschieden'})[mode]||null);
+      if(mode.startsWith('elf')){assert.equal(await p.locator('.tz-person').count(),11);assert.equal(await p.locator('.tz-person[data-reihe="1"]').count(),5);assert.equal(await p.locator('.tz-more:visible').count(),0);assert.equal(await p.locator('.ms-tauziehen').getAttribute('data-reihen'),'2');}
       if(mode==='gross')assert.equal(await p.locator('.tz-person[data-ich="true"]').count(),1);
       assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'kein horizontaler Überlauf');
       assert.equal(await p.locator('.tz-geriggt:not(:has(canvas))').count(),0,'Posen bleiben sichtbar');
@@ -71,6 +72,14 @@ try {
   await phase(p,'schlamm');assert.equal(await p.locator('.tz-geriggt').count(),0,'Jubel/K.O. bleiben sichtbar');
   await p.locator('.ms-tauziehen').screenshot({path:ausgabe+'/finale.png'});await phase(p,'ende');await still(p);
   await modus(p,'gleich');await phase(p,'seilriss');await phase(p,'ende');await still(p);
+  await modus(p,'elf-finale');await phase(p,'ziehen');
+  assert.equal(await p.locator('.tz-person').count(),11);
+  const formen=await p.evaluate(()=>({v:document.querySelector('.tz-seil-kurve').toDataURL(),h:document.querySelector('.tz-seil-hinten').toDataURL()}));
+  await p.waitForTimeout(120);assert.notEqual(formen.v,await p.locator('.tz-seil-kurve').evaluate(e=>e.toDataURL()));
+  await phase(p,'rutschen');await p.locator('.ms-tauziehen').screenshot({path:ausgabe+'/elf-rutschen.png'});await phase(p,'ende');await still(p);
+  assert.equal(await p.locator('.tz-person').count(),11);
+  await modus(p,'elf-gleich');await phase(p,'seilriss');await phase(p,'ende');await still(p);
+  await modus(p,'live');await skip(p);
   // Fehlende Medien: Initialen, Namensschilder und CSS-Ersatzbühne.
   await p.evaluate(()=>{const a=structuredClone(window.tauziehenVorschau);a.id+='-kaputt';a.abgeschlossen=false;a.tauziehenArena='/kaputt.png';a.figuren={};document.getElementById('demo').replaceChildren(MINISPIEL_SZENEN.tauziehen(a));});await skip(p);
   assert.equal(await p.locator('.ms-avatar-ersatz').count(),5);assert.equal(await p.locator('.tz-name').count(),5);
