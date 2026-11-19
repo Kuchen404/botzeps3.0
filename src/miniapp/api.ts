@@ -30,6 +30,7 @@ import { BERG_BILDER } from "../figuren/berg-atlanten.js";
 import { ZOMBIE_ANGRIFFE } from "../figuren/zombie-angriffe.js";
 import { ZOMBIE_BILDER } from "../figuren/zombie-medien.js";
 import { DUELL_BILDER } from "../figuren/duell-medien.js";
+import { TAUZIEHEN_ARENA } from "../figuren/tauziehen-medien.js";
 import { TRESOR_BILDER } from "../figuren/tresor-medien.js";
 import { JAGD_KULISSE } from "../figuren/lauf-atlanten.js";
 import { FIGUREN, type Pose, figurKletterSvg, figurLaufSvg, figurSvg } from "../figuren/figuren.js";
@@ -147,6 +148,7 @@ function minispielJson(db: Db, s: Parameters<typeof minispielFuerApp>[1], tag: s
       return { ...m, animation: { ...a, spieler, figuren, zombieAngriffe, zombieBilder: Object.fromEntries(Object.entries(ZOMBIE_BILDER).map(([k, v]) => [k, "/api/figurbild/" + v])) } };
     }
     if (a.art === "duell") return { ...m, animation: { ...a, spieler, figuren, duellBilder: Object.fromEntries(Object.entries(DUELL_BILDER).map(([k, v]) => [k, "/api/figurbild/" + v])) } };
+    if (a.art === "tauziehen") return { ...m, animation: { ...a, spieler, figuren, tauziehenArena: "/api/figurbild/" + TAUZIEHEN_ARENA } };
     if (a.art === "tresor") return { ...m, animation: { ...a, spieler, figuren, tresorBilder: Object.fromEntries(Object.entries(TRESOR_BILDER).map(([k, v]) => [k, "/api/figurbild/" + v])) } };
     return { ...m, animation: { ...a, spieler, figuren, ...(a.art === "gipfel" ? { bergBilder: Object.fromEntries(Object.entries(BERG_BILDER).map(([art,datei]) => [art,"/api/figurbild/"+datei])) } : {}), ...(a.art === "kopfgeld" ? { kulisse: "/api/figurbild/" + JAGD_KULISSE } : {}) } };
   }

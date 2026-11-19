@@ -37,6 +37,116 @@ function tauziehenFortsetzung(alt, neu) {
   return alt.length === neu.length ? null : alt.length - 1;
 }
 function tauziehenSignaturen(stationen) { return stationen.map(function (s) { return JSON.stringify([s.art, s.stand]); }); }
+// Griffmitte der gemalten Ziehen-Pose, in der 200 × 300 großen Atlaszelle.
+var tauziehenGriffe = [[55,178],[40,168],[46,165],[50,153],[52,167],[49,164],[51,151],[46,151],[40,158],[40,158],[51,163],[53,167]];
+function tauziehenAufstellung(breite, anzahl, zweireihen) {
+  if (!anzahl || breite <= 0) return [];
+  var vorne=zweireihen?Math.ceil(anzahl/2):anzahl,hinten=anzahl-vorne;
+  var w=Math.min(86,breite*(vorne>3?.16:vorne>2?.205:.24));
+  var aussen=w/2+breite*.025+(zweireihen?27:17),innen=Math.max(aussen,breite*.38);
+  return Array.from({length:anzahl},function(_,i){
+    var reihe=i<vorne?0:1,j=reihe?i-vorne:i,n=reihe?hinten:vorne;
+    var schritt=vorne>1?(innen-aussen)/(vorne-1):0;
+    var x=vorne===1?breite*.26:aussen+(n<vorne?(j+.5)*schritt:j*schritt);
+    if(reihe&&n===vorne)x-=Math.min(16,schritt*.5);
+    var groesse=reihe?w*.98:w;
+    return {x:x,w:groesse,h:groesse*1.5,reihe:reihe,spalte:j,
+      griffY:zweireihen?275:228,
+      label:n===1?80:Math.max(30,Math.min(80,schritt*(n>2||zweireihen?2:1)-3))};
+  });
+}
+function tauziehenLandung(breite, seite, platz, anzahl, gleich, hoehe) {
+  hoehe=hoehe||360;
+  var zweireihen=hoehe>360&&anzahl>1,vorne=zweireihen?Math.ceil(anzahl/2):anzahl;
+  var reihe=platz<vorne?0:1,j=reihe?platz-vorne:platz,n=reihe?anzahl-vorne:vorne;
+  var von=gleich?(seite===0?.27:.56):.39,bis=gleich?(seite===0?.44:.73):.61;
+  var x=breite*(n===1?(von+bis)/2:von+(bis-von)*j/(n-1));
+  return {x:x,fuss:hoehe*.85+1-(reihe?44:0)+(j%2)*7,
+    label:n===1?80:Math.max(30,Math.min(80,(bis-von)*breite/(n-1)*(n>2?2:1)-3))};
+}
+function tauziehenSeilReihen(griffe) {
+  return griffe.slice().sort(function(a,b){return a.x-b.x;});
+}
+/* Enden und alle Griffpunkte liegen innerhalb der Bühne. Nur das freie Stück
+   zwischen den Teams bekommt Durchhang und die kräftige Rückstoßwelle. */
+function tauziehenSeilPunkte(breite, versatz, senke, impuls, zeit, griffe) {
+  if (!(breite > 0)) return [];
+  griffe=tauziehenSeilReihen(griffe&&griffe.length?griffe:[{x:breite*.2,y:228,seite:0},{x:breite*.8,y:228,seite:1}]);
+  var a=griffe[0], b=griffe[griffe.length-1], links=griffe.filter(function(g){return g.seite===0;}).pop()||a;
+  var rechts=griffe.find(function(g){return g.seite===1;})||b;
+  var punkte=[[Math.max(8,a.x-14),a.y+20,0],[Math.max(10,a.x-9),a.y+7,0]];
+  griffe.forEach(function(g,i){
+    if (!i) {punkte.push([g.x,g.y,0]);return;}
+    var vorher=griffe[i-1], frei=vorher===links&&g===rechts;
+    for(var j=1;j<=12;j++){
+      var u=j/12, gewicht=Math.pow(Math.sin(u*Math.PI),2), x=vorher.x+(g.x-vorher.x)*u;
+      var y=vorher.y+(g.y-vorher.y)*(u*u*(3-2*u));
+      y+=(frei?senke:senke*.04)*gewicht + impuls*Math.sin(u*Math.PI*3-zeit*.025)*gewicht*(frei?1:.1);
+      punkte.push([x,y,0]);
+    }
+  });
+  punkte.push([Math.min(breite-10,b.x+9),b.y+7,0],[Math.min(breite-8,b.x+14),b.y+20,0]);
+  return punkte;
+}
+function tauziehenSeilMarke(punkte, x) {
+  for(var i=1;i<punkte.length;i++)if(punkte[i][0]>=x){var a=punkte[i-1],b=punkte[i],u=(x-a[0])/(b[0]-a[0]||1);return [x,a[1]+(b[1]-a[1])*u];}
+  return punkte.length?punkte[punkte.length-1]:[x,228];
+}
+/* Verformung der vorhandenen Ziehen-Pose: kein neuer Atlas und kein
+   Austausch von Einzelbildern. Die letzten Fußzeilen bleiben fest am Boden. */
+function tauziehenKoerperZeile(y, neigung, beuge, ducken) {
+  var gewicht = Math.max(0, Math.min(1, (284 - y) / 180));
+  return { x: neigung * gewicht, y: y + beuge * Math.sin(Math.PI * Math.min(1, y / 284)) * gewicht + (ducken||0)*Math.max(0,Math.min(1,(155-y)/45)) };
+}
+var tauziehenBildCache = new Map();
+function tauziehenZugBild(avatar) {
+  var bild = avatar.querySelector('svg image'), url = bild && bild.getAttribute('href');
+  if (!url) return null;
+  if (!tauziehenBildCache.has(url)) {
+    var img = new Image(); img.src = url; tauziehenBildCache.set(url, img);
+  }
+  return tauziehenBildCache.get(url);
+}
+function tauziehenArmGewicht(x,y,griffY){
+  return Math.max(0,Math.min(1,(135-x)/60))*Math.max(0,Math.min(1,(y-griffY+65)/30))*Math.max(0,Math.min(1,(griffY+40-y)/25));
+}
+function tauziehenNetzPunkt(x,y,neigung,beuge,hinten,griffY,ducken){
+  if(hinten){
+    var winkel=-55*Math.PI/180*tauziehenArmGewicht(x,y,griffY),dx=x-130,dy=y-(griffY-35);
+    x=130+dx*Math.cos(winkel)-dy*Math.sin(winkel);y=griffY-35+dx*Math.sin(winkel)+dy*Math.cos(winkel);
+  }
+  var z=tauziehenKoerperZeile(y,neigung,beuge,ducken);return [x+z.x,z.y];
+}
+var tauziehenDreiecke=[];
+(function(){
+  var xs=[0,65,110,145,200],ys=[0,110,145,175,205,235,284,300];
+  for(var j=0;j<ys.length-1;j++)for(var i=0;i<xs.length-1;i++){
+    var a=[xs[i],ys[j]],b=[xs[i+1],ys[j]],c=[xs[i],ys[j+1]],d=[xs[i+1],ys[j+1]];
+    tauziehenDreiecke.push([a,b,c],[b,d,c]);
+  }
+  function arm(t){var x=(t[0][0]+t[1][0]+t[2][0])/3,y=(t[0][1]+t[1][1]+t[2][1])/3;return x<120&&y>125&&y<220?1:0;}
+  tauziehenDreiecke.sort(function(a,b){return arm(a)-arm(b);});
+})();
+function tauziehenKoerper(canvas,bild,neigung,beuge,links,hinten,griffY,ducken){
+  var ctx=canvas.getContext('2d');if(!ctx||!bild||!bild.complete||!bild.naturalWidth)return false;
+  ctx.setTransform(canvas.width/240,0,0,canvas.height/320,0,0);ctx.clearRect(0,0,240,320);
+  ctx.save();ctx.translate(20,10);if(links){ctx.translate(200,0);ctx.scale(-1,1);}
+  if(!hinten){
+    for(var y=0;y<300;y+=10){
+      var a=tauziehenKoerperZeile(y,neigung,beuge,ducken),b=tauziehenKoerperZeile(y+10,neigung,beuge,ducken);
+      ctx.save();ctx.transform(1,0,(b.x-a.x)/10,(b.y-a.y)/10,a.x,a.y);ctx.drawImage(bild,200,300+y,200,10,0,0,200,10.3);ctx.restore();
+    }
+  }else tauziehenDreiecke.forEach(function(t){
+    var a=t[0],b=t[1],c=t[2],aa=tauziehenNetzPunkt(a[0],a[1],neigung,beuge,true,griffY,0),bb=tauziehenNetzPunkt(b[0],b[1],neigung,beuge,true,griffY,0),cc=tauziehenNetzPunkt(c[0],c[1],neigung,beuge,true,griffY,0);
+    var det=(b[0]-a[0])*(c[1]-a[1])-(c[0]-a[0])*(b[1]-a[1]);
+    var m0=((bb[0]-aa[0])*(c[1]-a[1])-(cc[0]-aa[0])*(b[1]-a[1]))/det,m2=((cc[0]-aa[0])*(b[0]-a[0])-(bb[0]-aa[0])*(c[0]-a[0]))/det;
+    var m1=((bb[1]-aa[1])*(c[1]-a[1])-(cc[1]-aa[1])*(b[1]-a[1]))/det,m3=((cc[1]-aa[1])*(b[0]-a[0])-(bb[1]-aa[1])*(c[0]-a[0]))/det;
+    ctx.save();ctx.beginPath();ctx.moveTo(aa[0],aa[1]);ctx.lineTo(bb[0],bb[1]);ctx.lineTo(cc[0],cc[1]);ctx.closePath();ctx.clip();
+    ctx.transform(m0,m1,m2,m3,aa[0]-m0*a[0]-m2*a[1],aa[1]-m1*a[0]-m3*a[1]);ctx.drawImage(bild,200,300,200,300,0,0,200,300);ctx.restore();
+  });
+  ctx.restore();return true;
+}
+
 window.MINISPIEL_SZENEN = window.MINISPIEL_SZENEN || {};
 window.MINISPIEL_SZENEN.tauziehen = function (a) {
   if (tauziehenAbbrechen) tauziehenAbbrechen();
@@ -47,37 +157,109 @@ window.MINISPIEL_SZENEN.tauziehen = function (a) {
   if (!stationen.length) stationen = [{ zeitpunkt: null, art: "start", stand: aktuell }];
   var signaturen = tauziehenSignaturen(stationen);
   var status = el("div", { class: "ms-status", role: "status", "aria-live": "polite" });
-  var arena = el("div", { class: "tz-arena", "aria-hidden": "true" });
-  ["sun", "cloud", "flag", "mud"].forEach(function (name) { arena.appendChild(el("div", { class: "tz-" + name })); });
-  var seilTeile = seiten.map(function (seite) { return el("div", { class: "tz-seilhaelfte " + seite }); });
-  var knoten = el("div", { class: "tz-knoten" });
-  var seil = el("div", { class: "tz-seil" }, seilTeile.concat([knoten])); arena.appendChild(seil);
-  var crews = seiten.map(function (seite) { var e = el("div", { class: "tz-crew " + seite }); arena.appendChild(e); return e; });
+  var arena = el("div", { class: "tz-arena" });
+  ["licht", "flag", "mud", "boden"].forEach(function (name) { arena.appendChild(el("div", { class: "tz-" + name })); });
+  if (a.tauziehenArena) {
+    var kulisse = new Image(); kulisse.className = 'tz-kulisse'; kulisse.alt = ''; kulisse.src = a.tauziehenArena;
+    kulisse.onload = function () { if (kulisse.naturalWidth) arena.classList.add('tz-mit-kulisse'); };
+    arena.prepend(kulisse);
+  }
+  function svgElement(tag,attribute){var node=document.createElementNS('http://www.w3.org/2000/svg',tag);Object.keys(attribute||{}).forEach(function(k){node.setAttribute(k,attribute[k]);});return node;}
+  var seil=svgElement('svg',{'class':'tz-seil-kurve','aria-hidden':'true',preserveAspectRatio:'none'});
+  var seilStraenge=[['#241b1a',9],['#b47e46',6],['#ffe3a3',3]].map(function(stil,i){var p=svgElement('path',{fill:'none',stroke:stil[0],'stroke-width':stil[1],'stroke-linecap':'round','stroke-linejoin':'round'});if(i===2)p.setAttribute('stroke-dasharray','2 5');seil.appendChild(p);return p;});
+  var seilFransen=svgElement('path',{fill:'none',stroke:'#e5b979','stroke-width':1.5});seil.appendChild(seilFransen);
+  var knoten=svgElement('g');knoten.appendChild(svgElement('path',{d:'M-5 -5H6L8 25 1 21 -6 26Z',fill:'#df5948',stroke:'#542a23','stroke-width':2}));
+  knoten.appendChild(svgElement('path',{d:'M-3 -4H0V7H-3Z',fill:'#ffc28a'}));seil.appendChild(knoten);arena.appendChild(seil);
+  var crews = seiten.map(function (seite) { var e = el("div", { class: "tz-crew " + seite, "aria-hidden": "true" }); arena.appendChild(e); return e; });
   var mehr = seiten.map(function (seite) { var e = el("div", { class: "tz-more " + seite }); arena.appendChild(e); return e; });
   var labels = [], werte = [], anzahl = [];
   var score = el("div", { class: "tz-score" }, seiten.map(function (seite, i) {
     labels[i] = el("div", { class: "tz-team-name" }); werte[i] = el("div", { class: "tz-average" }); anzahl[i] = el("div", { class: "tz-anzahl" });
     return el("div", { class: "tz-team " + seite }, [labels[i], werte[i], el("div", { class: "tz-unit", text: "Ø Last pro Kopf" }), anzahl[i]]);
   }));
+  arena.appendChild(score);
   var zeit = el("div", { class: "ms-zeit" });
   var skip = el("button", { class: "knopf leise", text: "Überspringen" });
   var replay = el("button", { class: "knopf leise tz-replay", text: "↻ Nochmal ansehen" });
   var laden = el("button", { class: "knopf leise", text: "↻ Stand aktualisieren", onclick: function () { aktualisiereBombe(laden); } });
-  var root = el("section", { class: "ms-scene ms-tauziehen", "aria-label": "Tauziehen an der Schlammgrube" }, [status, arena, score, zeit,
+  var root = el("section", { class: "ms-scene ms-tauziehen", "aria-label": "Tauziehen an der Schlammgrube" }, [status, arena, zeit,
     el("div", { class: "ms-steuerung" }, [skip, replay, laden]), el("p", { class: "tz-rule", text: "Jedes Training zieht. Es zählt die Wochenlast pro Kopf – auch bei unterschiedlich großen Teams. Erst der Wochenabschluss entscheidet." })]);
-  var lauf = 0, animationen = new Set(), wartende = new Map();
+  var lauf = 0, animationen = new Set(), wartende = new Map(), raf = 0, letzteZeichnung = 0;
+  var aktiveSeite=null, rutschStaerke=0, seilLos=null,zweiReihen=false;
+  function buehnenHoehe(){return arena.clientHeight||(zweiReihen?420:360);}
+  var wellenStart = 0, wellenStaerke = 0, seilVersatz = 0, lockeresSeil = 0, seilBewegung = null, rigKraft = 5, spannenAb = 0;
+  function kurve(zeit) {
+    var w=arena.clientWidth,h=buehnenHoehe(),boden=h*.84;if(!w)return;
+    if(spannenAb){var rest=Math.max(0,1-(zeit-spannenAb)/300);lockeresSeil=18*rest*rest;if(!rest)spannenAb=0;}
+    if(seilBewegung){var u=Math.max(0,Math.min(1,(zeit-seilBewegung.start)/seilBewegung.dauer)),e=1-Math.pow(1-u,3);seilVersatz=seilBewegung.von+(seilBewegung.nach-seilBewegung.von)*e+Math.sin(u*Math.PI*2)*(1-u)*seilBewegung.stoss;if(u===1)seilBewegung=null;}
+    var griffe=seilLos?seilLos.griffe:figurenGriffe();seil.style.display=griffe.length?'':'none';if(!griffe.length)return;
+    var ab=Math.max(0,zeit-wellenStart),impuls=wellenStaerke*Math.exp(-ab/240);
+    var punkte=tauziehenSeilPunkte(w,seilVersatz,lockeresSeil,impuls,ab,griffe);
+    var links=griffe.filter(function(g){return g.seite===0;}).pop()||griffe[0];
+    var rechts=griffe.find(function(g){return g.seite===1;})||griffe[griffe.length-1];
+    var mitte=(links.x+rechts.x)/2,markeX=Math.max(links.x+4,Math.min(rechts.x-4,mitte+seilVersatz*.22));
+    var marke=tauziehenSeilMarke(punkte,markeX),fall=seilLos?(seilLos.start?Math.min(1,(zeit-seilLos.start)/620):1):0;
+    fall=1-Math.pow(1-Math.max(0,fall),3);
+    if(seilLos){
+      punkte=punkte.map(function(p){return [Math.max(9,Math.min(w-9,p[0]+(seilLos.gleich?(p[0]<mitte?-12:12):(mitte-p[0])*.06)*fall)),p[1]+(boden+Math.sin(p[0]*.06)*3-p[1])*fall,0];});
+      marke=[marke[0]+(seilLos.gleich?8:0)*fall,marke[1]+(boden+11-marke[1])*fall];
+    }
+    var d='',anfang=true;
+    punkte.forEach(function(p){
+      if(seilLos&&seilLos.gleich&&Math.abs(p[0]-mitte)<12*fall){anfang=true;return;}
+      d+=(anfang?'M':'L')+p[0].toFixed(2)+' '+p[1].toFixed(2);anfang=false;
+    });
+    seil.setAttribute('viewBox','0 0 '+w+' '+h);seilStraenge.forEach(function(p){p.setAttribute('d',d);});
+    knoten.setAttribute('transform','translate('+marke[0]+','+marke[1]+') rotate('+(seilLos?fall*40:impuls*1.4)+')');
+    var fransen='';[punkte[0],punkte[punkte.length-1]].forEach(function(p){for(var k=-1;k<=1;k++)fransen+='M'+(p[0]+k*2)+' '+(p[1]-2)+'l'+k+' 7';});
+    seilFransen.setAttribute('d',fransen);
+    seil.dataset.enden=JSON.stringify([punkte[0],punkte[punkte.length-1]]);
+  }
+  function rigZeichnen(zeit,animiert){
+    var ph=root.getAttribute('data-tauphase'),ziel=ph==='ausholen'?-7:ph==='ziehen'?23:ph==='finale'?29:5;
+    rigKraft=animiert?rigKraft+(ziel-rigKraft)*.2:5;
+    crews.forEach(function(crew,i){crew.querySelectorAll('.tz-person').forEach(function(person,j){
+      var avatar=person.querySelector('.ms-avatar');if(avatar.dataset.pose!=='ziehen')return;
+      var bild=tauziehenZugBild(avatar);if(!bild)return;
+      var canvas=person.querySelector('.tz-koerper');
+      if(!canvas){canvas=document.createElement('canvas');canvas.className='tz-koerper';canvas.setAttribute('aria-hidden','true');canvas.width=240;canvas.height=320;avatar.appendChild(canvas);}
+      var t=animiert?zeit*.005+j*.65+i*.4:0,gegenseite=aktiveSeite!==null&&i!==aktiveSeite;
+      var neigung=rigKraft*(gegenseite?.65:1)+(animiert?Math.sin(t)*2:0);
+      var beuge=animiert?(ph==='ausholen'?12:5)+Math.sin(t-.5)*2:0;
+      if(gegenseite&&rutschStaerke&&ph==='ziehen'){neigung-=Math.sin(t*2)*5;beuge+=5;}
+      person.dataset.neigung=neigung;person.dataset.beuge=beuge;
+      var hinten=person.dataset.reihe==='1',ducken=zweiReihen&&!hinten?12:0,griffY=Number(person.dataset.griffY);
+      if(tauziehenKoerper(canvas,bild,neigung,beuge,i===0,hinten,griffY,ducken)){
+        avatar.classList.add('tz-geriggt');person.dataset.ducken=ducken;
+        if(!/rutschen|schlamm/.test(ph)){
+          var g=tauziehenNetzPunkt(Number(person.dataset.griffX),griffY,0,0,hinten,griffY,0);
+          person.style.top=(Number(person.dataset.zielY)-g[1]/300*person.clientHeight)+'px';
+        }
+      }
+    });});
+  }
+  function bildlauf(zeit) {
+    raf=0;if(!root.isConnected||document.hidden||!bewegung())return;
+    if(zeit-letzteZeichnung>=30){rigZeichnen(zeit,true);kurve(zeit);letzteZeichnung=zeit;}
+    raf=requestAnimationFrame(bildlauf);
+  }
+  function bildlaufStart(){if(!raf)raf=requestAnimationFrame(bildlauf);}
+  function bildlaufStop(){cancelAnimationFrame(raf);raf=0;}
+
   function bewegung() { return !(tauziehenBewegungsWahl && tauziehenBewegungsWahl.matches); }
   function gueltig(nr) { return nr === lauf && root.isConnected && !document.hidden && bewegung(); }
   function phase(p) { root.setAttribute("data-tauphase", p); }
   function z(n) { return n.toLocaleString("de-DE", { maximumFractionDigits: 2 }); }
   function team(stand, i) { return (stand.teams || [])[i] || { name: "Team " + seiten[i], mitglieder: [] }; }
-  function position(stand) { var x = tauziehenAusschlag(tauziehenLage(stand).zug); return { seil: -x * arena.clientWidth * .13, crew: -x * arena.clientWidth * .045 }; }
+  function position(stand) { var x = tauziehenAusschlag(tauziehenLage(stand).zug); return { seil: -x * arena.clientWidth * .13, crew: -x * arena.clientWidth * .025 }; }
   function reinigen() {
+    bildlaufStop(); wellenStaerke=0; lockeresSeil=0;seilBewegung=null;spannenAb=0;seilLos=null;aktiveSeite=null;rutschStaerke=0;
+    root.removeAttribute("data-wucht");root.removeAttribute("data-seil-los");
     animationen.forEach(function (anim) { anim.cancel(); }); animationen.clear();
     wartende.forEach(function (resolve, timer) { clearTimeout(timer); resolve(false); }); wartende.clear();
     arena.querySelectorAll(".tz-effekt").forEach(function (e) { e.remove(); });
     arena.style.transform = ""; seil.removeAttribute("style"); knoten.removeAttribute("style");
-    seilTeile.forEach(function (e) { e.removeAttribute("style"); }); crews.forEach(function (e) { e.removeAttribute("style"); });
+    crews.forEach(function (e) { e.removeAttribute("style"); });
     root.removeAttribute("data-ergebnis");
   }
   function warten(ms, nr) {
@@ -97,34 +279,68 @@ window.MINISPIEL_SZENEN.tauziehen = function (a) {
     }, function () { return false; }).finally(function () { animationen.delete(anim); anim.cancel(); });
   }
   function effekt(klasse, text) { var e = el("div", { class: "tz-effekt " + klasse, text: text || "" }); arena.appendChild(e); return e; }
-  function teamZeichnen(stand, i, pose, aktiv) {
-    var t = team(stand, i), ids = t.mitglieder || [], limit = arena.clientWidth >= 400 ? 3 : 2;
-    var sichtbar = tauziehenSichtbar(ids, a.spieler, aktiv, limit);
-    labels[i].textContent = t.name; werte[i].textContent = z(tauziehenLage(stand).schnitt[i]); anzahl[i].textContent = ids.length + " Spieler";
-    crews[i].replaceChildren();
-    sichtbar.forEach(function (id, platz) {
-      var slot = sichtbar.length === 1 ? .65 : sichtbar.length === 2 ? .35 + platz * .4 : .25 + platz * .25;
-      var person = el("div", { class: "tz-person" + (aktiv && aktiv.includes(id) ? " tz-beitrag" : ""), "data-id": id, "data-ich": String(!!spieler.get(id).ich), title: spieler.get(id).name });
-      person.style.left = ((i === 0 ? slot : 1 - slot) * 100) + "%"; person.style.zIndex = String(platz + 1);
-      person.appendChild(el("div", { class: "tz-body" }, [minispielAvatar(a, id, pose), el("div", { class: "tz-schmutz" })])); crews[i].appendChild(person);
+  function medienErsatz(avatar, id) {
+    avatar.querySelectorAll('svg image').forEach(function(image){
+      image.addEventListener('error',function(){
+        if(!avatar.isConnected)return;
+        var sp=spieler.get(id);avatar.classList.remove('tz-geriggt');avatar.classList.add('ms-avatar-ersatz');
+        avatar.textContent=initialen(sp.name);avatar.style.setProperty('--ms-avatar-farbe',farbe(sp.name));
+      },{once:true});
     });
-    mehr[i].hidden = ids.length <= sichtbar.length; mehr[i].textContent = "+" + (ids.length - sichtbar.length) + " am Seil";
   }
-  function posen(i, pose) { crews[i].querySelectorAll(".ms-avatar").forEach(function (e) { minispielSetzePose(e, a, e.getAttribute("data-id"), pose); }); }
-  function zeichneStand(stand, fertig, aktiv) {
-    var l = tauziehenLage(stand), x = tauziehenAusschlag(l.zug), geschlossen = fertig && a.abgeschlossen && a.spieler.length;
-    root.setAttribute("data-zug", String(l.zug)); root.removeAttribute("data-ergebnis"); seil.style.transform = "translateX(" + -x * 10 + "%)";
-    seilTeile.forEach(function (e) { e.style.transform = ""; }); knoten.style.transform = ""; knoten.style.opacity = "";
-    if (geschlossen) root.setAttribute("data-ergebnis", l.seite === null ? "unentschieden" : seiten[l.seite]);
-    crews.forEach(function (crew, i) {
-      var verloren = geschlossen && (l.seite === null || i !== l.seite), richtung = i === 0 ? 1 : -1;
-      var offset = verloren ? richtung * (l.seite === null ? .09 : .16) : 0;
-      teamZeichnen(stand, i, geschlossen ? verloren ? "ko" : "jubel" : "ziehen", aktiv); crew.style.transform = "translate(" + ((-x * .045 + offset) / .34 * 100) + "%," + (verloren ? 10 : 0) + "px)";
-      crew.querySelectorAll(".tz-body").forEach(function (body) { body.style.transform = verloren ? "rotate(" + richtung * 11 + "deg) scale(1,.9)" : geschlossen ? "none" : "rotate(" + (i === 0 ? -6 : 6) + "deg)"; });
+  function teamZeichnen(stand, i, pose, aktiv) {
+    var breite=arena.clientWidth||Math.max(240,Math.min(480,window.innerWidth-64));
+    var t=team(stand,i),ids=t.mitglieder||[],limit=breite>=400?8:6;
+    var bekannt=ids.filter(function(id){return spieler.has(id);});
+    var sichtbar=tauziehenSichtbar(ids,a.spieler,bekannt.length<=limit?[]:aktiv,limit),plan=tauziehenAufstellung(breite,sichtbar.length,zweiReihen);
+    labels[i].textContent=t.name;werte[i].textContent=z(tauziehenLage(stand).schnitt[i]);anzahl[i].textContent=ids.length+" Spieler";
+    crews[i].replaceChildren();
+    sichtbar.forEach(function(id,j){
+      var sp=spieler.get(id),g=tauziehenGriffe[sp.figur]||[50,170],p=plan[j];
+      var person=el('div',{class:'tz-person'+(aktiv&&aktiv.includes(id)?' tz-beitrag':''),'data-id':id,'data-ich':String(!!sp.ich),title:sp.name});
+      var griffHoehe=p.reihe&&pose!=='ziehen'?tauziehenNetzPunkt(g[0],g[1],0,0,true,g[1],0)[1]:g[1];
+      var x=i===0?p.x:breite-p.x,top=p.griffY-griffHoehe/300*p.h;
+      person.style.left=x+'px';person.style.top=top+'px';person.style.width=p.w+'px';person.style.height=p.h+'px';
+      person.style.setProperty('--tz-label',p.label+'px');person.style.setProperty('--tz-label-y',sichtbar.length>2&&p.spalte%2?'17px':'0px');person.style.zIndex=String((p.reihe?0:10)+p.spalte+1);person.dataset.reihe=p.reihe;person.dataset.spalte=p.spalte;
+      person.dataset.basisX=x;person.dataset.basisY=top;person.dataset.zielY=p.griffY;person.dataset.griffX=g[0];person.dataset.griffY=g[1];
+      person.appendChild(el('div',{class:'tz-body'},[minispielAvatar(a,id,pose),el('div',{class:'tz-schmutz'})]));
+      var namensschild=el('div',{class:'tz-name',text:(sp.ich?'DU · ':'')+sp.name});
+      if(p.reihe){namensschild.style.top=(-2-(p.spalte%2)*20)+'px';namensschild.style.left=(pose==='ziehen'?(i===0?'28%':'72%'):'50%');}person.appendChild(namensschild);
+      crews[i].appendChild(person);medienErsatz(person.querySelector('.ms-avatar'),id);
     });
-    if (geschlossen && l.seite === null) {
-      seilTeile.forEach(function (e, i) { e.style.transform = "translateX(" + (i === 0 ? -1 : 1) * .12 / .65 * 100 + "%) rotate(" + (i === 0 ? -8 : 8) + "deg)"; }); knoten.style.transform = "translateY(32px) rotate(22deg)"; knoten.style.opacity = ".5";
-    }
+    mehr[i].hidden=ids.length<=sichtbar.length;mehr[i].textContent='+'+(ids.length-sichtbar.length)+' am Seil';
+  }
+  function posen(i,pose){crews[i].querySelectorAll('.ms-avatar').forEach(function(e){e.classList.remove('tz-geriggt');minispielSetzePose(e,a,e.dataset.id,pose);medienErsatz(e,e.dataset.id);var p=e.closest('.tz-person');if(p.dataset.reihe==='1')p.querySelector('.tz-name').style.left=pose==='ziehen'?(i===0?'28%':'72%'):'50%';});}
+  function figurenGriffe(){
+    var rect=arena.getBoundingClientRect(),griffe=[];
+    crews.forEach(function(crew,i){crew.querySelectorAll('.tz-person').forEach(function(p){
+      var r=p.getBoundingClientRect(),dx=Number(p.dataset.griffX),dy=Number(p.dataset.griffY);
+      var verformt=p.querySelector('.tz-geriggt'),v=verformt?tauziehenNetzPunkt(dx,dy,Number(p.dataset.neigung)||5,Number(p.dataset.beuge)||0,p.dataset.reihe==='1',dy,Number(p.dataset.ducken)||0):[dx,dy];
+      griffe.push({x:r.left-rect.left+r.width*(i===0?1-v[0]/200:v[0]/200),y:r.top-rect.top+r.height*v[1]/300,seite:i,reihe:Number(p.dataset.reihe)});
+    });});
+    return griffe.sort(function(a,b){return a.x-b.x;});
+  }
+  function finaleAufstellung(lage){
+    crews.forEach(function(crew,i){
+      var verloren=lage.seite===null||i!==lage.seite,personen=Array.from(crew.querySelectorAll('.tz-person'));
+      crew.style.transform='none';
+      personen.forEach(function(p,j){
+        if(verloren){var ziel=tauziehenLandung(arena.clientWidth,i,j,personen.length,lage.seite===null,buehnenHoehe());p.style.left=ziel.x+'px';p.style.top=(ziel.fuss-p.clientHeight)+'px';p.style.setProperty('--tz-label',ziel.label+'px');}
+        p.querySelector('.tz-body').style.transform=verloren?'rotate('+(i===0?12:-12)+'deg) scale(1,.9)':'none';
+      });
+    });
+  }
+  function zeichneStand(stand,fertig,aktiv){
+    var l=tauziehenLage(stand),geschlossen=fertig&&a.abgeschlossen&&a.spieler.length;
+    var breite=arena.clientWidth||Math.max(240,Math.min(480,window.innerWidth-64));
+    zweiReihen=(stand.teams||[]).some(function(t){return (t.mitglieder||[]).filter(function(id){return spieler.has(id);}).length>(breite>=400?4:3);});
+    root.setAttribute('data-reihen',zweiReihen?'2':'1');
+    seilLos=null;root.removeAttribute('data-seil-los');seilVersatz=position(stand).seil;root.setAttribute('data-zug',String(l.zug));root.setAttribute('data-fuehrung',l.seite===null?'gleich':seiten[l.seite]);root.removeAttribute('data-ergebnis');
+    crews.forEach(function(crew,i){teamZeichnen(stand,i,geschlossen?(l.seite===null||i!==l.seite?'ko':'jubel'):'ziehen',aktiv);crew.style.transform='translateX('+position(stand).crew+'px)';});
+    if(!geschlossen)rigZeichnen(performance.now(),!!raf);
+    var griffe=figurenGriffe();
+    if(geschlossen){root.setAttribute('data-seil-los','true');root.setAttribute('data-ergebnis',l.seite===null?'unentschieden':seiten[l.seite]);seilLos={start:0,griffe:griffe,gleich:l.seite===null};finaleAufstellung(l);}
+    kurve(performance.now());
   }
   function beschreibe(stand, fertig) {
     var l = tauziehenLage(stand);
@@ -147,21 +363,27 @@ window.MINISPIEL_SZENEN.tauziehen = function (a) {
   async function auftritt(stand, nr) {
     phase("auftritt"); status.textContent = "Rückblick · Beide Teams treten an"; var schild = effekt("tz-banner", "ANS SEIL!"), p = position(stand);
     crews.forEach(function (crew, i) { posen(i, "bereit"); bewegen(crew, [{ transform: "translateX(" + (p.crew + (i === 0 ? -18 : 18)) + "px)", opacity: 0 }, { transform: "translateX(" + p.crew + "px)", opacity: 1 }], { duration: 380, easing: "ease-out" }, nr); });
-    var senke = arena.clientWidth * .65 * Math.sin(7 * Math.PI / 180);
-    seilTeile.forEach(function (e, i) { e.style.transform = "rotate(" + (i === 0 ? 7 : -7) + "deg)"; }); knoten.style.transform = "translateY(" + senke + "px)";
-    if (!await warten(400, nr)) return false;
-    phase("greifen"); posen(0, "ziehen"); posen(1, "ziehen");
-    var teile = seilTeile.map(function (e, i) { return bewegen(e, [{ transform: "rotate(" + (i === 0 ? 7 : -7) + "deg)" }, { transform: "rotate(0deg)" }], { duration: 300, easing: "ease-out" }, nr); });
-    teile.push(bewegen(knoten, [{ transform: "translateY(" + senke + "px)" }, { transform: "translateY(0)" }], { duration: 300 }, nr));
-    if (!(await Promise.all(teile)).every(Boolean)) return false;
+    lockeresSeil=18;
+    if (!await warten(400,nr))return false;
+    spannenAb=performance.now();wellenStart=performance.now();wellenStaerke=3;
+    phase('greifen');posen(0,'ziehen');posen(1,'ziehen');
+    if(!await warten(300,nr))return false;
     if (!await bewegen(schild, [{ opacity: 1 }, { opacity: 0 }], { duration: 180 }, nr)) return false;
     schild.remove(); return true;
   }
-  function staub(nr, aktiv) {
-    for (var i = 0; i < 6; i++) {
-      var e = effekt("tz-staub"); e.style.left = ((aktiv === 0 ? 22 : aktiv === 1 ? 78 : i % 2 ? 22 : 78) + (i % 3 - 1) * 4) + "%";
-      bewegen(e, [{ opacity: 0, transform: "translateY(0) scale(.3)" }, { opacity: .7, transform: "translateY(-9px) scale(1)", offset: .4 }, { opacity: 0, transform: "translateY(-22px) scale(1.7)" }], { duration: 560 }, nr).then(function (teil) { teil.remove(); }.bind(null, e));
-    }
+  function staub(nr,aktiv){
+    var rect=arena.getBoundingClientRect();
+    crews.forEach(function(crew,seite){if(aktiv!==null&&seite!==aktiv)return;
+      crew.querySelectorAll('.tz-person').forEach(function(person){
+        var r=person.getBoundingClientRect(),x=r.left-rect.left+r.width/2,y=r.bottom-rect.top-4;
+        var spur=effekt('tz-spur');spur.style.left=x+'px';spur.style.top=y+'px';
+        bewegen(spur,[{opacity:.8,transform:'scaleX(.3)'},{opacity:0,transform:'scaleX(1.5)'}],{duration:900},nr).then(function(){spur.remove();});
+        for(var k=0;k<3;k++){
+          var e=effekt('tz-staub');e.style.left=(x+(k-1)*7)+'px';e.style.top=y+'px';
+          bewegen(e,[{opacity:0,transform:'translateY(0) scale(.3)'},{opacity:.8,transform:'translateY(-7px) scale(1)',offset:.3},{opacity:0,transform:'translate('+((seite===0?1:-1)*(9+k*5))+'px,-18px) scale(1.8)'}],{duration:550+k*70},nr).then(function(teil){teil.remove();}.bind(null,e));
+        }
+      });
+    });
   }
   async function zug(vorher, s, nr) {
     var w = tauziehenWechsel(vorher, s), alt = position(vorher), neu = position(s.stand), l = tauziehenLage(s.stand);
@@ -169,13 +391,15 @@ window.MINISPIEL_SZENEN.tauziehen = function (a) {
     zeichneStand(vorher, false, w.training ? beitrag : []);
     if (w.korrektur || !w.training) { phase(w.korrektur ? "korrektur" : "rueckblick"); status.textContent = w.korrektur ? "Rückblick · Der Wochenverlauf wurde korrigiert" : beschreibe(s.stand, false); zeichneStand(s.stand, false); return warten(w.korrektur ? 550 : 280, nr); }
     phase("ausholen"); status.textContent = beitrag.length === 1 ? spieler.get(beitrag[0]).name + " setzt am Seil nach" : "Beide Teams stemmen sich ins Seil";
-    var aktiv = w.aktiv, bodies = [];
-    crews.forEach(function (crew, i) { var richtung = i === 0 ? -1 : 1; crew.querySelectorAll(".tz-body").forEach(function (body) { bodies.push(bewegen(body, [{ transform: "rotate(" + richtung * 6 + "deg)" }, { transform: "translateY(3px) rotate(" + richtung * (aktiv === null || aktiv === i ? 12 : 8) + "deg)" }], { duration: 220, easing: "ease-in" }, nr)); }); });
-    if (!(await Promise.all(bodies)).every(Boolean)) return false;
-    phase("ziehen"); staub(nr, aktiv);
+    var aktiv = w.aktiv;aktiveSeite=aktiv;rutschStaerke=w.wechsel?1:0;
+    if (!await warten(220, nr)) return false;
+    phase("ziehen");root.setAttribute("data-wucht",w.wechsel?"wechsel":"zug"); wellenStart=performance.now();wellenStaerke=w.wechsel?7:4; staub(nr, aktiv);
     var zucken = w.wechsel ? 6 : 3, richtung = aktiv === 1 ? 1 : -1;
+    seilBewegung={von:alt.seil,nach:neu.seil,stoss:richtung*zucken,start:performance.now(),dauer:460};
     var bewegungen = crews.map(function (crew) { return bewegen(crew, [{ transform: "translateX(" + alt.crew + "px)" }, { transform: "translate(" + (neu.crew + richtung * zucken) + "px,-3px)" }, { transform: "translateX(" + neu.crew + "px)" }], { duration: 460, easing: "ease-out" }, nr); });
-    bewegungen.push(bewegen(seil, [{ transform: "translateX(" + alt.seil + "px)" }, { transform: "translate(" + (neu.seil + richtung * zucken) + "px,-2px) scaleY(1.1)" }, { transform: "translateX(" + neu.seil + "px)" }], { duration: 460, easing: "ease-out" }, nr));
+    if(w.wechsel)crews.forEach(function(crew,i){if(i===aktiv)return;crew.querySelectorAll('.tz-body').forEach(function(body,j){
+      bewegen(body,[{transform:'none'},{transform:'translate('+(i===0?4:-4)+'px,2px) rotate('+(i===0?5:-5)+'deg)',offset:.35},{transform:'none'}],{duration:600,delay:j*30,easing:'ease-out'},nr);
+    });});
     if (!(await Promise.all(bewegungen)).every(Boolean)) return false;
     root.setAttribute("data-zug", String(l.zug)); werte.forEach(function (e, i) { e.textContent = z(l.schnitt[i]); });
     phase(w.wechsel ? "fuehrungswechsel" : w.ausgleich ? "ausgleich" : "nachsetzen");
@@ -184,43 +408,77 @@ window.MINISPIEL_SZENEN.tauziehen = function (a) {
       bewegen(schild, [{ opacity: 1 }, { opacity: 0 }], { duration: 500 }, nr).then(function () { schild.remove(); });
       bewegen(arena, [{ transform: "translateX(0)" }, { transform: "translateX(" + richtung * 3 + "px)" }, { transform: "translateX(" + -richtung * 2 + "px)" }, { transform: "translateX(0)" }], { duration: 220 }, nr);
     } else status.textContent = w.ausgleich ? "Ausgleich! Beide Teams halten dagegen" : beschreibe(s.stand, false);
-    var erholung = [];
-    crews.forEach(function (crew, i) { crew.querySelectorAll(".tz-body").forEach(function (body) { erholung.push(bewegen(body, [{ transform: "translateY(3px) rotate(" + (i === 0 ? -12 : 12) + "deg)" }, { transform: "translateY(-2px) rotate(" + (i === 0 ? -8 : 8) + "deg)" }, { transform: "translateY(0) rotate(" + (i === 0 ? -6 : 6) + "deg)" }], { duration: 300 }, nr)); }); });
-    if (!(await Promise.all(erholung)).every(Boolean)) return false;
-    zeichneStand(s.stand, false, beitrag); return warten(w.wechsel ? 240 : 140, nr);
+    if (!await warten(300, nr)) return false;
+    aktiveSeite=null;rutschStaerke=0;root.removeAttribute("data-wucht");zeichneStand(s.stand, false, beitrag); return warten(w.wechsel ? 240 : 140, nr);
   }
-  async function finale(nr) {
-    if (!a.spieler.length) return true;
-    var l = tauziehenLage(aktuell), p = position(aktuell), gleich = l.seite === null;
-    zeichneStand(aktuell, false); phase("finale"); zeit.textContent = "Wochenabschluss"; status.textContent = gleich ? "Unentschieden! Das Seil reißt" : team(aktuell, l.seite).name + " holt den letzten Zug";
-    var schild = effekt("tz-banner", gleich ? "SEIL GERISSEN!" : "DER LETZTE ZUG!"); if (!await warten(280, nr)) return false;
-    phase(gleich ? "seilriss" : "stolpern");
-    if (gleich) {
-      seilTeile.forEach(function (e, i) { bewegen(e, [{ transform: "translateX(0) rotate(0deg)" }, { transform: "translateX(" + (i === 0 ? -1 : 1) * arena.clientWidth * .12 + "px) rotate(" + (i === 0 ? -8 : 8) + "deg)" }], { duration: 300, easing: "ease-out" }, nr); });
-      bewegen(knoten, [{ transform: "translateY(0)", opacity: 1 }, { transform: "translateY(32px) rotate(22deg)", opacity: .5 }], { duration: 350 }, nr);
-    }
-    var stuerze = [];
-    crews.forEach(function (crew, i) {
-      var verloren = gleich || i !== l.seite, richtung = i === 0 ? 1 : -1; posen(i, verloren ? "ko" : "jubel");
-      if (verloren) {
-        var ziel = p.crew + richtung * arena.clientWidth * (gleich ? .09 : .16);
-        stuerze.push(bewegen(crew, [{ transform: "translateX(" + p.crew + "px)" }, { transform: "translate(" + (ziel - richtung * 5) + "px,-4px)", offset: .45 }, { transform: "translate(" + ziel + "px,10px)" }], { duration: 650, easing: "ease-in" }, nr));
-        crew.querySelectorAll(".tz-body").forEach(function (body) { stuerze.push(bewegen(body, [{ transform: "rotate(0deg)" }, { transform: "rotate(" + richtung * 18 + "deg) scale(1,.88)" }, { transform: "rotate(" + richtung * 11 + "deg) scale(1,.9)" }], { duration: 650 }, nr)); });
-      } else crew.querySelectorAll(".tz-body").forEach(function (body) { stuerze.push(bewegen(body, [{ transform: "translateY(0)" }, { transform: "translateY(-12px) rotate(-3deg)" }, { transform: "translateY(0)" }, { transform: "translateY(-5px)" }, { transform: "translateY(0)" }], { duration: 650 }, nr)); });
+  function schlammeinschlag(nr,seitenImSchlamm){
+    seitenImSchlamm.forEach(function(seite){
+      var personen=Array.from(crews[seite].querySelectorAll('.tz-person'));
+      personen.forEach(function(person,j){
+        var ziel=tauziehenLandung(arena.clientWidth,seite,j,personen.length,seitenImSchlamm.length===2,buehnenHoehe());
+        var ring=effekt('tz-welle');ring.style.left=ziel.x+'px';ring.style.top=(ziel.fuss-7)+'px';
+        bewegen(ring,[{opacity:1,transform:'translateX(-50%) scale(.2)'},{opacity:0,transform:'translateX(-50%) scale(1.8)'}],{duration:750},nr).then(function(){ring.remove();});
+        for(var k=0;k<8;k++){
+          var e=effekt('tz-spritzer'),dx=(k%2?1:-1)*(12+(k%4)*9);
+          e.style.left=ziel.x+'px';e.style.top=(ziel.fuss-5)+'px';
+          bewegen(e,[{opacity:0,transform:'translate(0,0) scale(.3)'},{opacity:1,transform:'translate('+dx+'px,'+(-24-k%3*13)+'px) scale(1)',offset:.35},{opacity:0,transform:'translate('+dx*1.5+'px,10px) scale(.6)'}],{duration:600+k%3*90},nr).then(function(teil){teil.remove();}.bind(null,e));
+        }
+      });
     });
-    if (!(await Promise.all(stuerze)).every(Boolean)) return false;
-    phase("schlamm");
-    for (var i = 0; i < 12; i++) {
-      var tropfen = effekt("tz-spritzer"); tropfen.style.left = ((gleich ? i % 2 ? 35 : 65 : l.seite === 0 ? 58 : 42) + (i % 3 - 1) * 4) + "%";
-      bewegen(tropfen, [{ opacity: 0, transform: "translateY(0) scale(.3)" }, { opacity: 1, transform: "translate(" + (i % 2 ? 1 : -1) * (8 + i % 4 * 8) + "px,-35px) scale(1)", offset: .35 }, { opacity: 0, transform: "translate(" + (i % 2 ? 1 : -1) * (15 + i % 4 * 12) + "px,12px) scale(.7)" }], { duration: 650 }, nr);
-    }
-    root.setAttribute("data-ergebnis", gleich ? "unentschieden" : seiten[l.seite]); status.textContent = beschreibe(aktuell, true);
-    if (!await warten(700, nr)) return false; schild.remove(); return true;
+    bewegen(arena,[{transform:'translateY(0)'},{transform:'translateY(4px)'},{transform:'translateY(-2px)'},{transform:'translateY(0)'}],{duration:220},nr);
+  }
+  async function finale(nr){
+    if(!a.spieler.length)return true;
+    var l=tauziehenLage(aktuell),p=position(aktuell),gleich=l.seite===null;
+    zeichneStand(aktuell,false);phase('finale');root.setAttribute('data-wucht','finale');
+    zeit.textContent='Wochenabschluss';status.textContent=gleich?'Beide Teams halten dagegen. Das Seil gibt nach!':team(aktuell,l.seite).name+' setzt zum letzten Zug an';
+    var schild=effekt('tz-banner',gleich?'DAS SEIL GIBT NACH!':'DER LETZTE ZUG!');
+    if(!await warten(350,nr))return false;
+    aktiveSeite=l.seite;wellenStart=performance.now();wellenStaerke=9;staub(nr,l.seite);
+    var letzterZug=crews.map(function(crew,i){var richtung=i===0?1:-1,verloren=gleich||i!==l.seite;return bewegen(crew,[{transform:'translateX('+p.crew+'px)'},{transform:'translateX('+(p.crew+richtung*(verloren?9:-4))+'px)'}],{duration:280,easing:'cubic-bezier(.45,0,.2,1)'},nr);});
+    if(!(await Promise.all(letzterZug)).every(Boolean))return false;
+    phase(gleich?'seilriss':'stolpern');root.setAttribute('data-seil-los','true');
+    seilLos={start:performance.now(),griffe:figurenGriffe(),gleich:gleich};
+    schild.textContent=gleich?'SEIL GERISSEN!':'KEIN HALT MEHR!';
+    var kippen=[];
+    crews.forEach(function(crew,i){var verloren=gleich||i!==l.seite,r=i===0?1:-1;crew.querySelectorAll('.tz-body').forEach(function(body){kippen.push(bewegen(body,[{transform:'none'},{transform:'translateY(-3px) rotate('+(verloren?r*14:-r*7)+'deg)'}],{duration:230,easing:'ease-out'},nr));});});
+    if(!(await Promise.all(kippen)).every(Boolean))return false;
+    phase('rutschen');status.textContent=gleich?'Beide Teams verlieren den Halt!':'Die Gegenseite rutscht in die Schlammgrube!';
+    var stuerze=[],arenaRect=arena.getBoundingClientRect();
+    crews.forEach(function(crew,i){
+      var verloren=gleich||i!==l.seite,r=i===0?1:-1,personen=Array.from(crew.querySelectorAll('.tz-person'));
+      var orte=personen.map(function(person){var rect=person.getBoundingClientRect();return {x:rect.left-arenaRect.left+rect.width/2,y:rect.top-arenaRect.top};});
+      crew.style.transform='none';
+      personen.forEach(function(person,j){
+        person.style.left=orte[j].x+'px';person.style.top=orte[j].y+'px';
+        if(verloren){
+          var ziel=tauziehenLandung(arena.clientWidth,i,j,personen.length,gleich,buehnenHoehe());person.style.setProperty('--tz-label',ziel.label+'px');
+          var dx=ziel.x-orte[j].x,dy=ziel.fuss-person.clientHeight-orte[j].y;
+          stuerze.push(bewegen(person,[{transform:'translateX(-50%)'},{transform:'translate(calc(-50% + '+dx*.65+'px),'+(dy*.25-5)+'px)',offset:.65},{transform:'translate(calc(-50% + '+dx+'px),'+dy+'px)'}],{duration:650,easing:'cubic-bezier(.4,0,.8,.6)'},nr));
+          stuerze.push(bewegen(person.querySelector('.tz-body'),[{transform:'translateY(-3px) rotate('+r*14+'deg)'},{transform:'rotate('+r*24+'deg) scale(1,.92)'}],{duration:650,easing:'ease-in'},nr));
+        }else{
+          stuerze.push(bewegen(person.querySelector('.tz-body'),[{transform:'rotate('+-r*7+'deg)'},{transform:'rotate('+r*3+'deg)'},{transform:'none'}],{duration:450,easing:'ease-out'},nr));
+        }
+      });
+    });
+    if(!(await Promise.all(stuerze)).every(Boolean))return false;
+    phase('schlamm');root.setAttribute('data-ergebnis',gleich?'unentschieden':seiten[l.seite]);
+    var schlammSeiten=gleich?[0,1]:[1-l.seite],jubel=[];
+    crews.forEach(function(crew,i){
+      var verloren=schlammSeiten.includes(i),r=i===0?1:-1;posen(i,verloren?'ko':'jubel');
+      crew.querySelectorAll('.tz-body').forEach(function(body){
+        if(verloren)jubel.push(bewegen(body,[{transform:'rotate('+r*24+'deg) scale(1,.92)'},{transform:'rotate('+r*12+'deg) scale(1,.82)'},{transform:'rotate('+r*12+'deg) scale(1,.9)'}],{duration:300},nr));
+        else jubel.push(bewegen(body,[{transform:'none'},{transform:'translateY(-13px) rotate(-3deg)'},{transform:'none'},{transform:'translateY(-6px)'},{transform:'none'}],{duration:700},nr));
+      });
+    });
+    schlammeinschlag(nr,schlammSeiten);status.textContent=beschreibe(aktuell,true);schild.remove();
+    if(!(await Promise.all(jubel)).every(Boolean))return false;
+    return warten(180,nr);
   }
   async function spiele(ab, mitAuftritt) {
     lauf++; reinigen(); var nr = lauf; if (!root.isConnected) return;
     if (!bewegung() || document.hidden || !a.spieler.length) { endstand(true); return; }
-    tauziehenAbbrechen = abbrechen; root.setAttribute("data-rueckblick", "true"); skip.hidden = false; replay.hidden = true; zeichneStand(stationen[ab].stand, false); station(ab);
+    tauziehenAbbrechen = abbrechen; bildlaufStart(); root.setAttribute("data-rueckblick", "true"); skip.hidden = false; replay.hidden = true; zeichneStand(stationen[ab].stand, false); station(ab);
     try {
       if (mitAuftritt && !await auftritt(stationen[ab].stand, nr)) return; phase("bereit"); status.textContent = beschreibe(stationen[ab].stand, false);
       if (!await warten(280, nr)) return;

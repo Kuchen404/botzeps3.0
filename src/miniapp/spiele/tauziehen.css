@@ -1,51 +1,92 @@
-/* Sonnige Arcade-Arena, derselbe Durchschnitt entscheidet für große und kleine Teams. */
-.ms-tauziehen { border:1px solid #3c5366; border-radius:14px; color:#263b49; background:#edf3ee; }
-.ms-tauziehen > .ms-status { display:flex; align-items:center; min-height:54px; background:#2b4354; color:#eef4df; font-size:12px; overflow-wrap:anywhere; }
-.ms-tauziehen .tz-arena { position:relative; height:306px; overflow:hidden; isolation:isolate; background:linear-gradient(#a8dce7 0%,#ddf0e8 61%,#bdd27f 61%,#8eaf63 80%,#76964f 100%); }
-.ms-tauziehen .tz-arena::before { content:""; position:absolute; left:-8%; top:130px; width:120%; height:94px; background:#aec989; border-radius:50% 45% 0 0; transform:rotate(-5deg); z-index:-1; }
-.ms-tauziehen .tz-sun { position:absolute; width:39px; height:39px; right:23px; top:20px; border:2px solid #486064; border-radius:50%; background:#ffe39b; box-shadow:0 0 0 7px #ffe39b55; }
-.ms-tauziehen .tz-cloud { position:absolute; width:73px; height:20px; top:38px; left:17px; border-radius:50%; background:#ffffffe0; box-shadow:23px 7px #ffffffc0; }
-.ms-tauziehen .tz-flag { position:absolute; left:50%; top:96px; bottom:44px; border-left:2px dashed #ffffffa0; }
-.ms-tauziehen .tz-flag::before { content:""; position:absolute; left:-2px; top:-13px; width:23px; height:16px; background:#fcf3d7; border:2px solid #4a5e5b; clip-path:polygon(0 0,100% 0,77% 50%,100% 100%,0 100%); }
-.ms-tauziehen .tz-mud { position:absolute; left:20%; top:225px; width:60%; height:44px; border:2px solid #634a35; border-radius:50%; background:radial-gradient(ellipse at 50% 30%,#b28559,#896348 70%); box-shadow:inset 0 5px #d0a17377,0 5px #45603922; z-index:4; }
+/* Gezeichnete Abend-Arena; Seil und Körper werden ohne neue Posen berechnet. */
+.ms-tauziehen { border:1px solid #3c5366; border-radius:18px; color:#f7e9ca; background:#182d32; border-color:#536265; box-shadow:0 12px 28px #081a2330; }
+.ms-tauziehen > .ms-status { display:flex; align-items:center; min-height:48px; background:#142a31; color:#e5dac1; font-size:11px; overflow-wrap:anywhere; padding:10px 14px; border-bottom:1px solid #f7d79130; }
+.ms-tauziehen .tz-arena { position:relative; height:360px; overflow:hidden; isolation:isolate; background:linear-gradient(#174555 0%,#456166 48%,#72513c 49%,#ad7544 80%,#4c5035); }
+.ms-tauziehen .tz-flag { position:absolute; left:50%; top:164px; bottom:41px; border-left:2px dashed #ffffffa0; border-color:#fff4d16b; z-index:1; }
+.ms-tauziehen .tz-mud { position:absolute; left:16%; top:290px; width:68%; height:37px; border:2px solid #634a35; border-radius:50%; background:radial-gradient(ellipse,#9f693c,#49311f); box-shadow:inset 0 4px 6px #251d18,0 3px 0 #d6a45b55; z-index:1; border-color:#664428; }
 .ms-tauziehen .tz-mud::before,.ms-tauziehen .tz-mud::after { content:""; position:absolute; top:12px; left:18%; width:21%; height:6px; border:1px solid #d2aa7c; border-radius:50%; transform:rotate(-8deg); }
 .ms-tauziehen .tz-mud::after { left:64%; top:24px; width:15%; }
-.ms-tauziehen .tz-seil { position:absolute; top:169px; left:-15%; width:130%; height:8px; z-index:3; }
-.ms-tauziehen[data-tauphase="stolpern"] .tz-seil,.ms-tauziehen[data-tauphase="seilriss"] .tz-seil,.ms-tauziehen[data-ergebnis] .tz-seil { z-index:1; }
-.ms-tauziehen .tz-seilhaelfte { position:absolute; top:0; width:50%; height:8px; border:1px solid #79562f; border-radius:5px; background:repeating-linear-gradient(115deg,#b78042 0 4px,#ffdf98 4px 7px); box-shadow:0 2px #32483b33; }
-.ms-tauziehen .tz-seilhaelfte.links { left:0; transform-origin:0 50%; }
-.ms-tauziehen .tz-seilhaelfte.rechts { right:0; transform-origin:100% 50%; }
-.ms-tauziehen .tz-knoten { position:absolute; left:calc(50% - 9px); top:-8px; width:18px; height:23px; background:#e36150; border:2px solid #793d31; border-radius:6px; box-shadow:inset 4px 0 #ffb283; }
-.ms-tauziehen .tz-knoten::after { content:""; position:absolute; left:5px; top:18px; width:10px; height:21px; border:1px solid #793d31; background:#e36150; clip-path:polygon(0 0,100% 0,100% 100%,50% 75%,0 100%); }
-.ms-tauziehen .tz-crew { position:absolute; top:100px; width:34%; height:135px; z-index:2; }
-.ms-tauziehen .tz-crew.links { left:9%; }
-.ms-tauziehen .tz-crew.rechts { right:9%; }
-.ms-tauziehen .tz-person { position:absolute; bottom:0; width:88px; height:132px; transform:translateX(-50%); }
-.ms-tauziehen .tz-body { position:relative; width:100%; height:100%; transform-origin:50% 95%; }
-.ms-tauziehen .tz-person .ms-avatar { width:88px; height:132px; }
+.ms-tauziehen .tz-crew { position:absolute; top:148px; width:36%; height:135px; z-index:2; }
+.ms-tauziehen .tz-crew.links { left:8%; }
+.ms-tauziehen .tz-crew.rechts { right:8%; }
+.ms-tauziehen .tz-person { position:absolute; bottom:0; width:80px; height:132px; transform:translateX(-50%); }
+.ms-tauziehen .tz-body { position:relative; width:100%; height:100%; transform-origin:50% 95%; filter:drop-shadow(0 2px 1px #1d1c22aa); }
+.ms-tauziehen .tz-person .ms-avatar { width:80px; height:132px; }
 .ms-tauziehen .tz-crew.links .ms-avatar > svg { transform:scaleX(-1); }
 .ms-tauziehen .ms-avatar > .bz-spieler-illustriert { animation:none; }
 .ms-tauziehen .ms-avatar-ich::after { display:none; }
-.ms-tauziehen .tz-person[data-ich="true"]::after { content:"DU"; position:absolute; left:50%; top:-10px; transform:translateX(-50%); padding:1px 5px; border:1px solid #695526; border-radius:4px; color:#35432d; background:#ffdf86; font-size:9px; font-weight:900; z-index:6; }
-.ms-tauziehen .tz-beitrag .ms-avatar { filter:drop-shadow(0 0 6px #fff0a3); }
+.ms-tauziehen .tz-beitrag .ms-avatar { filter:drop-shadow(0 0 5px #ffe29b6b); }
 .ms-tauziehen .tz-schmutz { display:none; position:absolute; left:8%; right:8%; bottom:2px; height:35px; background:radial-gradient(ellipse at 30% 65%,#79553b 0 18%,transparent 21%),radial-gradient(ellipse at 68% 55%,#9f7248 0 23%,transparent 26%),radial-gradient(ellipse at 48% 84%,#79553b 0 28%,transparent 31%); }
 .ms-tauziehen[data-ergebnis="links"] .tz-crew.rechts .tz-schmutz,.ms-tauziehen[data-ergebnis="rechts"] .tz-crew.links .tz-schmutz,.ms-tauziehen[data-ergebnis="unentschieden"] .tz-schmutz { display:block; }
-.ms-tauziehen .tz-more { position:absolute; top:74px; padding:3px 6px; border-radius:5px; border:1px solid #5d7160; background:#f9f2d8e8; color:#374f44; font-size:10px; font-weight:750; z-index:5; }
-.ms-tauziehen .tz-more.links { left:10px; } .ms-tauziehen .tz-more.rechts { right:10px; }
+.ms-tauziehen .tz-more { position:absolute; top:129px; padding:3px 7px; border-radius:12px; border:1px solid #5d7160; background:#253b36ed; color:#f6e1b4; font-size:9px; font-weight:750; z-index:5; border-color:#c8aa6d6b; }
+.ms-tauziehen .tz-more.links { left:10px; }
+.ms-tauziehen .tz-more.rechts { right:10px; }
 .ms-tauziehen .tz-effekt { position:absolute; pointer-events:none; }
-.ms-tauziehen .tz-banner,.ms-tauziehen .tz-ergebnis { left:5%; right:5%; top:14px; z-index:6; padding:9px 5px; border-block:1px solid #c79d53aa; background:linear-gradient(90deg,transparent,#fff1cfed 12% 88%,transparent); text-align:center; color:#3f513a; font-size:20px; line-height:1.2; font-weight:950; overflow-wrap:anywhere; }
+.ms-tauziehen .tz-banner,.ms-tauziehen .tz-ergebnis { left:3%; right:3%; top:96px; z-index:6; padding:6px; border-block:1px solid #c79d53aa; background:linear-gradient(90deg,transparent,#152b31ec 18% 82%,transparent); text-align:center; color:#ffe1a2; font-size:20px; line-height:1.2; font-weight:950; overflow-wrap:anywhere; border:0; font-style:italic; letter-spacing:.5px; text-shadow:0 2px #231b1c,1px 0 #231b1c; }
 .ms-tauziehen .tz-wechsel { font-size:17px; }
-.ms-tauziehen .tz-staub { top:230px; width:18px; height:9px; border-radius:50%; background:#e4d29ccc; z-index:5; }
-.ms-tauziehen .tz-spritzer { top:237px; width:12px; height:17px; border-radius:65% 65% 60% 15%; background:#98704e; border:1px solid #745337; z-index:6; }
-.ms-tauziehen .tz-score { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:8px; padding:10px 10px 0; }
-.ms-tauziehen .tz-team { min-width:0; padding:8px 10px; border-radius:9px; border-top:3px solid #39759b; background:#e1edf5; }
-.ms-tauziehen .tz-team.rechts { background:#f6e7de; border-color:#c8644b; text-align:right; }
-.ms-tauziehen .tz-team-name { font-size:12px; font-weight:850; line-height:1.3; overflow-wrap:anywhere; }
-.ms-tauziehen .tz-average { font-size:26px; line-height:1.3; font-weight:900; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
-.ms-tauziehen .tz-unit,.ms-tauziehen .tz-anzahl { font-size:10px; line-height:1.4; color:#5d6e72; }
-.ms-tauziehen > .ms-zeit { padding-top:10px; color:#596e65; font-size:10px; }
+.ms-tauziehen .tz-staub { top:275px; width:18px; height:9px; border-radius:50%; background:#e2b171a8; z-index:5; }
+.ms-tauziehen .tz-spritzer { top:302px; width:12px; height:17px; border-radius:65% 65% 60% 15%; background:#9c6338; border:1px solid #745337; z-index:6; border-color:#593a25; box-shadow:inset 2px 2px #d0944a77; }
+.ms-tauziehen .tz-score { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:8px; padding:0; position:absolute; left:10px; right:10px; top:12px; z-index:4; }
+.ms-tauziehen .tz-team { min-width:0; padding:8px 10px 7px; border-radius:8px; background:linear-gradient(120deg,#16303bea,#183740e0); position:relative; border:1px solid #75bad95c; border-top:3px solid #67d4ec; box-shadow:0 3px 7px #071b2655; }
+.ms-tauziehen .tz-team.rechts { background:linear-gradient(240deg,#392b2bea,#432d28e0); border-color:#ef97736b; text-align:right; border-top-color:#ff9b69; }
+.ms-tauziehen .tz-team-name { font-size:11px; font-weight:850; line-height:1.3; overflow-wrap:anywhere; color:#e8e4d1; }
+.ms-tauziehen .tz-average { font-size:23px; line-height:1.15; font-weight:900; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; color:#a8edff; }
+.ms-tauziehen .tz-unit,.ms-tauziehen .tz-anzahl { font-size:9px; line-height:1.4; color:#d6c8af; }
+.ms-tauziehen > .ms-zeit { padding-top:10px; color:#b1c4bc; font-size:10px; padding:9px 12px 0; }
 .ms-tauziehen .ms-steuerung { gap:6px; padding:8px 10px 12px; }
-.ms-tauziehen .ms-steuerung .knopf { min-height:38px; padding:8px 10px; font-size:11px; color:#f0f2e4; background:#405d63; }
-.ms-tauziehen .tz-rule { margin:0; padding:10px 12px; border-top:1px solid #c5d4c3; background:#e4eddf; color:#586c5c; font-size:10px; line-height:1.5; }
-@media (max-width:350px) { .ms-tauziehen .tz-banner,.ms-tauziehen .tz-ergebnis { font-size:18px; } .ms-tauziehen .tz-wechsel { font-size:15px; } }
-@media (prefers-reduced-motion:reduce) { .ms-tauziehen *, .ms-tauziehen *::before,.ms-tauziehen *::after { animation:none!important; transition:none!important; scroll-behavior:auto!important; } }
+.ms-tauziehen .ms-steuerung .knopf { min-height:38px; padding:8px 10px; font-size:11px; color:#f5e9cd; background:#2b4549; border:1px solid #87a29b42; border-radius:8px; }
+.ms-tauziehen .tz-rule { margin:0; padding:10px 12px; border-top:1px solid #c5d4c3; background:#14282d; color:#b5c5b9; font-size:10px; line-height:1.5; border-color:#47605a66; }
+.ms-tauziehen .tz-kulisse { position:absolute; inset:0; width:100%; height:100%; object-fit:fill; pointer-events:none; }
+.ms-tauziehen .tz-licht { position:absolute; inset:0; z-index:1; pointer-events:none; background:linear-gradient(110deg,#ffe5a518,transparent 42% 62%,#ffd57b14),linear-gradient(0deg,#102c3228,transparent 40%); }
+.ms-tauziehen .tz-mit-kulisse .tz-mud { background:transparent; border:0; box-shadow:none; }
+.ms-tauziehen .tz-mit-kulisse .tz-mud::before,.ms-tauziehen .tz-mit-kulisse .tz-mud::after { display:none; }
+.ms-tauziehen .tz-person::before { content:""; position:absolute; left:8%; right:8%; bottom:-1px; height:10px; border-radius:50%; background:#291c1bb0; filter:blur(3px); }
+.ms-tauziehen .tz-name { position:absolute; top:calc(100% + 3px); left:50%; transform:translateX(-50%); max-width:88px; padding:3px 6px; border:1px solid #b8d5d23b; border-radius:5px; background:#132b31eb; color:#f5e9d0; font-size:9px; font-weight:750; line-height:1.2; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.ms-tauziehen .tz-person[data-ich="true"] .tz-name { border-color:#f7ce73; color:#ffe4a2; }
+.ms-tauziehen .tz-koerper { position:absolute; left:-10%; top:-3.333%; width:120%; height:106.667%; pointer-events:none; }
+.ms-tauziehen .tz-geriggt > svg { visibility:hidden; }
+.ms-tauziehen .tz-seil-kurve { position:absolute; top:201px; left:0; width:100%; height:90px; z-index:3; pointer-events:none; filter:drop-shadow(0 3px 1px #241c2366); display:none; }
+.ms-tauziehen .tz-team.rechts .tz-average { color:#ffc392; }
+.ms-tauziehen .tz-anzahl { position:absolute; bottom:8px; right:8px; font-size:8px; }
+.ms-tauziehen .tz-team.rechts .tz-anzahl { left:8px; right:auto; }
+@media (max-width:350px) {
+  .ms-tauziehen .tz-person,.ms-tauziehen .tz-person .ms-avatar { width:68px; }
+  .ms-tauziehen .tz-name { max-width:48px; font-size:8px; padding-inline:4px; }
+  .ms-tauziehen .tz-team { padding-inline:7px; }
+  .ms-tauziehen .tz-anzahl { font-size:7px; }
+  .ms-tauziehen .tz-unit { font-size:8px; }
+  .ms-tauziehen .tz-banner,.ms-tauziehen .tz-ergebnis { font-size:18px; }
+  .ms-tauziehen .tz-wechsel { font-size:15px; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .ms-tauziehen *, .ms-tauziehen *::before,.ms-tauziehen *::after { animation:none!important; transition:none!important; scroll-behavior:auto!important; }
+}
+
+/* Ganze Teams in kleinen Gruppen, mit natürlichem Seitenverhältnis und freien Gesichtern. */
+.ms-tauziehen .tz-crew { inset:0; width:100%; height:100%; pointer-events:none; }
+.ms-tauziehen .tz-crew.links,.ms-tauziehen .tz-crew.rechts { left:0; right:0; }
+.ms-tauziehen .tz-person { bottom:auto; width:80px; height:120px; }
+.ms-tauziehen .tz-person .ms-avatar { width:100%; height:100%; }
+.ms-tauziehen .tz-name { max-width:var(--tz-label,70px); font-size:8px; padding:3px 4px; border-color:#75bad98c; }
+.ms-tauziehen .tz-crew.rechts .tz-name { border-color:#ef97738c; }
+.ms-tauziehen .tz-person[data-ich="true"] .tz-name { border-color:#f7ce73; }
+.ms-tauziehen .tz-seil-kurve { top:0; height:360px; }
+.ms-tauziehen[data-fuehrung="links"] .tz-team.links { box-shadow:0 0 12px #65d2ef40,inset 0 0 14px #78e3ff0a; }
+.ms-tauziehen[data-fuehrung="rechts"] .tz-team.rechts { box-shadow:0 0 12px #ffa77340,inset 0 0 14px #ff995a0a; }
+.ms-tauziehen[data-wucht="finale"] .tz-licht { background:radial-gradient(ellipse at 50% 70%,#ffdfa12b,transparent 70%); }
+.ms-tauziehen .tz-spur { width:25px; height:5px; margin-left:-12px; border-radius:50%; border-top:2px solid #573824; border-bottom:1px solid #dca367; z-index:1; transform-origin:50% 50%; }
+.ms-tauziehen .tz-welle { width:58px; height:17px; border:3px solid #d9984d; border-radius:50%; box-shadow:0 2px #553721,inset 0 2px #553721; z-index:4; }
+.ms-tauziehen .tz-boden { position:absolute; left:6%; right:6%; top:271px; height:8px; background:radial-gradient(ellipse,#33261e35,transparent 70%); z-index:1; }
+.ms-tauziehen .tz-schmutz { height:28px; }
+
+.ms-tauziehen .tz-name { top:calc(100% + 3px + var(--tz-label-y,0px)); }
+
+/* Die versetzten Figuren greifen auf derselben durchgehenden Seillinie. */
+.ms-tauziehen[data-reihen="2"] .tz-arena { height:420px; }
+.ms-tauziehen .tz-seil-kurve { height:100%; }
+.ms-tauziehen .tz-mud { top:calc(100% - 70px); }
+.ms-tauziehen .tz-boden { top:calc(100% - 89px); }
+.ms-tauziehen .tz-person[data-reihe="1"] .tz-body { filter:brightness(.9) saturate(.9) drop-shadow(0 2px 1px #1d1c22aa); }
+
+.ms-tauziehen .tz-seil-kurve { display:block; height:100%; overflow:visible; }
+.ms-tauziehen[data-seil-los] .tz-seil-kurve { z-index:1; }
