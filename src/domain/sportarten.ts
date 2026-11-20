@@ -46,10 +46,12 @@ export const STANDARD_KATALOG: readonly KatalogSportart[] = [
   { name: "Wandern", met: 5.3, code: "17082" },
   { name: "Krafttraining", met: 6.0, code: "02050" },
   { name: "Schwimmen locker", met: 5.8, code: "18240" },
+  { name: "Rudern", met: 5.8, code: "18050", kriterium: "im Boot" },
   { name: "Fußball", met: 7.0, code: "15610" },
   { name: "HIIT", met: 7.0, code: "02210" },
   { name: "Joggen", met: 7.5, code: "12020" },
   { name: "Squash", met: 7.3, code: "15652" },
+  { name: "Rudergerät", met: 7.3, code: "02070", kriterium: "Ergometer" },
   { name: "Tanzen sportlich", met: 7.3, code: "03029", kriterium: "Zumba, Aerobic, Disco" },
   { name: "Klettern", met: 8.0, code: "15533" },
   { name: "Radfahren sportlich", met: 8.0, code: "01030", kriterium: "ab 20 km/h" },
@@ -82,6 +84,11 @@ export const ALIASE: Readonly<Record<string, string>> = {
   "indoor cycling": "Spinning",
   wanderung: "Wandern",
   "ping pong": "Tischtennis",
+  ergometer: "Rudergerät",
+  ruderergometer: "Rudergerät",
+  rudermaschine: "Rudergerät",
+  "rudern indoor": "Rudergerät",
+  ruderboot: "Rudern",
 };
 
 /** Die Sportarten, die zu einem Grundnamen gehören, z. B. „Radfahren“ → locker und sportlich. */

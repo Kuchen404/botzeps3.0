@@ -51,8 +51,6 @@ const COMPENDIUM: Record<string, Eintrag> = {
   zirkeltraining: e(5.0, "02035"),
   kettlebell: e(9.8, "02058"),
   calisthenics: e(7.5, "02020"),
-  rudergerät: e(7.3, "02070"),
-  ergometer: e(7.3, "02070"),
   crosstrainer: e(5.0, "02048"),
   seilspringen: e(11.8, "15551"),
   trampolin: e(6.3, "15700"),
@@ -73,7 +71,6 @@ const COMPENDIUM: Record<string, Eintrag> = {
   // Wasser
   kanu: e(5.0, "18100"),
   kajak: e(5.0, "18100"),
-  rudern: e(5.8, "18050"),
   sup: e(6.5, "18224"),
   "stand up paddling": e(6.5, "18224"),
   surfen: e(3.0, "18220"),
