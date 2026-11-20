@@ -1,5 +1,6 @@
 import type Database from "better-sqlite3";
 import { faktorenNachMet } from "./migration-faktoren.js";
+import { STANDARD_SPORTARTEN } from "../domain/sportarten.js";
 
 export interface Migration {
   version: number;
@@ -397,5 +398,16 @@ export const MIGRATIONEN: readonly Migration[] = [
       ALTER TABLE teilnahme ADD COLUMN figur INTEGER CHECK (figur >= 0);
       CREATE UNIQUE INDEX teilnahme_figur ON teilnahme (season, figur) WHERE figur IS NOT NULL;
     `,
+  },
+  {
+    version: 16,
+    name: "rudern",
+    // Rudern und Rudergerät in die Startliste. Wer Rudern schon per Abstimmung hat, behält seinen Faktor.
+    aus: (db) => {
+      const neu = db.prepare("INSERT OR IGNORE INTO sportart (gruppe, name, faktor, kriterium) SELECT id, ?, ?, ? FROM gruppe");
+      for (const s of STANDARD_SPORTARTEN.filter((s) => s.name === "Rudern" || s.name === "Rudergerät")) {
+        neu.run(s.name, s.faktor, s.kriterium ?? null);
+      }
+    },
   },
 ];

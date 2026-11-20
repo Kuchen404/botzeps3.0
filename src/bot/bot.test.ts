@@ -28,7 +28,7 @@ describe("Bot", () => {
   it("/sportarten listet die Faktoren, die anstrengendsten oben", async () => {
     const { bot, letzterText } = testBot();
     await bot.handleUpdate(befehl("/sportarten", GRUPPE));
-    expect(letzterText()).toContain("×4,5: Joggen, Squash, Tanzen sportlich (Zumba, Aerobic, Disco)");
+    expect(letzterText()).toContain("×4,5: Joggen, Rudergerät (Ergometer), Squash, Tanzen sportlich (Zumba, Aerobic, Disco)");
     expect(letzterText()).toContain("×0,5: Spazierengehen");
     expect(letzterText().indexOf("×6: Spinning")).toBeLessThan(letzterText().indexOf("×0,5"));
     expect(letzterText()).toContain("/sport 60 Spazierengehen 7200");

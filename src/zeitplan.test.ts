@@ -224,7 +224,7 @@ describe("Zeitplan", () => {
     expect(ankuendigung).toHaveLength(1);
     expect(ankuendigung[0]).toContain("Wochenziel (jetzt 450 Lastpunkte)");
     expect(ankuendigung[0]).toContain("×6 Spinning: 1¼ Std.");
-    expect(ankuendigung[0]).toContain("×4,5 Joggen, Squash, Tanzen sportlich: 1¾ Std.");
+    expect(ankuendigung[0]).toContain("×4,5 Joggen, Rudergerät, Squash, Tanzen sportlich: 1¾ Std.");
     expect(ankuendigung[0]).toContain("×0,5 Spazierengehen: 15 Std.");
     expect(gesendet.find((g) => g.text.startsWith("📢"))?.appKnopf).toBe(true);
   });

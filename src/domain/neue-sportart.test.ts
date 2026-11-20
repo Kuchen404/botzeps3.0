@@ -24,11 +24,13 @@ describe("neue Sportart", () => {
       Wandern: 2.5,
       Krafttraining: 3,
       "Schwimmen locker": 3,
+      Rudern: 3,
       Fußball: 4,
       HIIT: 4,
       Joggen: 4.5,
       Squash: 4.5,
       "Tanzen sportlich": 4.5,
+      Rudergerät: 4.5,
       Klettern: 5,
       "Radfahren sportlich": 5,
       "Schwimmen sportlich": 5,
@@ -47,6 +49,8 @@ describe("neue Sportart", () => {
 
   it("Aliase und Varianten", () => {
     expect(sucheSportart(STANDARD_SPORTARTEN, "Laufen")?.name).toBe("Joggen");
+    expect(sucheSportart(STANDARD_SPORTARTEN, "rudern")?.name).toBe("Rudern");
+    expect(sucheSportart(STANDARD_SPORTARTEN, "Ergometer")?.name).toBe("Rudergerät");
     expect(sucheSportart(STANDARD_SPORTARTEN, "Radfahren")).toBeUndefined();
     expect(varianten(STANDARD_SPORTARTEN, "radfahren").map((s) => s.name)).toEqual(["Radfahren locker", "Radfahren sportlich"]);
     expect(schwesterName("Schwimmen locker")).toBe("Schwimmen sportlich");

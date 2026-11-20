@@ -54,7 +54,7 @@ describe("Datenbank", () => {
     db.prepare("INSERT INTO messung (nutzer, zeitpunkt, datum, gewicht_kg, fett_pct, muskel_pct, markiert) VALUES (?, ?, ?, ?, ?, ?, 1)").run(
       n.id, "2026-10-26T07:00:00Z", "2026-10-26", 88.5, 20.7, 51.2,
     );
-    expect(migriere(db)).toEqual([11, 12, 13, 14, 15]);
+    expect(migriere(db)).toEqual([11, 12, 13, 14, 15, 16]);
     expect(db.prepare("SELECT nutzer, datum, muskel_pct AS m, markiert FROM messung").all()).toEqual([{ nutzer: n.id, datum: "2026-10-26", m: 51.2, markiert: 1 }]);
     expect(db.prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'messung'").all()).toEqual([{ name: "messung_nutzer_datum" }]);
   });
@@ -94,7 +94,7 @@ describe("Datenbank", () => {
     db.prepare("INSERT INTO abstimmung (id, gruppe, name, vorschlag, antragsteller, erstellt_am) VALUES (1, 1, 'Handball', 3, ?, ?)").run(kevin.id, new Date().toISOString());
     db.prepare("INSERT INTO stimme (abstimmung, nutzer, faktor) VALUES (1, ?, 2)").run(kevin.id);
 
-    expect(migriere(db)).toEqual([12, 13, 14, 15]);
+    expect(migriere(db)).toEqual([12, 13, 14, 15, 16]);
     // Schon angekündigter Boss behält seine Schwäche und bekommt keine Resistenz
     expect(db.prepare("SELECT schwaeche, resistenz FROM boss WHERE season = 2").get()).toEqual({ schwaeche: sportart.get("Joggen"), resistenz: null });
     expect(db.pragma("foreign_keys", { simple: true })).toBe(1);
@@ -136,5 +136,24 @@ describe("Datenbank", () => {
     // Kommafaktoren gehen jetzt rein, Unsinn nicht
     expect(() => db.prepare("UPDATE training SET faktor = 4.5 WHERE id = ?").run(rad)).not.toThrow();
     expect(() => db.prepare("UPDATE training SET faktor = 0 WHERE id = ?").run(rad)).toThrow(/CHECK/);
+  });
+
+  it("Migration 16: Rudern und Rudergerät für bestehende Gruppen, abgestimmter Faktor bleibt", () => {
+    const db = new Database(":memory:");
+    db.pragma("foreign_keys = ON");
+    db.exec("CREATE TABLE schema_version (version INTEGER PRIMARY KEY, name TEXT NOT NULL, ausgefuehrt_am TEXT)");
+    migriere(db);
+    db.prepare("DELETE FROM schema_version WHERE version = 16").run();
+    db.prepare("INSERT INTO gruppe (id, telegram_chat_id, name) VALUES (1, -100, 'Pumper'), (2, -200, 'Ruderer')").run();
+    db.prepare("INSERT INTO sportart (gruppe, name, faktor) VALUES (2, 'rudern', 2.5)").run();
+
+    expect(migriere(db)).toEqual([16]);
+    const sportarten = db.prepare("SELECT gruppe, name, faktor, kriterium FROM sportart ORDER BY gruppe, name").all();
+    expect(sportarten).toEqual([
+      { gruppe: 1, name: "Rudergerät", faktor: 4.5, kriterium: "Ergometer" },
+      { gruppe: 1, name: "Rudern", faktor: 3, kriterium: "im Boot" },
+      { gruppe: 2, name: "Rudergerät", faktor: 4.5, kriterium: "Ergometer" },
+      { gruppe: 2, name: "rudern", faktor: 2.5, kriterium: null },
+    ]);
   });
 });
