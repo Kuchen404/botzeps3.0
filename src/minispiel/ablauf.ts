@@ -29,6 +29,7 @@ import {
   minispielWochen,
   seil,
   stelleAuf,
+  tauziehAktive,
   tresor,
   zombies,
 } from "./spiele.js";
@@ -290,13 +291,13 @@ export function minispielFuerApp(db: Db, s: SeasonZeile, tag: string, ich: strin
       };
     }
     case "tauziehen": {
-      const s2 = seil(d, l);
+      const s2 = seil(d, l, tauziehAktive(d, spieler, w));
       return {
         ...basis,
-        regel: "Losteams, es zählt die durchschnittliche Wochenlast. Die Verlierer landen im Schlamm.",
+        regel: "Losteams, es zählt die durchschnittliche Wochenlast. Wer seit über einer Woche nichts einträgt, zählt erst ab seinem ersten Eintrag mit. Die Verlierer landen im Schlamm.",
         status: s2.zug === 0 ? "Gleichstand" : `${d.teams[s2.zug > 0 ? 0 : 1].name} zieht`,
         seil: { links: d.teams[0].name, rechts: d.teams[1].name, schnitt: s2.schnitt.map((x) => Math.round(x)), zug: s2.zug },
-        liste: d.teams.flatMap((t) => t.mitglieder.map((id) => eintrag(id, `${t.name} · ${z(l.get(id) ?? 0)}`))),
+        liste: d.teams.flatMap((t) => t.mitglieder.map((id) => eintrag(id, `${t.name} · ${s2.inaktiv.includes(id) ? "💤 zählt nicht" : z(l.get(id) ?? 0)}`))),
       };
     }
     case "tresor": {

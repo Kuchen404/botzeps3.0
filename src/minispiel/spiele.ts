@@ -257,14 +257,39 @@ export function gipfel(d: DatenVon<"gipfel">, spieler: readonly Spieler[], w: Sp
 
 // ---------- Tauziehen ----------
 
-/** Durchschnittliche Wochenlast je Team; `zug` von −1 (Team 2 gewinnt klar) bis +1 (Team 1). */
-export function seil(d: DatenVon<"tauziehen">, l: ReadonlyMap<string, number>): { schnitt: [number, number]; zug: number } {
-  const schnitt = d.teams.map((t) => (t.mitglieder.length ? t.mitglieder.reduce((s, id) => s + (l.get(id) ?? 0), 0) / t.mitglieder.length : 0)) as [
-    number,
-    number,
-  ];
+/** So viele Tage vor dem Spiel schaut das Tauziehen zurück, ob jemand überhaupt noch mitmacht. */
+export const TAUZIEH_RUECKBLICK_TAGE = 7;
+
+/**
+ * Wer beim Tauziehen in den Teamschnitt zählt: alle, die in den 7 Tagen vor dem Spiel oder in der
+ * Spielwoche bis jetzt etwas eingetragen haben. Wer schon so lange nichts mehr macht, zieht sein Team
+ * nicht mit einer Null runter; mit dem ersten Eintrag zählt er ab sofort normal mit.
+ */
+export function tauziehAktive(d: DatenVon<"tauziehen">, spieler: readonly Spieler[], w: SpielWoche): Set<string> {
+  const von = plusTage(w.start, -TAUZIEH_RUECKBLICK_TAGE);
+  const bis = plusTage(w.start, 6);
+  return new Set(
+    spieler.filter((sp) => d.spieler.includes(sp.id) && sp.trainings.some((t) => t.datum >= von && t.datum <= bis)).map((sp) => sp.id),
+  );
+}
+
+/**
+ * Durchschnittliche Wochenlast je Team, nur über die aktiven Mitglieder (siehe `tauziehAktive`);
+ * ohne `aktiv` zählen alle. `zug` von −1 (Team 2 gewinnt klar) bis +1 (Team 1).
+ */
+export function seil(
+  d: DatenVon<"tauziehen">,
+  l: ReadonlyMap<string, number>,
+  aktiv?: ReadonlySet<string>,
+): { schnitt: [number, number]; zug: number; inaktiv: string[] } {
+  const zaehlt = (id: string) => !aktiv || aktiv.has(id);
+  const schnitt = d.teams.map((t) => {
+    const dabei = t.mitglieder.filter(zaehlt);
+    return dabei.length ? dabei.reduce((s, id) => s + (l.get(id) ?? 0), 0) / dabei.length : 0;
+  }) as [number, number];
   const summe = schnitt[0] + schnitt[1];
-  return { schnitt, zug: summe > 0 ? (schnitt[0] - schnitt[1]) / summe : 0 };
+  const inaktiv = d.teams.flatMap((t) => t.mitglieder.filter((id) => !zaehlt(id)));
+  return { schnitt, zug: summe > 0 ? (schnitt[0] - schnitt[1]) / summe : 0, inaktiv };
 }
 
 /** Das Seil als Textzeile, der Knoten wandert zum stärkeren Team. */

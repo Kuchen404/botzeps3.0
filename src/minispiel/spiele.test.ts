@@ -15,10 +15,12 @@ import {
   seil,
   seilZeile,
   stelleAuf,
+  tauziehAktive,
   tresor,
   waehleArt,
   zombies,
 } from "./spiele.js";
+import { minispielErfolge } from "./erfolge.js";
 import { fertigeTage, minispielErgebnis, minispielLage, minispielMarken, minispielNachTraining } from "./meldungen.js";
 
 const W = { start: "2026-11-02", ziel: 300 };
@@ -157,6 +159,59 @@ describe("Tauziehen", () => {
     expect(s.zug).toBe(-0.5);
     expect(seilZeile(d, s.zug)).toBe(`${d.teams[0].name} ━━━━━━━━🔴━━ ${d.teams[1].name}`);
     expect(minispielErgebnis(d, spieler, W)).toBe(`🪢 ${d.teams[1].name} gewinnt das Tauziehen (100:300 im Schnitt)! ${d.teams[0].name} liegt im Schlamm: A1, A2.`);
+  });
+
+  const vorwoche = (tageVorher: number, last: number): SpielTraining => {
+    const datum = new Date(Date.parse(`${W.start}T12:00:00Z`) - tageVorher * 86_400_000).toISOString().slice(0, 10);
+    return { id: ++id, datum, minuten: last / 2, faktor: 2, erstellt: `${datum}T10:00:00Z` };
+  };
+  const d: DatenVon<"tauziehen"> = {
+    art: "tauziehen",
+    spieler: ["a1", "a2", "b1", "b2"],
+    teams: [
+      { name: "Team Eisen", mitglieder: ["a1", "a2"] },
+      { name: "Team Speck", mitglieder: ["b1", "b2"] },
+    ],
+  };
+
+  it("wer seit über einer Woche nichts eingetragen hat, zieht sein Team nicht mit einer Null runter", () => {
+    const spieler = [sp("a1", "Anna", tr(0, 200)), sp("a2", "Stiller"), sp("b1", "Berta", tr(0, 150)), sp("b2", "Bodo", tr(1, 150))];
+    expect([...tauziehAktive(d, spieler, W)].sort()).toEqual(["a1", "b1", "b2"]);
+    const s = seil(d, lasten(d, spieler, W), tauziehAktive(d, spieler, W));
+    expect(s.schnitt).toEqual([200, 150]);
+    expect(s.inaktiv).toEqual(["a2"]);
+    expect(s.zug).toBeGreaterThan(0);
+    // Ohne die Regel hätte Team Eisen mit 100 im Schnitt verloren
+    expect(seil(d, lasten(d, spieler, W)).schnitt).toEqual([100, 150]);
+    expect(minispielErgebnis(d, spieler, W)).toBe(
+      "🪢 Team Eisen gewinnt das Tauziehen (200:150 im Schnitt)! Team Speck liegt im Schlamm: Berta, Bodo.\n💤 Stiller liegt auf der Couch und zählt nicht in den Schnitt. Wer was einträgt, zieht sofort mit.",
+    );
+    const erfolge = minispielErfolge(d, spieler, W);
+    expect(erfolge.get("a1")).toEqual(["tauziehen_sieg"]);
+    expect(erfolge.get("a2")).toBeUndefined();
+  });
+
+  it("wer in der Woche davor noch trainiert hat und jetzt faulenzt, zählt mit seiner Null", () => {
+    const spieler = [sp("a1", "Anna", tr(0, 200)), sp("a2", "Faul", vorwoche(3, 100)), sp("b1", "Berta", tr(0, 150)), sp("b2", "Bodo", tr(1, 150))];
+    const s = seil(d, lasten(d, spieler, W), tauziehAktive(d, spieler, W));
+    expect(s.inaktiv).toEqual([]);
+    expect(s.schnitt).toEqual([100, 150]);
+    // Mehr als 7 Tage her: zählt nicht mehr
+    const alt = [spieler[0]!, sp("a2", "Faul", vorwoche(8, 100)), spieler[2]!, spieler[3]!];
+    expect(seil(d, lasten(d, alt, W), tauziehAktive(d, alt, W)).inaktiv).toEqual(["a2"]);
+  });
+
+  it("mit dem ersten Eintrag steigt der Stille ein und zählt ab sofort normal mit", () => {
+    const vorher = [sp("a1", "Anna", tr(0, 200)), sp("a2", "Stiller"), sp("b1", "Berta", tr(0, 150)), sp("b2", "Bodo", tr(1, 150))];
+    const nachher = [vorher[0]!, sp("a2", "Stiller", tr(4, 50)), vorher[2]!, vorher[3]!];
+    expect(minispielNachTraining(d, vorher, nachher, W, "a2")).toEqual([
+      "🪢 Stiller packt endlich mit an und zählt ab jetzt für Team Eisen.",
+      `🪢 ${seilZeile(d, seil(d, lasten(d, nachher, W)).zug)}`,
+    ]);
+    expect(seil(d, lasten(d, nachher, W), tauziehAktive(d, nachher, W)).schnitt).toEqual([125, 150]);
+    // Ein zweiter Eintrag meldet keinen Einstieg mehr
+    const danach = [vorher[0]!, sp("a2", "Stiller", tr(4, 50), tr(5, 50)), vorher[2]!, vorher[3]!];
+    expect(minispielNachTraining(d, nachher, danach, W, "a2")).toHaveLength(1);
   });
 });
 

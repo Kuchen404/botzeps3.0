@@ -6,7 +6,7 @@ import { lokalesDatum, plusTage, zeitpunktIn } from "../scoring/datum.js";
 import { minispielDerApp } from "./ablauf.js";
 import { bombenTrainings } from "./bombenverlauf.js";
 import { fertigeTage } from "./meldungen.js";
-import { MINISPIELE, BOT_ID, BOT_NAME, lasten, zombies, kopfgeld, gipfel, seil, tresor, codeText, duelle, type MinispielDaten, type Spieler, type SpielWoche } from "./spiele.js";
+import { MINISPIELE, BOT_ID, BOT_NAME, lasten, zombies, kopfgeld, gipfel, seil, tauziehAktive, tresor, codeText, duelle, type MinispielDaten, type Spieler, type SpielWoche } from "./spiele.js";
 
 /** Nur öffentliche Spielstände, niemals Waagenwerte, Rohtrainings oder geheime Tresorziffern. */
 export function animationsStand(d: MinispielDaten, spieler: readonly Spieler[], w: SpielWoche, tage: number, zeit?: Partial<ZombieZeit>) {
@@ -22,7 +22,7 @@ export function animationsStand(d: MinispielDaten, spieler: readonly Spieler[], 
     }
     case "kopfgeld": return { gejagter: d.gejagter, ...kopfgeld(d, l), lasten: last };
     case "gipfel": return { ziel: Math.max(1, w.ziel), kletterer: gipfel(d, spieler, w) };
-    case "tauziehen": return { teams: d.teams, ...seil(d, l), lasten: last };
+    case "tauziehen": return { teams: d.teams, ...seil(d, l, tauziehAktive(d, spieler, w)), lasten: last };
     case "tresor": {
       const t = tresor(d, l);
       return { ...t, ziel: d.ziel, code: codeText(d, t.ziffern), lasten: last };

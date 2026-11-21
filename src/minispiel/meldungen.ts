@@ -18,6 +18,7 @@ import {
   lasten,
   seil,
   seilZeile,
+  tauziehAktive,
   tresor,
   zombies,
 } from "./spiele.js";
@@ -90,7 +91,7 @@ export function minispielAnkuendigung(d: MinispielDaten, spieler: readonly Spiel
         return [
           "Der Bot hat Teams gelost:",
           ...d.teams.map((t) => `${t.name}: ${t.mitglieder.map((id) => n(namen, id)).join(", ")}`),
-          "Es zählt die durchschnittliche Wochenlast pro Team, jedes Training zieht am Seil. Die Verlierer landen Sonntag im Schlamm.",
+          "Es zählt die durchschnittliche Wochenlast pro Team, jedes Training zieht am Seil. Wer seit über einer Woche nichts eingetragen hat, zählt erst ab seinem ersten Eintrag mit. Die Verlierer landen Sonntag im Schlamm.",
         ];
       case "tresor":
         return [
@@ -158,9 +159,16 @@ export function minispielLage(
       return halbzeit ? { text: ["🏔 Halbzeit am Berg:", ...gipfelZeilen(d, spieler, w, namen)].join("\n") } : null;
     case "tauziehen": {
       if (!halbzeit) return null;
-      const s = seil(d, l);
+      const s = seil(d, l, tauziehAktive(d, spieler, w));
       const vorne = s.zug === 0 ? null : d.teams[s.zug > 0 ? 0 : 1].name;
-      return { text: `🪢 Halbzeit am Seil:\n${seilZeile(d, s.zug)}\n${vorne ? `${vorne} zieht, die anderen rutschen schon Richtung Schlamm.` : "Steht genau in der Mitte. Zieht gefälligst!"}` };
+      return {
+        text: [
+          "🪢 Halbzeit am Seil:",
+          seilZeile(d, s.zug),
+          vorne ? `${vorne} zieht, die anderen rutschen schon Richtung Schlamm.` : "Steht genau in der Mitte. Zieht gefälligst!",
+          ...zuschauerZeile(s.inaktiv, namen),
+        ].join("\n"),
+      };
     }
     case "tresor": {
       if (!halbzeit) return null;
@@ -224,8 +232,13 @@ export function minispielNachTraining(
       }
       return x.oben ? [] : [`🧗 ${n(namen, ich)} klettert auf ${z(x.hoehe)} m.`];
     }
-    case "tauziehen":
-      return [`🪢 ${seilZeile(d, seil(d, ln).zug)}`];
+    case "tauziehen": {
+      const vorherAktiv = tauziehAktive(d, vorher, w);
+      const s = seil(d, ln, tauziehAktive(d, nachher, w));
+      const team = d.teams.find((t) => t.mitglieder.includes(ich));
+      const einstieg = !vorherAktiv.has(ich) && !s.inaktiv.includes(ich) && team ? [`🪢 ${n(namen, ich)} packt endlich mit an und zählt ab jetzt für ${team.name}.`] : [];
+      return [...einstieg, `🪢 ${seilZeile(d, s.zug)}`];
+    }
     case "tresor": {
       const tv = tresor(d, lv);
       const tn = tresor(d, ln);
@@ -243,6 +256,13 @@ export function minispielNachTraining(
       return [`⚔️ ${n(namen, ich)} geht gegen ${n(namen, gegner)} in Führung (${z(meins)}:${z(seins)}).`];
     }
   }
+}
+
+/** Wer beim Tauziehen nicht mitzählt, weil er seit über einer Woche nichts einträgt. */
+function zuschauerZeile(inaktiv: readonly string[], namen: Namen): string[] {
+  if (!inaktiv.length) return [];
+  const wer = aufzaehlung(inaktiv.map((id) => n(namen, id)));
+  return [`💤 ${wer} ${inaktiv.length === 1 ? "liegt" : "liegen"} auf der Couch und ${inaktiv.length === 1 ? "zählt" : "zählen"} nicht in den Schnitt. Wer was einträgt, zieht sofort mit.`];
 }
 
 /** Auflösung nach dem Sonntagsbericht. */
@@ -277,11 +297,12 @@ export function minispielErgebnis(d: MinispielDaten, spieler: readonly Spieler[]
     case "gipfel":
       return ["🏔 Der Gipfelsturm ist vorbei!", ...gipfelZeilen(d, spieler, w, namen).map((zeile) => (zeile.startsWith("⛺") ? `${zeile}. Da gibt's wenigstens Tee.` : zeile))].join("\n");
     case "tauziehen": {
-      const s = seil(d, l);
+      const s = seil(d, l, tauziehAktive(d, spieler, w));
       const schnitt = `${z(s.schnitt[0])}:${z(s.schnitt[1])} im Schnitt`;
-      if (s.zug === 0) return `🪢 Das Seil ist gerissen, unentschieden (${schnitt}). Alle in den Schlamm.`;
+      const zuschauer = zuschauerZeile(s.inaktiv, namen);
+      if (s.zug === 0) return [`🪢 Das Seil ist gerissen, unentschieden (${schnitt}). Alle in den Schlamm.`, ...zuschauer].join("\n");
       const [sieger, verlierer] = s.zug > 0 ? d.teams : [d.teams[1], d.teams[0]];
-      return `🪢 ${sieger.name} gewinnt das Tauziehen (${schnitt})! ${verlierer.name} liegt im Schlamm: ${liste(verlierer.mitglieder)}.`;
+      return [`🪢 ${sieger.name} gewinnt das Tauziehen (${schnitt})! ${verlierer.name} liegt im Schlamm: ${liste(verlierer.mitglieder)}.`, ...zuschauer].join("\n");
     }
     case "tresor": {
       const t = tresor(d, l);
