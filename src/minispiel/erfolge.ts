@@ -14,6 +14,7 @@ import {
   kopfgeld,
   lasten,
   seil,
+  tauziehAktive,
   tresor,
   zombies,
 } from "./spiele.js";
@@ -55,10 +56,10 @@ export function minispielErfolge(d: MinispielDaten, spieler: readonly Spieler[],
       break;
     }
     case "tauziehen": {
-      const s = seil(d, l);
+      const s = seil(d, l, tauziehAktive(d, spieler, w));
       const [sieger, verlierer] = s.zug > 0 ? d.teams : s.zug < 0 ? [d.teams[1], d.teams[0]] : [null, null];
-      // Unentschieden: das Seil reißt, alle landen im Schlamm
-      for (const id of sieger?.mitglieder ?? []) gib(id, "tauziehen_sieg");
+      // Unentschieden: das Seil reißt, alle landen im Schlamm. Wer nicht mitgezogen hat, gewinnt auch nichts.
+      for (const id of sieger?.mitglieder ?? []) if (!s.inaktiv.includes(id)) gib(id, "tauziehen_sieg");
       for (const id of verlierer ? verlierer.mitglieder : d.spieler) gib(id, "tauziehen_schlamm");
       break;
     }
