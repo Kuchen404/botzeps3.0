@@ -17,7 +17,7 @@ const erfolge = (d: MinispielDaten, spieler: Spieler[]) => Object.fromEntries(mi
 
 describe("Erfolge aus Minispielen", () => {
   it("Zombie: Überlebende und Gebissene, Patient Null geht leer aus", () => {
-    const jeden = [0, 1, 2, 3, 4, 5, 6].map((t) => tr(t, 50));
+    const jeden = [0, 1, 2, 3, 4, 5, 6].map((t) => ({ ...tr(t, 50), faktor: 3 }));
     const d: MinispielDaten = { art: "zombie", spieler: ["a", "b", "c"], patientNull: "c", gemeldet: [] };
     expect(erfolge(d, [sp("a", ...jeden), sp("b"), sp("c")])).toEqual({ a: ["zombie_ueberlebt"], b: ["zombie_gebissen"] });
   });
