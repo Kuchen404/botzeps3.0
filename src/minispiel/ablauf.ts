@@ -239,7 +239,7 @@ export function minispielFuerApp(db: Db, s: SeasonZeile, tag: string, ich: strin
       const menschen = d.spieler.filter((id) => !zz.has(id)).length;
       return {
         ...basis,
-        regel: "Zwei Tage am Stück ohne Training, und du wirst gebissen. Sonntag zählen die Überlebenden.",
+        regel: "Zwei Tage am Stück ohne Training ab Faktor ×3 (Spazieren & Co. zählen nicht), und du wirst gebissen. Sonntag zählen die Überlebenden.",
         status: `🧍 ${menschen} Mensch${menschen === 1 ? "" : "en"} · 🧟 ${zz.size} Zombie${zz.size === 1 ? "" : "s"}`,
         liste: d.spieler.map((id) =>
           eintrag(id, id === d.patientNull ? "Patient Null" : zz.has(id) ? `gebissen am ${plusTage(w.start, zz.get(id)!).split("-").reverse().slice(0, 2).join(".")}.` : "Mensch"),

@@ -16,7 +16,7 @@ async function aufbau() {
   const teilnehmer = t.db.prepare("SELECT CAST(id AS TEXT) AS id, name FROM nutzer ORDER BY name").all() as { id: string; name: string }[];
   const ids = teilnehmer.map((p) => p.id);
   const sport = (t.db.prepare("SELECT id FROM sportart LIMIT 1").get() as { id: number }).id;
-  const training = (id: string, datum: string, erstellt: string, geloescht: string | null = null) => t.db.prepare("INSERT INTO training (nutzer,datum,minuten,sportart,faktor,erstellt_am,geloescht_am) VALUES (?,?,60,?,2,?,?)").run(Number(id), datum, sport, erstellt, geloescht);
+  const training = (id: string, datum: string, erstellt: string, geloescht: string | null = null, faktor = 2) => t.db.prepare("INSERT INTO training (nutzer,datum,minuten,sportart,faktor,erstellt_am,geloescht_am) VALUES (?,?,60,?,?,?,?)").run(Number(id), datum, sport, faktor, erstellt, geloescht);
   uhr.jetzt = () => new Date("2026-11-06T12:00:00Z");
   const spiel = (d: MinispielDaten) => t.db.prepare("INSERT OR REPLACE INTO minispiel (season,woche,art,daten) VALUES (1,3,?,?)").run(d.art, JSON.stringify(d));
   return { ...t, s, ids, training, spiel };
@@ -79,7 +79,7 @@ describe("Minispiel-Szenen und chronologische Spielstände", () => {
 it("rekonstruiert Zombie-Fristen ohne spätere Trainingseinträge und ohne neue Abrufzeit in Standdaten", async () => {
   const t=await aufbau();try {
     const [patient,mensch]=t.ids as [string,string];t.spiel({art:"zombie",spieler:t.ids,patientNull:patient,gemeldet:[]});
-    t.training(mensch,"2026-11-02","2026-11-03T12:00:00Z");
+    t.training(mensch,"2026-11-02","2026-11-03T12:00:00Z",null,3);
     const a=animationFuerApp(t.db,t.s,"2026-11-06",mensch)!;
     const erster=a.verlauf[0]!.stand as {gefahr:Record<string,{warnAb:string;frist:string}>;schutz:Record<string,{bis:string}>};
     expect(erster.gefahr[mensch]).toEqual({warnAb:"2026-11-02T23:00:00.000Z",frist:"2026-11-03T23:00:00.000Z"});

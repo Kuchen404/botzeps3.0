@@ -1,6 +1,6 @@
 import { type IsoDatum, plusTage } from "../scoring/datum.js";
 import { type Faktor, gesamtLast } from "../scoring/fleiss.js";
-import { bossWoche, STUFEN } from "../scoring/boss.js";
+import { bossWoche, SCHWAECHE_MIN_FAKTOR, STUFEN } from "../scoring/boss.js";
 
 /**
  * Minispiele für die Wochen ohne Boss. Alles wird aus den Trainings der Woche berechnet,
@@ -182,14 +182,25 @@ export function lasten(d: MinispielDaten, spieler: readonly Spieler[], w: SpielW
 // ---------- Zombie-Woche ----------
 
 /**
- * Wer zwei Tage am Stück nicht trainiert, wird gebissen und bleibt Zombie. Patient Null ist es von Anfang an.
+ * Nur richtiger Sport hält die Horde fern: ab diesem Faktor (Krafttraining ×3, sportliches Rad ×5),
+ * dieselbe Schwelle wie bei den Boss-Schwächen. Spazieren, Garten, Yoga & Co. schützen nicht.
+ */
+export const ZOMBIE_MIN_FAKTOR = SCHWAECHE_MIN_FAKTOR;
+
+/** Trainings der Woche, die vor dem Biss schützen. */
+export function zombieSchutzTrainings(sp: Spieler, w: SpielWoche): SpielTraining[] {
+  return trainingsDerWoche(sp, w).filter((t) => t.faktor >= ZOMBIE_MIN_FAKTOR);
+}
+
+/**
+ * Wer zwei Tage am Stück nicht richtig trainiert (Faktor unter ZOMBIE_MIN_FAKTOR zählt nicht), wird gebissen und bleibt Zombie. Patient Null ist es von Anfang an.
  * `fertigeTage` sind die Tage der Woche, die schon vorbei sind (0 bis 7). Ergebnis: id → Tag des Bisses.
  */
 export function zombies(d: DatenVon<"zombie">, spieler: readonly Spieler[], w: SpielWoche, fertigeTage: number): Map<string, number> {
   const ergebnis = new Map<string, number>([[d.patientNull, 0]]);
   for (const sp of spieler) {
     if (!d.spieler.includes(sp.id) || sp.id === d.patientNull) continue;
-    const tage = new Set(trainingsDerWoche(sp, w).map((t) => t.datum));
+    const tage = new Set(zombieSchutzTrainings(sp, w).map((t) => t.datum));
     for (let k = 1; k < fertigeTage; k++) {
       if (!tage.has(plusTage(w.start, k - 1)) && !tage.has(plusTage(w.start, k))) {
         ergebnis.set(sp.id, k);

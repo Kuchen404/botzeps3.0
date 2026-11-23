@@ -6,7 +6,7 @@ import type { DatenVon, SpielTraining } from './spiele.js';
 
 const d: DatenVon<'zombie'> = { art: 'zombie', spieler: ['p', 'a'], patientNull: 'p', gemeldet: [] };
 const w = { start: '2026-10-19', ziel: 450 };
-const t = (datum: string, faktor = 2): SpielTraining => ({ id: 1, datum, erstellt: datum + 'T10:00:00Z', minuten: 15, faktor });
+const t = (datum: string, faktor = 3): SpielTraining => ({ id: 1, datum, erstellt: datum + 'T10:00:00Z', minuten: 15, faktor });
 const zeit = (tag = '2026-10-20', zeitzone = 'Europe/Berlin', berichtszeit = '20:00') => ({ tag, zeitzone, berichtszeit, abgeschlossen: false });
 const sp = (trainings: SpielTraining[] = []) => [{ id: 'p', name: 'P', trainings: [] }, { id: 'a', name: 'A', trainings }];
 const gefahr = (trainings: SpielTraining[] = [], tag = '2026-10-20') => zombieGefahr(d, sp(trainings), w, zeit(tag), new Set(['p']));
@@ -23,8 +23,10 @@ describe('Zombie-Trainingsfristen nach Kalendertagen', () => {
   it('ignoriert Training vor der Spielwoche und nach dem betrachteten Tag', () => {
     expect(gefahr([t('2026-10-18'), t('2026-10-21')])).toEqual(gefahr());
   });
-  it('zählt auch gültige Trainings ohne Lastpunkte wie die bestehende Infektionsregel', () => {
-    expect(gefahr([t('2026-10-20', 0)])).toEqual(gefahr([t('2026-10-20')]));
+  it('zählt wie die Infektionsregel nur Trainings ab Faktor 3, Spazieren & Co. nicht', () => {
+    expect(gefahr([t('2026-10-20', 0.5)])).toEqual(gefahr([]));
+    expect(gefahr([t('2026-10-20', 2.5)])).toEqual(gefahr([]));
+    expect(gefahr([t('2026-10-20', 3)])).not.toEqual(gefahr([]));
   });
   it('setzt die Sonntagsfrist auf die konfigurierte Berichtszeit und schützt Wochenendtraining', () => {
     const daten = sp([t('2026-10-23')]);

@@ -20,12 +20,14 @@ import {
   seilZeile,
   tauziehAktive,
   tresor,
+  ZOMBIE_MIN_FAKTOR,
   zombies,
 } from "./spiele.js";
 
 /** Texte rund um die Minispiele: Teaser, Ankündigung, Lage am Morgen, Meldungen beim Trainingspost und Auflösung. */
 
 const z = (x: number) => Math.round(x).toLocaleString("de-DE");
+const zahl = (x: number) => x.toLocaleString("de-DE");
 const aufzaehlung = (namen: readonly string[]) =>
   namen.length <= 1 ? (namen[0] ?? "") : `${namen.slice(0, -1).join(", ")} und ${namen.at(-1)}`;
 
@@ -66,7 +68,8 @@ export function minispielAnkuendigung(d: MinispielDaten, spieler: readonly Spiel
       case "zombie":
         return [
           `Patient Null ist ${n(namen, d.patientNull)}. Hat sich beim Döner was eingefangen und riecht schon komisch.`,
-          "Wer zwei Tage am Stück nicht trainiert, wird gebissen und schlurft ab dann mit 🧟 durch die Rangliste. Jeden Morgen gibt's die Liste der Neuen.",
+          "Wer zwei Tage am Stück nicht richtig trainiert, wird gebissen und schlurft ab dann mit 🧟 durch die Rangliste. Jeden Morgen gibt's die Liste der Neuen.",
+          `Gegen Zombies hilft nur echter Sport ab Faktor ×${zahl(ZOMBIE_MIN_FAKTOR)} (Krafttraining, sportliches Radeln & Co.). Spazieren, Garten oder Yoga riechen die Biester trotzdem.`,
           "Sonntag werden die Überlebenden gefeiert. Die Zombies auch, nur anders.",
         ];
       case "bombe": {
@@ -206,8 +209,13 @@ export function minispielNachTraining(
   const lv = lasten(d, vorher, w);
   const ln = lasten(d, nachher, w);
   switch (d.art) {
-    case "zombie":
-      return [];
+    case "zombie": {
+      const alt = new Set(vorher.find((sp) => sp.id === ich)?.trainings.map((t) => t.id) ?? []);
+      const neu = nachher.find((sp) => sp.id === ich)?.trainings.filter((t) => !alt.has(t.id)) ?? [];
+      return neu.length && neu.every((t) => t.faktor < ZOMBIE_MIN_FAKTOR)
+        ? [`🧟 ${n(namen, ich)}, das war Kuschelsport. Schützt nicht vor dem Biss, dafür braucht's Faktor ×${zahl(ZOMBIE_MIN_FAKTOR)} oder mehr.`]
+        : [];
+    }
     case "bombe": {
       const alt = bombentraeger(d, vorher);
       const neu = bombentraeger(d, nachher);

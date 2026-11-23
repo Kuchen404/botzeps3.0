@@ -62,8 +62,29 @@ describe("Minispiel-Wochen", () => {
 
 describe("Zombie-Woche", () => {
   const d: DatenVon<"zombie"> = { art: "zombie", spieler: ["k", "p", "m"], patientNull: "m", gemeldet: [] };
+  /** Hartes Training (Faktor 3), das vor dem Biss schützt */
+  const hart = (tag: number) => ({ ...tr(tag, 90), faktor: 3, minuten: 30 });
   // Kevin trainiert jeden zweiten Tag, Peter Montag und dann nicht mehr
-  const spieler = [sp("k", "Kevin", tr(0, 100), tr(2, 100), tr(4, 100), tr(6, 100)), sp("p", "Peter", tr(0, 100)), sp("m", "Max")];
+  const spieler = [sp("k", "Kevin", hart(0), hart(2), hart(4), hart(6)), sp("p", "Peter", hart(0)), sp("m", "Max")];
+
+  it("Spazieren & Co. unter Faktor 3 schützen nicht, Krafttraining ab Faktor 3 schon", () => {
+    const spazieren = (tag: number) => ({ ...tr(tag, 50), faktor: 0.5, minuten: 100 });
+    const leute = [sp("k", "Kevin", hart(0), spazieren(1), hart(2)), sp("p", "Peter", hart(0), spazieren(1), spazieren(2)), sp("m", "Max")];
+    // Peter hat Di und Mi nur spaziert: gebissen an Tag 2. Kevin ist durch Mo und Mi sicher.
+    expect(zombies(d, leute, W, 3)).toEqual(new Map([["m", 0], ["p", 2]]));
+  });
+
+  it("beim Kuschelsport-Eintrag gibt's einen Hinweis, beim harten Training nicht", () => {
+    const mo = hart(0);
+    const vorher = [sp("k", "Kevin", mo), sp("p", "Peter"), sp("m", "Max")];
+    const spaz = { ...tr(1, 50), faktor: 0.5, minuten: 100 };
+    const mitSpaz = [sp("k", "Kevin", mo, spaz), sp("p", "Peter"), sp("m", "Max")];
+    expect(minispielNachTraining(d, vorher, mitSpaz, W, "k")).toEqual([
+      "🧟 Kevin, das war Kuschelsport. Schützt nicht vor dem Biss, dafür braucht's Faktor ×3 oder mehr.",
+    ]);
+    const mitKraft = [sp("k", "Kevin", mo, hart(1)), sp("p", "Peter"), sp("m", "Max")];
+    expect(minispielNachTraining(d, vorher, mitKraft, W, "k")).toEqual([]);
+  });
 
   it("gebissen wird, wer zwei Tage am Stück nicht trainiert; Patient Null von Anfang an", () => {
     expect(zombies(d, spieler, W, 2)).toEqual(new Map([["m", 0]]));

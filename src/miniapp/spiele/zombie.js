@@ -106,7 +106,7 @@ window.MINISPIEL_SZENEN.zombie = function (a) {
   var laden = el('button', { class: 'knopf leise', text: '↻ Stand aktualisieren', onclick: function () { aktualisiereBombe(laden); } });
   var root = el('section', { class: 'ms-scene ms-zombie zombie-gym', 'aria-label': 'Die ganze Gruppe im Zombie-Gym', 'data-abgeschlossen': String(!!a.abgeschlossen) }, [status,
     el('div', { class: 'zh-kopf' }, [titel, el('span', { text: 'KEINE RUHE IN FRIEDEN' })]), arena, counter, details, zeit,
-    el('div', { class: 'ms-steuerung' }, [skip, replay, laden]), el('p', { class: 'zh-regel', text: 'Training ist dein Gegengift: Es erneuert deinen Schutz. Zwei Tage am Stück ohne Training: Die Horde erwischt dich. Patient Null startet als Zombie; Infizierte bleiben es bis zum Wochenende.' })]);
+    el('div', { class: 'ms-steuerung' }, [skip, replay, laden]), el('p', { class: 'zh-regel', text: 'Training ab Faktor ×3 ist dein Gegengift: Es erneuert deinen Schutz. Spazieren, Garten oder Yoga zählen nicht. Zwei Tage am Stück ohne richtiges Training: Die Horde erwischt dich. Patient Null startet als Zombie; Infizierte bleiben es bis zum Wochenende.' })]);
   function name(id) { return spieler.has(id) ? spieler.get(id).name : 'Unbekannt'; }
   function bewegung() { return !(zombieBewegungsWahl && zombieBewegungsWahl.matches); }
   function gueltig(nr) { return nr === lauf && root.isConnected && !document.hidden && bewegung(); }
