@@ -448,7 +448,8 @@ function standTab(s) {
   if (ich.fettKg) {
     kinder.push(karte("Seit dem Start (nur für dich)", [
       zeile("Fettmasse", zahl(ich.fettKg.start) + " → " + zahl(ich.fettKg.aktuell) + " kg"),
-      zeile("Muskelmasse", zahl(ich.muskelKg.start) + " → " + zahl(ich.muskelKg.aktuell) + " kg")
+      zeile("Muskelmasse", zahl(ich.muskelKg.start) + " → " + zahl(ich.muskelKg.aktuell) + " kg"),
+      el("div", { class: "hint", text: "Links: Schnitt deiner Kalibrierwoche. Rechts: Schnitt deiner Messungen der letzten 7 Tage – ältere fallen täglich raus, deshalb ändert sich der Wert auch ohne neue Messung." })
     ]));
   }
   if (s.boss && !s.boss.aktiv) kinder.push(bossKarte(s.boss, s.chat + ":" + s.start));
